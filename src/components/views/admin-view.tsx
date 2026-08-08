@@ -30,7 +30,7 @@ import {
   ComposedChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
 } from 'recharts'
 
-type Tab = 'dashboard' | 'users' | 'pairs' | 'p2p' | 'transactions' | 'orders' | 'settings'
+type Tab = 'dashboard' | 'users' | 'pairs' | 'p2p' | 'payment-review' | 'transactions' | 'orders' | 'settings'
 
 export function AdminView() {
   const { user, setView } = useAppStore()
@@ -76,6 +76,7 @@ export function AdminView() {
           <TabsTrigger value="users" className="gap-1"><Users className="h-3.5 w-3.5" /> Users</TabsTrigger>
           <TabsTrigger value="pairs" className="gap-1"><TrendingUp className="h-3.5 w-3.5" /> Pairs</TabsTrigger>
           <TabsTrigger value="p2p" className="gap-1"><Shield className="h-3.5 w-3.5" /> P2P Moderation</TabsTrigger>
+          <TabsTrigger value="payment-review" className="gap-1"><Clock className="h-3.5 w-3.5" /> Payment Review</TabsTrigger>
           <TabsTrigger value="orders" className="gap-1"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
           <TabsTrigger value="transactions" className="gap-1"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
           <TabsTrigger value="settings" className="gap-1"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
@@ -86,6 +87,7 @@ export function AdminView() {
       {tab === 'users' && <UsersTab />}
       {tab === 'pairs' && <PairsTab />}
       {tab === 'p2p' && <P2PTab />}
+      {tab === 'payment-review' && <PaymentReviewTab />}
       {tab === 'orders' && <OrdersTab />}
       {tab === 'transactions' && <TransactionsTab />}
       {tab === 'settings' && <SettingsTab />}
@@ -1273,6 +1275,240 @@ function P2PTab() {
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+// =================== PAYMENT REVIEW TAB ===================
+function PaymentReviewTab() {
+  const { toast } = useToast()
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('PENDING_REVIEW')
+  const [reviewDialog, setReviewDialog] = useState<any>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/p2p-review?status=${statusFilter}`)
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      setOrders(d.orders || [])
+    } catch (e: any) {
+      toast({ title: 'Failed to load', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [statusFilter, toast])
+
+  useEffect(() => { load() }, [load])
+
+  const act = async (orderId: string, action: string) => {
+    try {
+      const res = await fetch('/api/admin/p2p-review/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, action }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'Action completed', description: d.message })
+      setReviewDialog(null)
+      load()
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="PENDING_REVIEW">⏳ Pending Review</SelectItem>
+            <SelectItem value="PAID">✅ Verified (Paid)</SelectItem>
+            <SelectItem value="CANCELED">❌ Rejected/Canceled</SelectItem>
+            <SelectItem value="COMPLETED">✓ Completed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={load}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+        {statusFilter === 'PENDING_REVIEW' && orders.length > 0 && (
+          <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 ml-auto">
+            {orders.length} pending
+          </Badge>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12">
+          <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">No orders with status "{statusFilter}"</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {orders.map(o => (
+            <div key={o.id} className="bg-card border border-border rounded-lg p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Left: order info */}
+                <div className="flex-1 min-w-[200px]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="secondary" className={
+                      o.status === 'PENDING_REVIEW' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                      o.status === 'PAID' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      o.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                      'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                    }>{o.status}</Badge>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Buyer:</span>
+                      <div className="font-medium">{o.buyer.name}</div>
+                      <div className="text-xs text-muted-foreground">{o.buyer.email}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Seller:</span>
+                      <div className="font-medium">{o.seller.name}</div>
+                      <div className="text-xs text-muted-foreground">{o.seller.email}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Trade:</span>{' '}
+                      <span className="font-medium">{formatQty(o.amount)} {o.asset}</span>
+                      {' '}for{' '}
+                      <span className="font-medium tabular-nums">{formatPrice(o.total)} {o.fiatCurrency}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Method:</span>{' '}
+                      <span className="font-medium">{o.paymentMethod}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: screenshot thumbnail + actions */}
+                <div className="flex flex-col items-end gap-2">
+                  {o.paymentScreenshot ? (
+                    <img
+                      src={o.paymentScreenshot}
+                      alt="Payment proof"
+                      className="w-32 h-20 object-cover rounded-lg border-2 border-border cursor-pointer hover:border-primary"
+                      onClick={() => setReviewDialog(o)}
+                    />
+                  ) : (
+                    <div className="w-32 h-20 flex items-center justify-center border-2 border-dashed border-border rounded-lg text-xs text-muted-foreground">
+                      No screenshot
+                    </div>
+                  )}
+                  {o.status === 'PENDING_REVIEW' && (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => act(o.id, 'approve')}
+                      >
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-red-500 text-red-500 hover:bg-red-500/10"
+                        onClick={() => act(o.id, 'reject')}
+                      >
+                        <XCircle className="h-3 w-3 mr-1" /> Reject
+                      </Button>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setReviewDialog(o)}
+                  >
+                    <FileText className="h-3 w-3 mr-1" /> View Details
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Review dialog with full screenshot */}
+      {reviewDialog && (
+        <Dialog open onOpenChange={() => setReviewDialog(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Payment Review — {reviewDialog.buyer.name}
+              </DialogTitle>
+              <DialogDescription>
+                Order #{reviewDialog.id.slice(-8).toUpperCase()} · {formatDateTime(reviewDialog.createdAt)}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Order details */}
+              <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-muted-foreground">Buyer:</span> <span className="font-medium">{reviewDialog.buyer.name}</span></div>
+                <div><span className="text-muted-foreground">Seller:</span> <span className="font-medium">{reviewDialog.seller.name}</span></div>
+                <div><span className="text-muted-foreground">Asset:</span> <span className="font-medium">{formatQty(reviewDialog.amount)} {reviewDialog.asset}</span></div>
+                <div><span className="text-muted-foreground">Total:</span> <span className="font-medium tabular-nums">{formatPrice(reviewDialog.total)} {reviewDialog.fiatCurrency}</span></div>
+                <div><span className="text-muted-foreground">Payment Method:</span> <span className="font-medium">{reviewDialog.paymentMethod}</span></div>
+                <div><span className="text-muted-foreground">Status:</span> <span className="font-medium">{reviewDialog.status}</span></div>
+              </div>
+
+              {/* Payment screenshot */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Payment Screenshot</p>
+                {reviewDialog.paymentScreenshot ? (
+                  <img
+                    src={reviewDialog.paymentScreenshot}
+                    alt="Payment proof"
+                    className="w-full rounded-lg border-2 border-border"
+                  />
+                ) : (
+                  <div className="text-center py-12 border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
+                    No screenshot uploaded
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              {reviewDialog.status === 'PENDING_REVIEW' && (
+                <div className="flex gap-2 border-t border-border pt-4">
+                  <Button variant="outline" className="flex-1" onClick={() => setReviewDialog(null)}>
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+                    onClick={() => act(reviewDialog.id, 'reject')}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" /> Reject Payment
+                  </Button>
+                  <Button
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                    onClick={() => act(reviewDialog.id, 'approve')}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> Approve Payment
+                  </Button>
+                </div>
+              )}
+
+              {reviewDialog.status !== 'PENDING_REVIEW' && (
+                <Button variant="outline" className="w-full" onClick={() => setReviewDialog(null)}>Close</Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
