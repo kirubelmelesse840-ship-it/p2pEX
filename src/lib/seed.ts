@@ -147,6 +147,15 @@ export async function seedDatabase() {
 
   // 4. Create some P2P listings
   const listings = [
+    // Ethiopian Birr (ETB) listings - with local payment methods
+    { asset: 'USDT', fiat: 'ETB', side: 'SELL', price: 128.50, amount: 30000, methods: ['Telebirr', 'CBE Birr', 'Awash Bank'] },
+    { asset: 'USDT', fiat: 'ETB', side: 'SELL', price: 129.00, amount: 15000, methods: ['Telebirr', 'Dashen Bank'] },
+    { asset: 'USDT', fiat: 'ETB', side: 'BUY',  price: 127.00, amount: 20000, methods: ['Telebirr', 'CBE Birr', 'Coopbank'] },
+    { asset: 'USDT', fiat: 'ETB', side: 'SELL', price: 128.75, amount: 50000, methods: ['Telebirr', 'Awash Bank', 'Hibret Bank', 'Wegagen Bank'] },
+    { asset: 'USDT', fiat: 'ETB', side: 'BUY',  price: 126.50, amount: 10000, methods: ['Telebirr', 'Abay Bank'] },
+    { asset: 'BTC',  fiat: 'ETB', side: 'SELL', price: 8650000, amount: 0.2,  methods: ['Telebirr', 'CBE Birr'] },
+    { asset: 'ETH',  fiat: 'ETB', side: 'SELL', price: 442000,  amount: 3,    methods: ['Telebirr', 'Awash Bank'] },
+    // Global listings
     { asset: 'USDT', fiat: 'USD', side: 'SELL', price: 1.002, amount: 50000, methods: ['Bank Transfer', 'Wise', 'PayPal'] },
     { asset: 'USDT', fiat: 'USD', side: 'BUY',  price: 0.998,  amount: 30000, methods: ['Bank Transfer', 'Cash App'] },
     { asset: 'USDT', fiat: 'EUR', side: 'SELL', price: 0.985,  amount: 20000, methods: ['SEPA', 'Wise', 'PayPal'] },

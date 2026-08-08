@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,9 +16,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Users, Shield, Check, Clock, X, MessageCircle, Plus, Star,
-  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard,
+  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatDateTime, formatCompact } from '@/lib/utils'
+import { BackButton } from '@/components/back-button'
 
 interface Listing {
   id: string
@@ -54,11 +55,30 @@ interface P2POrder {
 }
 
 const PAYMENT_METHODS = [
+  // Ethiopian payment methods
+  'Telebirr', 'CBE Birr', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank',
+  'Abay Bank', 'Coopbank', 'Bank Transfer (ETB)',
+  // Global payment methods
   'Bank Transfer', 'Wise', 'PayPal', 'Cash App', 'SEPA', 'Alipay',
   'WeChat Pay', 'UPI', 'IMPS', 'PayNow', 'Zelle', 'Venmo',
 ]
 
-const FIAT_CURRENCIES = ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'KRW', 'INR', 'SGD', 'AUD', 'CAD']
+// Map fiat currency to commonly-used payment methods (for filtering UI)
+const FIAT_PAYMENT_METHODS: Record<string, string[]> = {
+  ETB: ['Telebirr', 'CBE Birr', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank', 'Abay Bank', 'Coopbank', 'Bank Transfer (ETB)'],
+  USD: ['Bank Transfer', 'Wise', 'PayPal', 'Cash App', 'Zelle', 'Venmo'],
+  EUR: ['SEPA', 'Wise', 'PayPal', 'Bank Transfer'],
+  GBP: ['Bank Transfer', 'Wise', 'PayPal'],
+  CNY: ['Alipay', 'WeChat Pay', 'Bank Transfer'],
+  JPY: ['Bank Transfer'],
+  KRW: ['Bank Transfer'],
+  INR: ['UPI', 'IMPS', 'Bank Transfer'],
+  SGD: ['PayNow', 'Bank Transfer'],
+  AUD: ['Bank Transfer', 'PayPal'],
+  CAD: ['Bank Transfer', 'PayPal'],
+}
+
+const FIAT_CURRENCIES = ['ETB', 'USD', 'EUR', 'GBP', 'CNY', 'JPY', 'KRW', 'INR', 'SGD', 'AUD', 'CAD']
 const CRYPTO_ASSETS = ['USDT', 'BTC', 'ETH', 'BNB', 'SOL']
 
 export function P2PView() {
@@ -68,7 +88,7 @@ export function P2PView() {
   const [orders, setOrders] = useState<P2POrder[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'buy' | 'sell' | 'orders' | 'create'>('buy')
-  const [filters, setFilters] = useState({ asset: 'USDT', fiat: 'USD' })
+  const [filters, setFilters] = useState({ asset: 'USDT', fiat: 'ETB', paymentMethod: 'ALL' })
   const [tradeDialog, setTradeDialog] = useState<Listing | null>(null)
   const [orderDialog, setOrderDialog] = useState<P2POrder | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -90,7 +110,7 @@ export function P2PView() {
     } finally {
       setLoading(false)
     }
-  }, [filters, user])
+  }, [filters.asset, filters.fiat, user])
 
   useEffect(() => { load() }, [load])
   useEffect(() => {
@@ -99,14 +119,30 @@ export function P2PView() {
     return () => clearInterval(t)
   }, [user, load])
 
+  // Reset payment method filter when fiat changes
+  useEffect(() => {
+    setFilters(f => ({ ...f, paymentMethod: 'ALL' }))
+  }, [filters.fiat])
+
   const buyListings = listings.filter(l => l.side === 'SELL') // user wants to BUY, so look for SELL listings
   const sellListings = listings.filter(l => l.side === 'BUY')
 
-  const displayed = tab === 'buy' ? buyListings : tab === 'sell' ? sellListings : []
+  // Apply payment method filter (matches listings that include the selected method)
+  const filterByPayment = (list: Listing[]) => {
+    if (filters.paymentMethod === 'ALL') return list
+    return list.filter(l => l.paymentMethods.includes(filters.paymentMethod))
+  }
+
+  const displayed = tab === 'buy' ? filterByPayment(buyListings) : tab === 'sell' ? filterByPayment(sellListings) : []
+
+  // Available payment methods for the selected fiat currency
+  const availablePaymentMethods = FIAT_PAYMENT_METHODS[filters.fiat] || ['Bank Transfer']
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
-      <div className="flex items-center justify-between mb-4">
+      <BackButton to="home" />
+
+      <div className="flex items-center justify-between mb-4 mt-1">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="h-6 w-6" />
@@ -151,7 +187,7 @@ export function P2PView() {
           )}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <Select value={filters.asset} onValueChange={(v) => setFilters(f => ({ ...f, asset: v }))}>
             <SelectTrigger className="w-24 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -162,6 +198,13 @@ export function P2PView() {
             <SelectTrigger className="w-24 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               {FIAT_CURRENCIES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filters.paymentMethod} onValueChange={(v) => setFilters(f => ({ ...f, paymentMethod: v }))}>
+            <SelectTrigger className="w-32 h-8"><SelectValue placeholder="Payment" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Methods</SelectItem>
+              {availablePaymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -241,21 +284,52 @@ export function P2PView() {
 function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => void }) {
   const { user } = useAppStore()
   const isMine = user && listing.user.name === user.name
+  const hasVerification = listing.user.kycVerified
+  const kycLevel = listing.user.kycLevel || 0
+  // Deterministic trades count based on listing id (stable across renders)
+  const tradesCount = useMemo(() => {
+    const hash = listing.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    return 50 + (hash % 500)
+  }, [listing.id])
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
-        {/* Advertiser */}
+        {/* Advertiser with verification status */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
             {listing.user.name.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <div className="font-medium text-sm">{listing.user.name}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-0.5">
-              {listing.user.kycVerified && <Shield className="h-3 w-3 text-green-500" />}
+            <div className="font-medium text-sm flex items-center gap-1">
+              {listing.user.name}
+              {hasVerification && (
+                <span
+                  className={`inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded ${
+                    kycLevel >= 2
+                      ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                      : 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'
+                  }`}
+                  title={`KYC Level ${kycLevel} verified`}
+                >
+                  <BadgeCheck className="h-3 w-3" />
+                  L{kycLevel}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              {hasVerification ? (
+                <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                  <Shield className="h-3 w-3" /> Verified
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Unverified</span>
+              )}
+              <span className="mx-1">·</span>
               <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
               <span>4.9</span>
+              <span className="mx-1">·</span>
+              <span>{tradesCount} trades</span>
             </div>
           </div>
         </div>
@@ -276,15 +350,15 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
           </div>
         </div>
 
-        {/* Payment */}
+        {/* Payment - show all methods with matched highlight */}
         <div className="hidden md:block">
           <div className="text-xs text-muted-foreground">Payment</div>
           <div className="flex flex-wrap gap-1 mt-0.5">
-            {listing.paymentMethods.slice(0, 2).map(m => (
+            {listing.paymentMethods.slice(0, 3).map(m => (
               <Badge key={m} variant="secondary" className="text-[10px] py-0 px-1.5">{m}</Badge>
             ))}
-            {listing.paymentMethods.length > 2 && (
-              <span className="text-[10px] text-muted-foreground">+{listing.paymentMethods.length - 2}</span>
+            {listing.paymentMethods.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{listing.paymentMethods.length - 3}</span>
             )}
           </div>
         </div>
@@ -654,14 +728,25 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
   const { toast } = useToast()
   const [side, setSide] = useState<'BUY' | 'SELL'>('SELL')
   const [asset, setAsset] = useState('USDT')
-  const [fiat, setFiat] = useState('USD')
+  const [fiat, setFiat] = useState('ETB')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('')
   const [minOrder, setMinOrder] = useState('100')
   const [maxOrder, setMaxOrder] = useState('10000')
-  const [methods, setMethods] = useState<string[]>(['Bank Transfer'])
+  const [methods, setMethods] = useState<string[]>(['Telebirr'])
   const [terms, setTerms] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Payment methods available for the selected fiat currency
+  const availableMethods = FIAT_PAYMENT_METHODS[fiat] || ['Bank Transfer']
+
+  // When fiat changes, reset selected methods to ones available for that currency
+  useEffect(() => {
+    setMethods(prev => {
+      const filtered = prev.filter(m => availableMethods.includes(m))
+      return filtered.length > 0 ? filtered : [availableMethods[0]]
+    })
+  }, [fiat])
 
   const toggleMethod = (m: string) => {
     setMethods(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])
@@ -785,9 +870,11 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Payment Methods</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Payment Methods <span className="text-muted-foreground/60">(available for {fiat})</span>
+            </label>
             <div className="flex flex-wrap gap-1 mt-1">
-              {PAYMENT_METHODS.map(m => (
+              {availableMethods.map(m => (
                 <button
                   key={m}
                   type="button"

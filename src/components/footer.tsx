@@ -72,15 +72,15 @@ export function Footer() {
         </div>
       </footer>
 
-      {/* Mobile bottom navigation */}
-      <nav className="md:hidden sticky bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-around h-14">
+      {/* Mobile bottom navigation - FIXED so it's always visible */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 safe-area-bottom">
+        <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
           {FOOTER_NAV.map(item => (
             <button
               key={item.id}
               onClick={() => setView(item.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded transition ${
-                view === item.id ? 'text-primary' : 'text-muted-foreground'
+              className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-lg transition ${
+                view === item.id ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <item.icon className="h-5 w-5" />

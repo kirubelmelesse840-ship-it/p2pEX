@@ -4,20 +4,22 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
   Copy, Send, Download, ArrowDownToLine, ArrowUpFromLine, QrCode, Wallet as WalletIcon,
-  CheckCircle2, Clock, XCircle, ExternalLink,
+  CheckCircle2, Clock, XCircle, ExternalLink, ArrowLeftRight, Users, Zap,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatUsd, formatDateTime, shortAddr, copyToClipboard } from '@/lib/utils'
+import { BackButton } from '@/components/back-button'
 
 interface WalletData {
   asset: string
@@ -56,6 +58,7 @@ export function WalletView() {
   const [loading, setLoading] = useState(true)
   const [sendDialog, setSendDialog] = useState<WalletData | null>(null)
   const [depositDialog, setDepositDialog] = useState<WalletData | null>(null)
+  const [transferDialog, setTransferDialog] = useState<WalletData | null>(null)
 
   const load = useCallback(async () => {
     if (!user) { setWallets([]); setTransactions([]); setLoading(false); return }
@@ -96,8 +99,10 @@ export function WalletView() {
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
+      <BackButton to="home" />
+
       {/* Total balance card */}
-      <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border rounded-xl p-5 mb-4">
+      <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border rounded-xl p-5 mb-4 mt-1">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Estimated Value</p>
@@ -106,12 +111,19 @@ export function WalletView() {
               ≈ {formatQty(totalUsd)} USD across {wallets.filter(w => w.balance > 0).length} assets
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="default" onClick={() => wallets[0] && setDepositDialog(wallets[0])}>
               <ArrowDownToLine className="h-4 w-4 mr-1.5" /> Deposit
             </Button>
             <Button variant="outline" onClick={() => wallets[0] && setSendDialog(wallets[0])}>
               <ArrowUpFromLine className="h-4 w-4 mr-1.5" /> Withdraw
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => wallets[0] && setTransferDialog(wallets[0])}
+              className="bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
+            >
+              <ArrowLeftRight className="h-4 w-4 mr-1.5" /> Transfer
             </Button>
           </div>
         </div>
@@ -184,10 +196,24 @@ export function WalletView() {
         </div>
       </div>
 
-      {/* Transactions */}
+      {/* Transactions - distinguish internal vs external */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold">Recent Transactions</h2>
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              Internal
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              Deposit
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              Withdraw
+            </span>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -197,7 +223,7 @@ export function WalletView() {
                 <th className="px-4 py-2 text-left font-medium">Asset</th>
                 <th className="px-4 py-2 text-right font-medium">Amount</th>
                 <th className="px-4 py-2 text-left font-medium hidden sm:table-cell">Network</th>
-                <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Address</th>
+                <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Counterparty</th>
                 <th className="px-4 py-2 text-left font-medium">Status</th>
                 <th className="px-4 py-2 text-right font-medium hidden sm:table-cell">Time</th>
               </tr>
@@ -206,41 +232,75 @@ export function WalletView() {
               {transactions.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No transactions yet</td></tr>
               ) : (
-                transactions.map(t => (
-                  <tr key={t.id} className="border-t border-border/40 hover:bg-muted/30">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {t.type === 'DEPOSIT' ? (
-                          <ArrowDownToLine className="h-4 w-4 text-green-500" />
-                        ) : t.type === 'WITHDRAW' ? (
-                          <ArrowUpFromLine className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <ExternalLink className="h-4 w-4 text-blue-500" />
+                transactions.map(t => {
+                  const isInternal = t.type === 'INTERNAL_TRANSFER'
+                  const isIncoming = isInternal
+                    ? !!t.fromAddress  // if fromAddress exists, we received it
+                    : t.type === 'DEPOSIT'
+                  return (
+                    <tr key={t.id} className={`border-t border-border/40 hover:bg-muted/30 ${isInternal ? 'bg-blue-500/5' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {isInternal ? (
+                            <ArrowLeftRight className="h-4 w-4 text-blue-500" />
+                          ) : t.type === 'DEPOSIT' ? (
+                            <ArrowDownToLine className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ArrowUpFromLine className="h-4 w-4 text-red-500" />
+                          )}
+                          <div>
+                            <span className="font-medium">
+                              {isInternal ? 'Internal Transfer' : t.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
+                            </span>
+                            {isInternal && (
+                              <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${
+                                isIncoming ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'
+                              }`}>
+                                {isIncoming ? 'Received' : 'Sent'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{t.asset}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
+                          {isIncoming ? '+' : '-'}{formatQty(t.amount)}
+                        </span>
+                        {t.fee > 0 && (
+                          <div className="text-xs text-muted-foreground">Fee: {formatQty(t.fee)}</div>
                         )}
-                        <span className="font-medium">{t.type}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">{t.asset}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      <span className={t.type === 'DEPOSIT' ? 'text-green-500' : 'text-red-500'}>
-                        {t.type === 'DEPOSIT' ? '+' : '-'}{formatQty(t.amount)}
-                      </span>
-                      {t.fee > 0 && (
-                        <div className="text-xs text-muted-foreground">Fee: {formatQty(t.fee)}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs hidden sm:table-cell">{t.network}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell font-mono">
-                      {t.type === 'DEPOSIT' ? shortAddr(t.fromAddress || '') : shortAddr(t.toAddress || '')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={t.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground hidden sm:table-cell">
-                      {formatDateTime(t.createdAt)}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-4 py-3 text-xs hidden sm:table-cell">
+                        {isInternal ? (
+                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                            <Zap className="h-3 w-3" /> CrypEx
+                          </span>
+                        ) : (
+                          <span>{t.network}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell font-mono">
+                        {isInternal ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {isIncoming ? shortAddr(t.fromAddress || '') : shortAddr(t.toAddress || '')}
+                          </span>
+                        ) : (
+                          <span>
+                            {t.type === 'DEPOSIT' ? shortAddr(t.fromAddress || '') : shortAddr(t.toAddress || '')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={t.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground hidden sm:table-cell">
+                        {formatDateTime(t.createdAt)}
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -262,6 +322,16 @@ export function WalletView() {
         <DepositDialog
           wallet={depositDialog}
           onClose={() => setDepositDialog(null)}
+          onSuccess={load}
+        />
+      )}
+
+      {/* Internal transfer dialog */}
+      {transferDialog && (
+        <TransferDialog
+          wallet={transferDialog}
+          wallets={wallets}
+          onClose={() => setTransferDialog(null)}
           onSuccess={load}
         />
       )}
@@ -635,6 +705,180 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
           <p className="text-xs text-center text-muted-foreground">
             In production, deposits are detected automatically from the blockchain.
           </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * TransferDialog - internal transfer between CrypEx users by email
+ * Instant, fee-free, no blockchain confirmation needed
+ */
+function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
+  wallet: WalletData
+  wallets: WalletData[]
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const { toast } = useToast()
+  const [asset, setAsset] = useState(wallet.asset)
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const selectedWallet = wallets.find(w => w.asset === asset)
+  const available = selectedWallet?.available ?? 0
+  const amountNum = parseFloat(amount) || 0
+
+  const submit = async () => {
+    if (!recipientEmail) {
+      toast({ title: 'Enter recipient email', variant: 'destructive' })
+      return
+    }
+    if (amountNum <= 0) {
+      toast({ title: 'Enter valid amount', variant: 'destructive' })
+      return
+    }
+    if (amountNum > available) {
+      toast({ title: 'Insufficient balance', description: `Available: ${available} ${asset}`, variant: 'destructive' })
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/wallet/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset, amount: amountNum, recipientEmail, note }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      toast({
+        title: 'Transfer successful',
+        description: `${amountNum} ${asset} sent to ${recipientEmail}`,
+      })
+      onSuccess()
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Transfer failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="h-5 w-5 text-blue-500" />
+            Internal Transfer
+          </DialogTitle>
+          <DialogDescription>
+            Send crypto to another CrypEx user instantly — no blockchain fees, no confirmation delays.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {/* Info banner */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs">
+            <div className="flex items-start gap-2">
+              <Zap className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="text-blue-700 dark:text-blue-400">
+                <p className="font-medium mb-0.5">Internal transfers are:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                  <li>Free — no network fees</li>
+                  <li>Instant — confirmed immediately</li>
+                  <li>Only between CrypEx users (by email)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Asset</label>
+            <Select value={asset} onValueChange={setAsset}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {wallets.filter(w => w.balance > 0 || ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'].includes(w.asset)).map(w => (
+                  <SelectItem key={w.asset} value={w.asset}>
+                    {w.asset} - {w.assetName} ({formatQty(w.available)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Recipient Email (CrypEx user)</label>
+            <Input
+              type="email"
+              value={recipientEmail}
+              onChange={e => setRecipientEmail(e.target.value)}
+              placeholder="user@example.com"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              The recipient must have a CrypEx account.
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">Amount</label>
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={() => setAmount(available.toString())}
+              >
+                Max: {formatQty(available)}
+              </button>
+            </div>
+            <Input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="tabular-nums"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+            <Textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="What's this transfer for?"
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+
+          <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Available</span>
+              <span className="tabular-nums">{formatQty(available)} {asset}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Network Fee</span>
+              <span className="text-green-600 dark:text-green-400 font-medium">FREE</span>
+            </div>
+            <div className="flex justify-between font-medium pt-1 border-t border-border">
+              <span>Recipient receives</span>
+              <span className="tabular-nums">{formatQty(amountNum)} {asset}</span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+              onClick={submit}
+              disabled={loading || !recipientEmail || !amount}
+            >
+              {loading ? 'Sending...' : 'Send Transfer'}
+            </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

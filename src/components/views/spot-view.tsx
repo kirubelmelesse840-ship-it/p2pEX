@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { CandlestickChart } from '@/components/candlestick-chart'
 import { DepthChart } from '@/components/depth-chart'
+import { BackButton } from '@/components/back-button'
 import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
 import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus } from 'lucide-react'
 
@@ -652,6 +653,11 @@ export function SpotView() {
 
   return (
     <div className="container mx-auto px-2 sm:px-3 py-2 max-w-[1600px]">
+      {/* Back button */}
+      <div className="px-1 py-1">
+        <BackButton to="markets" />
+      </div>
+
       {/* Pair header */}
       <div className="flex flex-wrap items-center gap-3 mb-2 p-2 bg-card rounded-lg border border-border">
         <SymbolSelector symbol={symbol} />

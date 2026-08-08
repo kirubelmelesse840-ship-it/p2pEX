@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PriceLineChart } from '@/components/candlestick-chart'
 import {
   Bitcoin, TrendingUp, Users, Wallet, Shield, Zap, Globe, ArrowRight,
-  ArrowUp, ArrowDown, Star, Lock, BarChart3,
+  ArrowUp, ArrowDown, Star, BarChart3,
 } from 'lucide-react'
 import { formatPrice, formatPercent, formatCompact, formatUsd } from '@/lib/utils'
 
@@ -25,7 +25,7 @@ export function HomeView() {
 
   const popular = useMemo(() => {
     return tickers
-      .filter(t => ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT'].includes(t.symbol))
+      .filter(t => ['BTCUSDT', 'ETHUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT'].includes(t.symbol))
       .slice(0, 6)
   }, [tickers])
 
@@ -196,40 +196,31 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Trust badges */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <TrustCard
-          icon={<Shield className="h-6 w-6" />}
-          title="Bank-Grade Security"
-          desc="Cold storage, 2FA, withdrawal whitelist, and 24/7 monitoring protect your assets."
-        />
-        <TrustCard
-          icon={<Zap className="h-6 w-6" />}
-          title="High-Performance Engine"
-          desc="Orders matched in microseconds. Real-time market data via WebSocket."
-        />
-        <TrustCard
-          icon={<Globe className="h-6 w-6" />}
-          title="Global Coverage"
-          desc="Trade in 100+ countries with multiple fiat currencies and payment methods."
-        />
+      {/* Three Feature Cards: Bank-Grade Security, High-Performance Engine, Global Coverage */}
+      <section className="mb-6">
+        <h2 className="text-lg font-bold mb-3">Why CrypEx?</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <FeatureCard
+            icon={<Shield className="h-5 w-5" />}
+            title="Bank-Grade Security"
+            desc="Cold storage, 2FA, withdrawal whitelist, and 24/7 monitoring protect your assets around the clock."
+            onClick={() => setView('wallet')}
+          />
+          <FeatureCard
+            icon={<Zap className="h-5 w-5" />}
+            title="High-Performance Engine"
+            desc="Orders matched in microseconds. Real-time market data via WebSocket keeps you ahead of the market."
+            onClick={() => setView('spot')}
+          />
+          <FeatureCard
+            icon={<Globe className="h-5 w-5" />}
+            title="Global Coverage"
+            desc="Trade in 100+ countries with multiple fiat currencies including USD, EUR, ETB and local payment methods."
+            onClick={() => setView('p2p')}
+          />
+        </div>
       </section>
 
-      {/* CTA */}
-      {!user && (
-        <section className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-border rounded-xl p-6 text-center">
-          <h2 className="text-2xl font-bold mb-2">Ready to start trading?</h2>
-          <p className="text-muted-foreground mb-4">Sign up in seconds and get a free multi-asset wallet.</p>
-          <div className="flex justify-center gap-2">
-            <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white">
-              Create Free Account
-            </Button>
-            <Button size="lg" variant="outline">
-              <Lock className="h-4 w-4 mr-1.5" /> Try Demo
-            </Button>
-          </div>
-        </section>
-      )}
     </div>
   )
 }
@@ -246,18 +237,6 @@ function FeatureCard({ icon, title, desc, onClick }: { icon: React.ReactNode; ti
       <h3 className="font-semibold mb-1">{title}</h3>
       <p className="text-xs text-muted-foreground">{desc}</p>
     </button>
-  )
-}
-
-function TrustCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-5">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
-        {icon}
-      </div>
-      <h3 className="font-semibold mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground">{desc}</p>
-    </div>
   )
 }
 
