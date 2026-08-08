@@ -14,11 +14,14 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
     const body = await req.json()
-    const { fullName, dateOfBirth, nationality, idType } = body
+    const { fullName, dateOfBirth, nationality, idType, documentFront, documentBack } = body
 
     // Validate required fields (ID Number and Residential Address removed)
     if (!fullName || !dateOfBirth || !nationality || !idType) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+    }
+    if (!documentFront) {
+      return NextResponse.json({ error: 'Front of ID document photo is required' }, { status: 400 })
     }
 
     // Check if already verified or pending
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Your account is already verified.' }, { status: 400 })
     }
 
-    // Submit KYC
+    // Submit KYC (images are already compressed client-side)
     const updated = await db.user.update({
       where: { id: user.id },
       data: {
@@ -41,6 +44,8 @@ export async function POST(req: NextRequest) {
         kycDateOfBirth: dateOfBirth,
         kycNationality: nationality,
         kycIdType: idType,
+        kycDocumentFront: documentFront,
+        kycDocumentBack: documentBack || null,
         kycSubmittedAt: new Date(),
         kycRejectionReason: null,
         // Reset verified status until admin approves

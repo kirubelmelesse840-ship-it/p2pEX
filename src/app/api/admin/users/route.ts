@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
         kycLevel: true,
         kycStatus: true,
         kycFullName: true,
+        kycDocumentFront: true,
+        kycDocumentBack: true,
         kycSubmittedAt: true,
         kycReviewedAt: true,
         kycRejectionReason: true,

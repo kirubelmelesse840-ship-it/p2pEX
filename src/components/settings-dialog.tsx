@@ -45,6 +45,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   // Security settings
   const [twofaEnabled, setTwofaEnabled] = useState(false)
+  const [twofaPhone, setTwofaPhone] = useState('')
+  const [twofaStep, setTwofaStep] = useState<'idle' | 'phone' | 'verify'>('idle')
+  const [smsCode, setSmsCode] = useState('')
+  const [smsSending, setSmsSending] = useState(false)
+  const [smsVerifying, setSmsVerifying] = useState(false)
   const [loginAlerts, setLoginAlerts] = useState(true)
   const [withdrawalWhitelist, setWithdrawalWhitelist] = useState(false)
 
@@ -76,6 +81,66 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     } catch (e: any) {
       toast({ title: 'Update failed', description: e.message, variant: 'destructive' })
     }
+  }
+
+  // Send SMS verification code to phone number
+  const sendSmsCode = async () => {
+    if (!twofaPhone || twofaPhone.length < 8) {
+      toast({ title: 'Invalid phone number', description: 'Please enter a valid phone number with country code', variant: 'destructive' })
+      return
+    }
+    setSmsSending(true)
+    try {
+      const res = await fetch('/api/auth/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: twofaPhone }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      setTwofaStep('verify')
+      toast({ title: 'SMS sent', description: `A 6-digit code has been sent to ${twofaPhone}` })
+    } catch (e: any) {
+      toast({ title: 'SMS failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setSmsSending(false)
+    }
+  }
+
+  // Verify SMS code and enable 2FA
+  const verifySmsCode = async () => {
+    if (smsCode.length !== 6) return
+    setSmsVerifying(true)
+    try {
+      const res = await fetch('/api/auth/verify-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: twofaPhone, code: smsCode }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      if (d.valid) {
+        setTwofaEnabled(true)
+        setTwofaStep('idle')
+        setSmsCode('')
+        toast({ title: '2FA Enabled', description: `Verification codes will be sent to ${twofaPhone}` })
+      } else {
+        toast({ title: 'Invalid code', description: 'The code you entered is incorrect or expired', variant: 'destructive' })
+      }
+    } catch (e: any) {
+      toast({ title: 'Verification failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setSmsVerifying(false)
+    }
+  }
+
+  // Disable 2FA
+  const disable2fa = () => {
+    setTwofaEnabled(false)
+    setTwofaPhone('')
+    setTwofaStep('idle')
+    setSmsCode('')
+    toast({ title: '2FA Disabled', description: 'Two-factor authentication has been turned off' })
   }
 
   const changePassword = async () => {
@@ -269,16 +334,107 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               </h3>
 
               <div className="space-y-3">
-                <ToggleRow
-                  icon={<Smartphone className="h-4 w-4" />}
-                  title="Two-Factor Authentication (2FA)"
-                  description="Require a verification code from your authenticator app at login"
-                  checked={twofaEnabled}
-                  onChange={(v) => {
-                    setTwofaEnabled(v)
-                    toast({ title: v ? '2FA enabled' : '2FA disabled', description: v ? 'You\'ll need a code at next login' : '2FA has been turned off' })
-                  }}
-                />
+                {/* 2FA with phone number verification */}
+                <div className="border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-start gap-2 flex-1">
+                      <Smartphone className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <div className="text-sm font-medium">Two-Factor Authentication (2FA)</div>
+                        <div className="text-xs text-muted-foreground">
+                          {twofaEnabled
+                            ? `Enabled · codes sent to ${twofaPhone}`
+                            : 'Require a verification code sent to your phone at login'}
+                        </div>
+                      </div>
+                    </div>
+                    {twofaEnabled ? (
+                      <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Off</Badge>
+                    )}
+                  </div>
+
+                  {twofaEnabled ? (
+                    <Button variant="outline" size="sm" className="w-full text-xs text-red-500" onClick={disable2fa}>
+                      Disable 2FA
+                    </Button>
+                  ) : twofaStep === 'idle' ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => setTwofaStep('phone')}
+                    >
+                      <Smartphone className="h-3 w-3 mr-1" /> Set Up 2FA
+                    </Button>
+                  ) : twofaStep === 'phone' ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">Phone Number (with country code)</label>
+                      <Input
+                        type="tel"
+                        value={twofaPhone}
+                        onChange={e => setTwofaPhone(e.target.value)}
+                        placeholder="+251912345678"
+                        className="text-sm"
+                        autoFocus
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Include country code (e.g., +251 for Ethiopia, +1 for USA)
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setTwofaStep('idle')}>
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                          onClick={sendSmsCode}
+                          disabled={smsSending || !twofaPhone}
+                        >
+                          {smsSending ? 'Sending...' : 'Send Code'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : twofaStep === 'verify' ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">Enter 6-digit code sent to {twofaPhone}</label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={smsCode}
+                        onChange={e => setSmsCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="000000"
+                        className="text-center text-xl tracking-[0.5em] font-bold tabular-nums"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setTwofaStep('phone')}>
+                          ← Back
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 text-xs bg-green-500 hover:bg-green-600 text-white"
+                          onClick={verifySmsCode}
+                          disabled={smsVerifying || smsCode.length !== 6}
+                        >
+                          {smsVerifying ? 'Verifying...' : 'Verify & Enable'}
+                        </Button>
+                      </div>
+                      <button
+                        className="w-full text-xs text-muted-foreground hover:text-foreground"
+                        onClick={sendSmsCode}
+                        disabled={smsSending}
+                      >
+                        Resend code
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
                 <ToggleRow
                   icon={<Mail className="h-4 w-4" />}
                   title="Login Alerts"

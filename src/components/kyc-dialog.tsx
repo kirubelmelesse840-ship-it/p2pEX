@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,9 +13,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  Shield, ShieldCheck, ShieldAlert, Clock, XCircle, CheckCircle2, FileText, Upload, AlertCircle,
+  Shield, ShieldCheck, ShieldAlert, Clock, XCircle, CheckCircle2, FileText, Upload, AlertCircle, ImageIcon, X,
 } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, formatFileSize } from '@/lib/utils'
+import { compressImageToBase64 } from '@/lib/image-compression'
 
 interface KycDialogProps {
   open: boolean
@@ -24,10 +25,7 @@ interface KycDialogProps {
 }
 
 const ID_TYPES = ['Passport', 'National ID', 'Driver License', 'Residence Permit']
-const NATIONALITIES = [
-  'Ethiopian', 'Kenyan', 'Nigerian', 'South African', 'Egyptian', 'Ghanaian',
-  'American', 'British', 'European', 'Indian', 'Chinese', 'Japanese', 'Other',
-]
+import { COUNTRIES } from '@/lib/countries'
 
 export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
   const { user, setUser } = useAppStore()
@@ -40,6 +38,11 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
     nationality: '',
     idType: '',
   })
+  const [documentFront, setDocumentFront] = useState<{ data: string; name: string; originalSize: number; compressedSize: number } | null>(null)
+  const [documentBack, setDocumentBack] = useState<{ data: string; name: string; originalSize: number; compressedSize: number } | null>(null)
+  const [compressing, setCompressing] = useState(false)
+  const fileFrontRef = useRef<HTMLInputElement>(null)
+  const fileBackRef = useRef<HTMLInputElement>(null)
 
   // Load current KYC status
   const loadKyc = async () => {
@@ -64,9 +67,59 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
     if (open) loadKyc()
   }, [open])
 
+  // Handle image upload with client-side compression
+  const handleImageUpload = async (file: File, side: 'front' | 'back') => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file (JPG, PNG, etc.)', variant: 'destructive' })
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 20MB', variant: 'destructive' })
+      return
+    }
+    setCompressing(true)
+    try {
+      const originalSize = file.size
+      // Compress: max 1600px, JPEG quality 0.8 (good balance for documents)
+      const compressed = await compressImageToBase64(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8,
+        mimeType: 'image/jpeg',
+      })
+      // Calculate compressed size (base64 string length * 0.75 ≈ byte size)
+      const compressedSize = Math.round((compressed.length - 'data:image/jpeg;base64,'.length) * 0.75)
+      const docData = {
+        data: compressed,
+        name: file.name,
+        originalSize,
+        compressedSize,
+      }
+      if (side === 'front') {
+        setDocumentFront(docData)
+      } else {
+        setDocumentBack(docData)
+      }
+      const savings = Math.round((1 - compressedSize / originalSize) * 100)
+      toast({
+        title: 'Image compressed',
+        description: `${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${savings}% smaller)`,
+      })
+    } catch (e: any) {
+      toast({ title: 'Compression failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setCompressing(false)
+    }
+  }
+
   const submit = async () => {
     if (!form.fullName || !form.dateOfBirth || !form.nationality || !form.idType) {
       toast({ title: 'All fields are required', variant: 'destructive' })
+      return
+    }
+    if (!documentFront) {
+      toast({ title: 'Document photo required', description: 'Please upload the front of your ID document', variant: 'destructive' })
       return
     }
     setLoading(true)
@@ -74,7 +127,11 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
       const res = await fetch('/api/kyc/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          documentFront: documentFront.data,
+          documentBack: documentBack?.data,
+        }),
       })
       const d = await res.json()
       if (d.error) throw new Error(d.error)
@@ -194,11 +251,11 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Nationality</label>
+                <label className="text-xs font-medium text-muted-foreground">Nationality / Country</label>
                 <Select value={form.nationality} onValueChange={(v) => setForm(f => ({ ...f, nationality: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select your country" /></SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -214,13 +271,86 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               </Select>
             </div>
 
-            {/* Document upload placeholder */}
-            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-              <p className="text-xs text-muted-foreground">Upload ID document photo (front & back)</p>
-              <Button variant="ghost" size="sm" className="mt-2 text-xs" disabled>
-                <FileText className="h-3 w-3 mr-1" /> Choose File (demo)
-              </Button>
+            {/* Document upload with client-side compression */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                ID Document Photos (will be compressed before upload)
+              </label>
+
+              {/* Front of document */}
+              <input
+                ref={fileFrontRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'front') }}
+              />
+              {documentFront ? (
+                <div className="relative border border-border rounded-lg overflow-hidden">
+                  <img src={documentFront.data} alt="Document front" className="w-full h-32 object-cover" />
+                  <button
+                    onClick={() => setDocumentFront(null)}
+                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
+                    Front · {formatFileSize(documentFront.compressedSize)}
+                    <span className="text-green-400 ml-1">({Math.round((1 - documentFront.compressedSize / documentFront.originalSize) * 100)}% smaller)</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileFrontRef.current?.click()}
+                  disabled={compressing}
+                  className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition disabled:opacity-50"
+                >
+                  {compressing ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 mx-auto border-2 border-primary border-t-transparent rounded-full mb-1" />
+                      <p className="text-xs text-muted-foreground">Compressing...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                      <p className="text-xs font-medium">Upload Front of ID</p>
+                      <p className="text-xs text-muted-foreground">JPG/PNG · auto-compressed</p>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Back of document (optional) */}
+              <input
+                ref={fileBackRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'back') }}
+              />
+              {documentBack ? (
+                <div className="relative border border-border rounded-lg overflow-hidden">
+                  <img src={documentBack.data} alt="Document back" className="w-full h-32 object-cover" />
+                  <button
+                    onClick={() => setDocumentBack(null)}
+                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
+                    Back · {formatFileSize(documentBack.compressedSize)}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileBackRef.current?.click()}
+                  disabled={compressing}
+                  className="w-full border-2 border-dashed border-border rounded-lg p-3 text-center hover:border-primary/50 transition disabled:opacity-50"
+                >
+                  <ImageIcon className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                  <p className="text-xs text-muted-foreground">Upload Back of ID (optional)</p>
+                </button>
+              )}
             </div>
 
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs text-yellow-700 dark:text-yellow-400">

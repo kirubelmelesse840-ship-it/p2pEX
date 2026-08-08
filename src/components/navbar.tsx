@@ -27,7 +27,7 @@ import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
-  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus,
+  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -471,7 +471,8 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
-  const [sentCode, setSentCode] = useState('')
+  const [codeVerified, setCodeVerified] = useState<boolean | null>(null)
+  const [verifying, setVerifying] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
 
   // Load detected Google accounts from localStorage
@@ -503,12 +504,9 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
       })
       const d = await res.json()
       if (d.error) throw new Error(d.error)
-      setSentCode(d.code || '') // In production, code is emailed and not returned
+      // Code is sent to email inbox - NOT stored client-side
       setResendCooldown(60)
     } catch (e) {
-      // Fallback: generate a code client-side for demo
-      const code = Math.floor(100000 + Math.random() * 900000).toString()
-      setSentCode(code)
       setResendCooldown(60)
     }
   }
@@ -526,22 +524,47 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
       onLogin(known.email, known.name)
       return
     }
-    // New account - send verification code
+    // New account - send verification code to email
     await sendVerificationCode(email.trim())
     setStep('verify')
   }
 
-  const verifyAndLogin = () => {
-    if (verificationCode.trim() !== sentCode) {
-      return // invalid code - the button will be disabled
+  const checkVerificationCode = async () => {
+    if (verificationCode.length !== 6) return
+    setVerifying(true)
+    setCodeVerified(null)
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), code: verificationCode }),
+      })
+      const d = await res.json()
+      setCodeVerified(d.valid === true)
+      if (d.valid) {
+        // Code verified - proceed with login
+        const newAcc = { email: email.trim(), name: name.trim() || email.split('@')[0] }
+        const updated = [...detectedAccounts.filter(a => a.email !== newAcc.email), newAcc]
+        setDetectedAccounts(updated)
+        try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
+        onLogin(newAcc.email, newAcc.name)
+      }
+    } catch (e) {
+      setCodeVerified(false)
+    } finally {
+      setVerifying(false)
     }
-    // Save this account to detected accounts for next time
-    const newAcc = { email: email.trim(), name: name.trim() || email.split('@')[0] }
-    const updated = [...detectedAccounts.filter(a => a.email !== newAcc.email), newAcc]
-    setDetectedAccounts(updated)
-    try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
-    onLogin(newAcc.email, newAcc.name)
   }
+
+  // Auto-check code when 6 digits entered
+  useEffect(() => {
+    if (step === 'verify' && verificationCode.length === 6 && codeVerified === null && !verifying) {
+      checkVerificationCode()
+    }
+    if (verificationCode.length !== 6 && codeVerified !== null) {
+      setCodeVerified(null)
+    }
+  }, [verificationCode, step])
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -675,6 +698,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
                 Enter the 6-digit verification code sent to
               </p>
               <p className="font-medium text-sm">{email}</p>
+              <p className="text-xs text-muted-foreground mt-1">Check your inbox and spam folder</p>
             </div>
 
             <div>
@@ -686,30 +710,39 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
                 value={verificationCode}
                 onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
-                className="mt-1 text-center text-2xl tracking-[0.5em] font-bold tabular-nums"
+                className={`mt-1 text-center text-2xl tracking-[0.5em] font-bold tabular-nums ${
+                  codeVerified === true ? 'border-green-500' : codeVerified === false ? 'border-red-500' : ''
+                }`}
                 autoFocus
-                onKeyDown={e => { if (e.key === 'Enter' && verificationCode === sentCode) verifyAndLogin() }}
+                disabled={verifying || codeVerified === true}
               />
             </div>
 
-            {sentCode && (
-              <div className="text-xs text-center text-muted-foreground bg-muted/30 rounded p-2">
-                Demo mode: your code is <span className="font-mono font-bold text-foreground">{sentCode}</span>
+            {verifying && (
+              <div className="text-xs text-center text-blue-500 flex items-center justify-center gap-1">
+                <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full" />
+                Verifying code...
               </div>
             )}
 
-            {verificationCode && verificationCode !== sentCode && (
+            {codeVerified === false && !verifying && (
               <div className="text-xs text-red-500 text-center">
-                Invalid code. Please check and try again.
+                Invalid or expired code. Please check and try again.
+              </div>
+            )}
+
+            {codeVerified === true && (
+              <div className="text-xs text-green-500 text-center flex items-center justify-center gap-1">
+                <CheckCircle2 className="h-3 w-3" /> Verified! Logging you in...
               </div>
             )}
 
             <Button
               className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
-              onClick={verifyAndLogin}
-              disabled={loading || verificationCode !== sentCode}
+              onClick={checkVerificationCode}
+              disabled={loading || verifying || verificationCode.length !== 6 || codeVerified === true}
             >
-              {loading ? 'Verifying...' : 'Verify & Continue'}
+              {verifying ? 'Verifying...' : codeVerified === true ? 'Verified!' : 'Verify & Continue'}
             </Button>
 
             <div className="flex items-center justify-between text-xs">

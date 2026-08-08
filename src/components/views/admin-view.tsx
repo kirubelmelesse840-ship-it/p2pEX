@@ -20,7 +20,7 @@ import {
   Shield, Users, TrendingUp, DollarSign, Activity, Settings, AlertTriangle,
   CheckCircle2, XCircle, Clock, Search, Star, Ban, ShieldCheck, ShieldAlert,
   Zap, BarChart3, ArrowUpRight, ArrowDownRight, Plus, Trash2, Edit3, Power,
-  Wallet, RefreshCw,
+  Wallet, RefreshCw, FileText,
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import {
@@ -321,6 +321,7 @@ function UsersTab() {
   const [kycFilter, setKycFilter] = useState('all')
   const [walletDialog, setWalletDialog] = useState<any>(null)
   const [banDialog, setBanDialog] = useState<any>(null)
+  const [docDialog, setDocDialog] = useState<any>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -482,6 +483,12 @@ function UsersTab() {
                             <ShieldCheck className="h-3 w-3" /> Approve
                           </Button>
                         )}
+                        {(u.kycStatus === 'PENDING' || u.kycStatus === 'APPROVED' || u.kycStatus === 'REJECTED') && u.kycDocumentFront && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="View KYC documents"
+                            onClick={() => setDocDialog(u)}>
+                            <FileText className="h-3 w-3" /> Docs
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" className="h-7 text-xs" title="Adjust wallet"
                           onClick={() => setWalletDialog(u)}>
                           <Wallet className="h-3 w-3" />
@@ -527,7 +534,76 @@ function UsersTab() {
           setBanDialog(null)
         }} />
       )}
+
+      {docDialog && (
+        <DocumentViewerDialog user={docDialog} onClose={() => setDocDialog(null)} />
+      )}
     </div>
+  )
+}
+
+/**
+ * DocumentViewerDialog - shows the KYC document images for admin review.
+ */
+function DocumentViewerDialog({ user, onClose }: { user: any; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            KYC Documents — {user.name}
+          </DialogTitle>
+          <DialogDescription>
+            {user.email} · Submitted {user.kycSubmittedAt ? formatDateTime(user.kycSubmittedAt) : 'N/A'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* KYC info */}
+          <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+            <div><span className="text-muted-foreground">Full Name:</span> <span className="font-medium">{user.kycFullName || 'N/A'}</span></div>
+            <div><span className="text-muted-foreground">ID Type:</span> <span className="font-medium">{user.kycIdType || 'N/A'}</span></div>
+          </div>
+
+          {/* Document images */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {user.kycDocumentFront ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Front of Document</p>
+                <img
+                  src={user.kycDocumentFront}
+                  alt="Document front"
+                  className="w-full rounded-lg border border-border"
+                />
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg">
+                No front document
+              </div>
+            )}
+            {user.kycDocumentBack ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Back of Document</p>
+                <img
+                  src={user.kycDocumentBack}
+                  alt="Document back"
+                  className="w-full rounded-lg border border-border"
+                />
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg hidden sm:block">
+                No back document
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2 text-xs text-blue-700 dark:text-blue-400">
+            Images are compressed client-side before upload to reduce bandwidth and storage.
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

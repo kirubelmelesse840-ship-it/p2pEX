@@ -29,6 +29,8 @@ model User {
   kycIdType          String?  // Passport, National ID, Driver License
   kycIdNumber        String?
   kycAddress         String?
+  kycDocumentFront   String?  // base64 compressed image
+  kycDocumentBack    String?  // base64 compressed image (optional)
   kycSubmittedAt     DateTime?
   kycReviewedAt      DateTime?
   kycRejectionReason String?
