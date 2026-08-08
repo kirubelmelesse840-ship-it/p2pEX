@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Star, ArrowUp, ArrowDown, Search, BarChart3, ChevronRight } from 'lucide-react'
-import { CandlestickChart } from '@/components/candlestick-chart'
+import { RealTimeLineChart } from '@/components/realtime-chart'
 import { BackButton } from '@/components/back-button'
 import { formatPrice, formatPercent, formatCompact } from '@/lib/utils'
 
@@ -149,19 +149,13 @@ function FeaturedChart({ symbol }: { symbol: string }) {
       </div>
 
       <div className="p-2">
-        {klines.length === 0 ? (
-          <div className="h-[300px] sm:h-[400px] flex items-center justify-center text-muted-foreground text-sm">
-            Loading chart data...
-          </div>
-        ) : (
-          <CandlestickChart klines={klines} height={300} baseAsset={base} quoteAsset={quote} />
-        )}
+        <RealTimeLineChart klines={klines} height={300} baseAsset={base} quoteAsset={quote} />
       </div>
 
       <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <BarChart3 className="h-3 w-3" />
-          Real-time candlestick chart · 1m interval · {klines.length} candles
+          Real-time price chart · updates every 1.5s · {klines.length} data points
         </span>
         <span className="hidden sm:inline">Click any pair below to load it here</span>
       </div>

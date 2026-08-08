@@ -18,6 +18,7 @@ interface User {
   name: string
   kycVerified: boolean
   kycLevel: number
+  kycStatus?: string // NONE, PENDING, APPROVED, REJECTED
   fiatCurrency: string
   isAdmin?: boolean
   isBanned?: boolean

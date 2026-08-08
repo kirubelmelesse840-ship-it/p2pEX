@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         kycVerified: user.kycVerified,
         kycLevel: user.kycLevel,
+        kycStatus: user.kycStatus,
         fiatCurrency: user.fiatCurrency,
         isAdmin: user.isAdmin,
         isBanned: user.isBanned,

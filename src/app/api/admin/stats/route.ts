@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     totalP2POrders, pendingP2POrders,
     totalTransactions, pendingTransactions,
     totalWallets,
+    pendingKyc,
   ] = await Promise.all([
     db.user.count(),
     db.user.count({ where: { isActive: true, isBanned: false } }),
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
     db.transaction.count(),
     db.transaction.count({ where: { status: 'PENDING' } }),
     db.wallet.count(),
+    db.user.count({ where: { kycStatus: 'PENDING' } }),
   ])
 
   // Compute total balances (USD value across all wallets)
@@ -92,12 +94,13 @@ export async function GET(req: NextRequest) {
     select: { id: true, name: true, email: true, createdAt: true, kycVerified: true, kycLevel: true, isBanned: true },
   })
 
-  // KYC pending (level 0 or unverified)
-  const kycPending = await db.user.count({ where: { kycVerified: false } })
+  // KYC pending (users who submitted and are waiting for review)
+  const kycPendingReview = await db.user.count({ where: { kycStatus: 'PENDING' } })
+  const kycUnverified = await db.user.count({ where: { kycVerified: false } })
 
   return NextResponse.json({
     stats: {
-      users: { total: totalUsers, active: activeUsers, banned: bannedUsers, admins: adminUsers, kycPending },
+      users: { total: totalUsers, active: activeUsers, banned: bannedUsers, admins: adminUsers, kycPending: pendingKyc, kycUnverified, kycPendingReview },
       pairs: { total: totalPairs, active: activePairs },
       orders: { total: totalOrders, open: openOrders, filled: filledOrders, canceled: canceledOrders },
       trades: { total: totalTrades, last24h: trades24hCount, volume24hUsd },

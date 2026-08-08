@@ -4,7 +4,6 @@ import { useMemo } from 'react'
 import { useTickers } from '@/lib/use-market'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
-import { PriceLineChart } from '@/components/candlestick-chart'
 import {
   Bitcoin, TrendingUp, Users, Wallet, Shield, Zap, Globe, ArrowRight,
   ArrowUp, ArrowDown, Star, BarChart3,
@@ -21,12 +20,6 @@ export function HomeView() {
       gainers: sorted.filter(t => t.changePercent > 0).slice(0, 4),
       losers: sorted.filter(t => t.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent).slice(0, 4),
     }
-  }, [tickers])
-
-  const popular = useMemo(() => {
-    return tickers
-      .filter(t => ['BTCUSDT', 'ETHUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT'].includes(t.symbol))
-      .slice(0, 6)
   }, [tickers])
 
   const totalMktCap = useMemo(() => {
@@ -117,55 +110,6 @@ export function HomeView() {
           desc="Candlestick charts, depth, real-time data"
           onClick={() => setView('spot')}
         />
-      </section>
-
-      {/* Popular pairs */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">Popular Markets</h2>
-          <Button variant="ghost" size="sm" onClick={() => setView('markets')}>
-            View All <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {popular.map(t => {
-            const isUp = t.changePercent >= 0
-            return (
-              <div
-                key={t.symbol}
-                className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 cursor-pointer transition"
-                onClick={() => { setSymbol(t.symbol); setView('spot') }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset={t.base} />
-                    <div>
-                      <div className="font-medium">{t.base}/{t.quote}</div>
-                      <div className="text-xs text-muted-foreground">{t.baseName}</div>
-                    </div>
-                  </div>
-                  <Star className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-                <div className="flex items-end justify-between gap-2">
-                  <div>
-                    <div className="text-lg font-bold tabular-nums">{formatPrice(t.lastPrice)}</div>
-                    <div className={`text-xs ${isUp ? 'text-green-500' : 'text-red-500'}`}>
-                      {isUp ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />}
-                      {formatPercent(t.changePercent)}
-                    </div>
-                  </div>
-                  <div className="flex-1 max-w-[80px]">
-                    <PriceLineChart klines={[]} height={40} />
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-border/40 text-xs text-muted-foreground flex justify-between">
-                  <span>Vol: {formatCompact(t.volume24h)} {t.base}</span>
-                  <span>High: {formatPrice(t.high24h)}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
       </section>
 
       {/* Top movers */}

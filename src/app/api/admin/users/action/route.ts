@@ -55,11 +55,42 @@ export async function POST(req: NextRequest) {
       message = `User ${target.email} demoted from admin`
       break
     case 'verifyKyc':
-      updateData = { kycVerified: true, kycLevel: Math.min(Math.max(parseInt(payload.level) || 1, 1), 2) }
-      message = `User ${target.email} KYC verified (L${updateData.kycLevel})`
+      // Admin approves KYC - sets verified + status to APPROVED
+      updateData = {
+        kycVerified: true,
+        kycLevel: Math.min(Math.max(parseInt(payload.level) || 1, 1), 2),
+        kycStatus: 'APPROVED',
+        kycReviewedAt: new Date(),
+        kycRejectionReason: null,
+      }
+      message = `User ${target.email} KYC approved (L${updateData.kycLevel})`
+      break
+    case 'rejectKyc':
+      // Admin rejects KYC
+      updateData = {
+        kycVerified: false,
+        kycLevel: 0,
+        kycStatus: 'REJECTED',
+        kycReviewedAt: new Date(),
+        kycRejectionReason: payload.reason || 'Failed verification requirements',
+      }
+      message = `User ${target.email} KYC rejected`
       break
     case 'resetKyc':
-      updateData = { kycVerified: false, kycLevel: 0 }
+      updateData = {
+        kycVerified: false,
+        kycLevel: 0,
+        kycStatus: 'NONE',
+        kycFullName: null,
+        kycDateOfBirth: null,
+        kycNationality: null,
+        kycIdType: null,
+        kycIdNumber: null,
+        kycAddress: null,
+        kycSubmittedAt: null,
+        kycReviewedAt: null,
+        kycRejectionReason: null,
+      }
       message = `User ${target.email} KYC reset`
       break
     case 'deleteUser':

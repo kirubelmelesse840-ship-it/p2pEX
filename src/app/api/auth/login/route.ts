@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
     const session = await createSession(user.id, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined)
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, kycVerified: user.kycVerified, kycLevel: user.kycLevel, fiatCurrency: user.fiatCurrency, isAdmin: user.isAdmin, isBanned: user.isBanned },
+      user: { id: user.id, email: user.email, name: user.name, kycVerified: user.kycVerified, kycLevel: user.kycLevel, kycStatus: user.kycStatus, fiatCurrency: user.fiatCurrency, isAdmin: user.isAdmin, isBanned: user.isBanned },
       token: session.token,
     })
     response.cookies.set('session_token', session.token, {

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
-import { CandlestickChart } from '@/components/candlestick-chart'
+import { RealTimeLineChart } from '@/components/realtime-chart'
 import { DepthChart } from '@/components/depth-chart'
 import { BackButton } from '@/components/back-button'
 import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
@@ -706,8 +706,8 @@ export function SpotView() {
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium">Price Chart</span>
-              <span className="text-xs text-muted-foreground">1m</span>
+              <span className="text-xs font-medium">Live Price Chart</span>
+              <span className="text-xs text-muted-foreground">Real-time · 1m</span>
             </div>
             <div className="flex items-center gap-1">
               {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf, i) => (
@@ -722,7 +722,7 @@ export function SpotView() {
               ))}
             </div>
           </div>
-          <CandlestickChart klines={klines} height={400} baseAsset={base} quoteAsset={quote} />
+          <RealTimeLineChart klines={klines} height={400} baseAsset={base} quoteAsset={quote} />
         </div>
 
         {/* Order book */}

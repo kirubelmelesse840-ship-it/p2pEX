@@ -20,6 +20,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { KycDialog } from '@/components/kyc-dialog'
+import { SettingsDialog } from '@/components/settings-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail,
@@ -50,6 +52,8 @@ export function Navbar() {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [kycOpen, setKycOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -75,6 +79,7 @@ export function Navbar() {
   }
 
   return (
+    <>
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
         {/* Mobile menu */}
@@ -192,12 +197,20 @@ export function Navbar() {
                   <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">ADMIN</Badge>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => setKycOpen(true)}>
                 <Shield className="mr-2 h-4 w-4" />
-                KYC {user.kycVerified ? 'Verified' : 'Unverified'}
-                {user.kycVerified && <Badge className="ml-auto text-[10px]" variant="default">L{user.kycLevel}</Badge>}
+                {user.kycVerified ? `Verified (L${user.kycLevel})` : user.kycStatus === 'PENDING' ? 'KYC Pending Review' : user.kycStatus === 'REJECTED' ? 'KYC Rejected' : 'Verify Account'}
+                {user.kycVerified ? (
+                  <Badge className="ml-auto text-[10px] bg-green-500/15 text-green-600 dark:text-green-400">L{user.kycLevel}</Badge>
+                ) : user.kycStatus === 'PENDING' ? (
+                  <Badge className="ml-auto text-[10px] bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">PENDING</Badge>
+                ) : user.kycStatus === 'REJECTED' ? (
+                  <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">REJECTED</Badge>
+                ) : (
+                  <Badge className="ml-auto text-[10px]" variant="secondary">UNVERIFIED</Badge>
+                )}
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
@@ -215,6 +228,17 @@ export function Navbar() {
         )}
       </div>
     </header>
+
+    {/* KYC Verification Dialog */}
+    {kycOpen && (
+      <KycDialog open={kycOpen} onClose={() => setKycOpen(false)} />
+    )}
+
+    {/* Settings Dialog */}
+    {settingsOpen && (
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    )}
+    </>
   )
 }
 

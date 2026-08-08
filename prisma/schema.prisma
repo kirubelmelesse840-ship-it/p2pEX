@@ -21,6 +21,17 @@ model User {
   twofaEnabled  Boolean  @default(false)
   kycVerified   Boolean  @default(false)
   kycLevel      Int      @default(0) // 0=none, 1=basic, 2=advanced
+  // KYC submission: NONE → PENDING → APPROVED / REJECTED
+  kycStatus     String   @default("NONE") // NONE, PENDING, APPROVED, REJECTED
+  kycFullName        String?
+  kycDateOfBirth     String?
+  kycNationality     String?
+  kycIdType          String?  // Passport, National ID, Driver License
+  kycIdNumber        String?
+  kycAddress         String?
+  kycSubmittedAt     DateTime?
+  kycReviewedAt      DateTime?
+  kycRejectionReason String?
   // Admin
   isAdmin       Boolean  @default(false)
   // Default fiat currency preference

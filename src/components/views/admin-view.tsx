@@ -385,6 +385,7 @@ function UsersTab() {
           <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All KYC</SelectItem>
+            <SelectItem value="pending">⏳ Pending Review</SelectItem>
             <SelectItem value="verified">Verified</SelectItem>
             <SelectItem value="unverified">Unverified</SelectItem>
             <SelectItem value="level1">Level 1</SelectItem>
@@ -430,9 +431,13 @@ function UsersTab() {
                     <td className="px-3 py-3 text-xs hidden md:table-cell">{u.email}</td>
                     <td className="px-3 py-3">
                       {u.kycVerified ? (
-                        <Badge variant="default" className="bg-green-500/15 text-green-600 dark:text-green-400">L{u.kycLevel}</Badge>
+                        <Badge variant="default" className="bg-green-500/15 text-green-600 dark:text-green-400">Verified L{u.kycLevel}</Badge>
+                      ) : u.kycStatus === 'PENDING' ? (
+                        <Badge variant="default" className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">Pending Review</Badge>
+                      ) : u.kycStatus === 'REJECTED' ? (
+                        <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">Rejected</Badge>
                       ) : (
-                        <Badge variant="secondary">None</Badge>
+                        <Badge variant="secondary">Not Submitted</Badge>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -449,16 +454,32 @@ function UsersTab() {
                     </td>
                     <td className="px-3 py-3 text-right">
                       <div className="flex gap-1 justify-end flex-wrap">
-                        {!u.kycVerified && (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Verify KYC Level 1"
-                            onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
-                            <ShieldCheck className="h-3 w-3" />
-                          </Button>
+                        {/* KYC actions */}
+                        {u.kycStatus === 'PENDING' && (
+                          <>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve KYC L1"
+                              onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
+                              <ShieldCheck className="h-3 w-3" /> Approve
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Reject KYC"
+                              onClick={() => {
+                                const reason = prompt('Reason for rejection:')
+                                if (reason !== null) act(u.id, 'rejectKyc', { reason })
+                              }}>
+                              <XCircle className="h-3 w-3" /> Reject
+                            </Button>
+                          </>
                         )}
-                        {u.kycLevel < 2 && (
+                        {u.kycVerified && u.kycLevel < 2 && (
                           <Button variant="ghost" size="sm" className="h-7 text-xs" title="Upgrade to L2"
                             onClick={() => act(u.id, 'verifyKyc', { level: 2 })}>
                             <Star className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {u.kycStatus === 'REJECTED' && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve after re-review"
+                            onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
+                            <ShieldCheck className="h-3 w-3" /> Approve
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" className="h-7 text-xs" title="Adjust wallet"

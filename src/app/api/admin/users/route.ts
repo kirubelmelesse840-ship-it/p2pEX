@@ -36,6 +36,8 @@ export async function GET(req: NextRequest) {
     where.kycVerified = true
   } else if (kycFilter === 'unverified') {
     where.kycVerified = false
+  } else if (kycFilter === 'pending') {
+    where.kycStatus = 'PENDING'
   } else if (kycFilter === 'level1') {
     where.kycLevel = 1
   } else if (kycFilter === 'level2') {
@@ -54,6 +56,11 @@ export async function GET(req: NextRequest) {
         name: true,
         kycVerified: true,
         kycLevel: true,
+        kycStatus: true,
+        kycFullName: true,
+        kycSubmittedAt: true,
+        kycReviewedAt: true,
+        kycRejectionReason: true,
         isAdmin: true,
         isActive: true,
         isBanned: true,
