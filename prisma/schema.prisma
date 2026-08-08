@@ -21,10 +21,14 @@ model User {
   twofaEnabled  Boolean  @default(false)
   kycVerified   Boolean  @default(false)
   kycLevel      Int      @default(0) // 0=none, 1=basic, 2=advanced
+  // Admin
+  isAdmin       Boolean  @default(false)
   // Default fiat currency preference
   fiatCurrency  String   @default("USD")
   // Status
   isActive      Boolean  @default(true)
+  isBanned      Boolean  @default(false)
+  banReason     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -37,6 +41,13 @@ model User {
   p2pSellOrders P2POrder[]       @relation("p2pSellerOrders")
   transactions  Transaction[]
   sessions      Session[]
+}
+
+// ============ SETTINGS (singleton-style key/value store) ============
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model Session {

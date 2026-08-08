@@ -68,3 +68,39 @@ export async function getCurrentUser(req: Request) {
   const token = await getSessionTokenFromRequest(req)
   return await getUserFromToken(token)
 }
+
+/**
+ * Require an authenticated admin user. Returns { user, error }.
+ * Use in admin API routes: const { user, error } = await requireAdmin(req)
+ * if (error) return NextResponse.json({ error }, { status: 403 })
+ */
+export async function requireAdmin(req: Request) {
+  const user = await getCurrentUser(req)
+  if (!user) return { user: null, error: 'Not authenticated', status: 401 }
+  if (!user.isAdmin) return { user: null, error: 'Admin access required', status: 403 }
+  if (user.isBanned) return { user: null, error: 'Account banned', status: 403 }
+  return { user, error: null, status: 200 }
+}
+
+/**
+ * Get a system setting value by key (with default).
+ */
+export async function getSetting(key: string, defaultValue = ''): Promise<string> {
+  const s = await db.setting.findUnique({ where: { key } })
+  return s?.value ?? defaultValue
+}
+
+export async function getSettings(keys: string[]): Promise<Record<string, string>> {
+  const rows = await db.setting.findMany({ where: { key: { in: keys } } })
+  const out: Record<string, string> = {}
+  for (const k of keys) out[k] = rows.find(r => r.key === k)?.value ?? ''
+  return out
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await db.setting.upsert({
+    where: { key },
+    update: { value },
+    create: { key, value },
+  })
+}

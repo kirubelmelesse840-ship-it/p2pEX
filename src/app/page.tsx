@@ -9,6 +9,8 @@ import { MarketsView } from '@/components/views/markets-view'
 import { SpotView } from '@/components/views/spot-view'
 import { P2PView } from '@/components/views/p2p-view'
 import { WalletView } from '@/components/views/wallet-view'
+import { AdminView } from '@/components/views/admin-view'
+import { AnnouncementBanner } from '@/components/announcement-banner'
 
 export default function Home() {
   const { view, user, setUser, theme } = useAppStore()
@@ -30,6 +32,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <AnnouncementBanner />
       <Navbar />
       <main className="flex-1 pb-16 md:pb-0">
         {view === 'home' && <HomeView />}
@@ -37,6 +40,7 @@ export default function Home() {
         {view === 'spot' && <SpotView />}
         {view === 'p2p' && <P2PView />}
         {view === 'wallet' && <WalletView />}
+        {view === 'admin' && <AdminView />}
       </main>
       <Footer />
     </div>

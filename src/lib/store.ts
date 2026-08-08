@@ -10,7 +10,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type View = 'home' | 'markets' | 'spot' | 'p2p' | 'wallet'
+export type View = 'home' | 'markets' | 'spot' | 'p2p' | 'wallet' | 'admin'
 
 interface User {
   id: string
@@ -19,6 +19,8 @@ interface User {
   kycVerified: boolean
   kycLevel: number
   fiatCurrency: string
+  isAdmin?: boolean
+  isBanned?: boolean
 }
 
 interface AppState {

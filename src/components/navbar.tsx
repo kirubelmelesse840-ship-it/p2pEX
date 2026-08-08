@@ -173,6 +173,13 @@ export function Navbar() {
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Trade
               </DropdownMenuItem>
+              {user.isAdmin && (
+                <DropdownMenuItem onClick={() => setView('admin')} className="text-red-600 dark:text-red-400">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Admin Panel
+                  <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">ADMIN</Badge>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem disabled>
                 <Shield className="mr-2 h-4 w-4" />
                 KYC {user.kycVerified ? 'Verified' : 'Unverified'}
