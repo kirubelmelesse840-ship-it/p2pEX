@@ -27,7 +27,7 @@ import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
-  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2,
+  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -453,27 +453,23 @@ function AuthButtons() {
 /**
  * GoogleLoginDialog - Simulates the Google account chooser flow.
  *
- * Features:
- * 1. Detects and displays Google accounts already signed into the device
- *    (persisted in localStorage from previous Google logins on this browser).
- * 2. Lets the user pick an existing account or "Use another account".
- * 3. For new Google accounts, triggers an email verification code flow.
- *
- * In production with real Google OAuth, the account list would come from the
- * Google Identity Services library. Here we simulate it.
+ * 1. Shows Google accounts already signed into the device (from localStorage).
+ * 2. "Use another account" opens a signup form asking for email, password,
+ *    and confirm password — no email verification needed.
  */
 function GoogleLoginDialog({ loading, onClose, onLogin }: {
   loading: boolean
   onClose: () => void
   onLogin: (email: string, name?: string) => void
 }) {
-  const [step, setStep] = useState<'choose' | 'manual' | 'verify'>('choose')
+  const [step, setStep] = useState<'choose' | 'signup'>('choose')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
-  const [codeVerified, setCodeVerified] = useState<boolean | null>(null)
-  const [verifying, setVerifying] = useState(false)
-  const [resendCooldown, setResendCooldown] = useState(0)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const { toast } = useToast()
 
   // Load detected Google accounts from localStorage
   const [detectedAccounts, setDetectedAccounts] = useState<Array<{ email: string; name: string }>>([])
@@ -488,83 +484,55 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
     } catch {}
   }, [])
 
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
-    return () => clearTimeout(t)
-  }, [resendCooldown])
-
-  const sendVerificationCode = async (toEmail: string) => {
-    try {
-      const res = await fetch('/api/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: toEmail }),
-      })
-      const d = await res.json()
-      if (d.error) throw new Error(d.error)
-      // Code is sent to email inbox - NOT stored client-side
-      setResendCooldown(60)
-    } catch (e) {
-      setResendCooldown(60)
-    }
-  }
-
   const pickAccount = (acc: { email: string; name: string }) => {
-    // Account already on device - no verification needed (already verified by Google)
+    // Account already on device - log in directly
     onLogin(acc.email, acc.name)
   }
 
-  const proceedWithManualEmail = async () => {
-    if (!email.trim()) return
-    // Check if this account is already on the device
-    const known = detectedAccounts.find(a => a.email.toLowerCase() === email.trim().toLowerCase())
-    if (known) {
-      onLogin(known.email, known.name)
+  // Create a new account with email + password (no verification needed)
+  const createAccount = async () => {
+    if (!email.trim() || !password || !confirmPassword) {
+      toast({ title: 'All fields are required', variant: 'destructive' })
       return
     }
-    // New account - send verification code to email
-    await sendVerificationCode(email.trim())
-    setStep('verify')
-  }
-
-  const checkVerificationCode = async () => {
-    if (verificationCode.length !== 6) return
-    setVerifying(true)
-    setCodeVerified(null)
+    if (password.length < 6) {
+      toast({ title: 'Password too short', description: 'At least 6 characters required', variant: 'destructive' })
+      return
+    }
+    if (password !== confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' })
+      return
+    }
+    setSubmitting(true)
     try {
-      const res = await fetch('/api/auth/verify-code', {
+      // Create the account via the signup API
+      const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: verificationCode }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: name.trim() || email.split('@')[0],
+        }),
       })
       const d = await res.json()
-      setCodeVerified(d.valid === true)
-      if (d.valid) {
-        // Code verified - proceed with login
-        const newAcc = { email: email.trim(), name: name.trim() || email.split('@')[0] }
-        const updated = [...detectedAccounts.filter(a => a.email !== newAcc.email), newAcc]
-        setDetectedAccounts(updated)
-        try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
-        onLogin(newAcc.email, newAcc.name)
-      }
-    } catch (e) {
-      setCodeVerified(false)
+      if (d.error) throw new Error(d.error)
+
+      // Save this account to detected accounts for next time
+      const newAcc = { email: email.trim(), name: d.user.name }
+      const updated = [...detectedAccounts.filter(a => a.email !== newAcc.email), newAcc]
+      setDetectedAccounts(updated)
+      try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
+
+      toast({ title: 'Account created!', description: `Welcome to CrypEx, ${d.user.name}` })
+      // Call onLogin to set the user state (the signup already set the session cookie)
+      onLogin(email.trim(), d.user.name)
+    } catch (e: any) {
+      toast({ title: 'Sign up failed', description: e.message, variant: 'destructive' })
     } finally {
-      setVerifying(false)
+      setSubmitting(false)
     }
   }
-
-  // Auto-check code when 6 digits entered
-  useEffect(() => {
-    if (step === 'verify' && verificationCode.length === 6 && codeVerified === null && !verifying) {
-      checkVerificationCode()
-    }
-    if (verificationCode.length !== 6 && codeVerified !== null) {
-      setCodeVerified(null)
-    }
-  }, [verificationCode, step])
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -580,12 +548,11 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             </svg>
           </div>
           <h2 className="text-lg font-bold">
-            {step === 'verify' ? 'Verify your email' : 'Sign in with Google'}
+            {step === 'signup' ? 'Create your account' : 'Sign in with Google'}
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
             {step === 'choose' && 'Choose an account to continue to CrypEx'}
-            {step === 'manual' && 'Enter your Google email to continue'}
-            {step === 'verify' && `We sent a 6-digit code to ${email}`}
+            {step === 'signup' && 'Enter your details to create a new account'}
           </p>
         </div>
 
@@ -618,7 +585,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             )}
 
             <button
-              onClick={() => setStep('manual')}
+              onClick={() => setStep('signup')}
               disabled={loading}
               className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition text-left disabled:opacity-50"
             >
@@ -631,19 +598,19 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-2 mt-3">
               <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
               <span>
-                CrypEx will use your Google email to create or access your account.
+                CrypEx will use your email to create or access your account.
                 We don't access your Google data or store your Google password.
               </span>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Manual email entry */}
-        {step === 'manual' && (
+        {/* STEP 2: Sign up with email + password */}
+        {step === 'signup' && (
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Mail className="h-3 w-3" /> Google Email
+                <Mail className="h-3 w-3" /> Email
               </label>
               <Input
                 type="email"
@@ -652,27 +619,64 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
                 placeholder="your.email@gmail.com"
                 className="mt-1"
                 autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') proceedWithManualEmail() }}
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Display Name (for new accounts)</label>
+              <label className="text-xs font-medium text-muted-foreground">Name (optional)</label>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Your Name"
                 className="mt-1"
-                onKeyDown={e => { if (e.key === 'Enter') proceedWithManualEmail() }}
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="mt-1 pr-10"
+                  onKeyDown={e => { if (e.key === 'Enter') createAccount() }}
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Minimum 6 characters</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Confirm Password</label>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`mt-1 ${confirmPassword && confirmPassword !== password ? 'border-red-500' : confirmPassword && confirmPassword === password ? 'border-green-500' : ''}`}
+                onKeyDown={e => { if (e.key === 'Enter') createAccount() }}
+              />
+              {confirmPassword && confirmPassword !== password && (
+                <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+              )}
+              {confirmPassword && confirmPassword === password && (
+                <p className="text-xs text-green-500 mt-1">✓ Passwords match</p>
+              )}
             </div>
 
             <Button
               className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
-              onClick={proceedWithManualEmail}
-              disabled={loading || !email.trim()}
+              onClick={createAccount}
+              disabled={submitting || !email.trim() || !password || !confirmPassword || password !== confirmPassword || password.length < 6}
             >
-              {loading ? 'Processing...' : 'Continue'}
+              {submitting ? 'Creating account...' : 'Create Account'}
             </Button>
 
             <button
@@ -681,85 +685,6 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             >
               ← Back to account list
             </button>
-
-            <div className="text-xs text-yellow-600 dark:text-yellow-500 bg-yellow-500/10 rounded p-2">
-              <Mail className="h-3 w-3 inline mr-1" />
-              New accounts require email verification with a 6-digit code.
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Email verification */}
-        {step === 'verify' && (
-          <div className="space-y-3">
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm text-center">
-              <Mail className="h-5 w-5 mx-auto text-blue-500 mb-1" />
-              <p className="text-xs">
-                Enter the 6-digit verification code sent to
-              </p>
-              <p className="font-medium text-sm">{email}</p>
-              <p className="text-xs text-muted-foreground mt-1">Check your inbox and spam folder</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Verification Code</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={verificationCode}
-                onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className={`mt-1 text-center text-2xl tracking-[0.5em] font-bold tabular-nums ${
-                  codeVerified === true ? 'border-green-500' : codeVerified === false ? 'border-red-500' : ''
-                }`}
-                autoFocus
-                disabled={verifying || codeVerified === true}
-              />
-            </div>
-
-            {verifying && (
-              <div className="text-xs text-center text-blue-500 flex items-center justify-center gap-1">
-                <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full" />
-                Verifying code...
-              </div>
-            )}
-
-            {codeVerified === false && !verifying && (
-              <div className="text-xs text-red-500 text-center">
-                Invalid or expired code. Please check and try again.
-              </div>
-            )}
-
-            {codeVerified === true && (
-              <div className="text-xs text-green-500 text-center flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Verified! Logging you in...
-              </div>
-            )}
-
-            <Button
-              className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
-              onClick={checkVerificationCode}
-              disabled={loading || verifying || verificationCode.length !== 6 || codeVerified === true}
-            >
-              {verifying ? 'Verifying...' : codeVerified === true ? 'Verified!' : 'Verify & Continue'}
-            </Button>
-
-            <div className="flex items-center justify-between text-xs">
-              <button
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setStep('manual')}
-              >
-                ← Change email
-              </button>
-              <button
-                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                disabled={resendCooldown > 0}
-                onClick={() => sendVerificationCode(email)}
-              >
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
-              </button>
-            </div>
           </div>
         )}
       </DialogContent>

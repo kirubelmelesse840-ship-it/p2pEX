@@ -186,12 +186,10 @@ export function verifyCode(email: string, code: string): boolean {
 }
 
 // Helper to get the test message URL from nodemailer
+import nodemailerModule from 'nodemailer'
 function nodemailer_getTestMessageUrl(info: any): string | null {
   try {
-    // nodemailer.getTestMessageUrl is a function exported by nodemailer
-    // We need to call it with the info object
-    const nodemailer = require('nodemailer')
-    return nodemailer.getTestMessageUrl(info)
+    return (nodemailerModule as any).getTestMessageUrl?.(info) || null
   } catch {
     return null
   }
