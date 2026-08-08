@@ -22,8 +22,20 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
-  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield,
+  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail,
 } from 'lucide-react'
+
+// Google "G" logo (multi-color, matches Google's official brand)
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  )
+}
 
 const NAV_ITEMS: Array<{ id: View; label: string; icon: any }> = [
   { id: 'home', label: 'Home', icon: Home },
@@ -208,6 +220,7 @@ export function Navbar() {
 
 function AuthButtons() {
   const [showAuth, setShowAuth] = useState<'login' | 'signup' | null>(null)
+  const [showGoogle, setShowGoogle] = useState(false)
   const { toast } = useToast()
   const setUser = useAppStore(s => s.setUser)
   const [email, setEmail] = useState('')
@@ -257,6 +270,31 @@ function AuthButtons() {
       toast({ title: 'Welcome to Demo!', description: `Logged in as ${data.user.name} with sample balances.` })
     } catch (e: any) {
       toast({ title: 'Login failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const googleLogin = async (googleEmail: string, googleName?: string) => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: googleEmail, name: googleName }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setUser(data.user)
+      toast({
+        title: data.isNewUser ? 'Google account connected!' : 'Welcome back!',
+        description: `Logged in as ${data.user.name} (${data.user.email})${data.user.isAdmin ? ' · Admin' : ''}`,
+      })
+      setShowAuth(null)
+      setShowGoogle(false)
+      setEmail(''); setPassword(''); setName('')
+    } catch (e: any) {
+      toast({ title: 'Google sign-in failed', description: e.message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -356,7 +394,17 @@ function AuthButtons() {
 
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full gap-2"
+                onClick={() => setShowGoogle(true)}
+                disabled={loading}
+              >
+                <GoogleIcon className="h-4 w-4" />
+                Continue with Google
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full text-xs"
                 onClick={quickDemo}
                 disabled={loading}
               >
@@ -369,6 +417,116 @@ function AuthButtons() {
           </div>
         </div>
       )}
+
+      {showGoogle && (
+        <GoogleLoginDialog
+          loading={loading}
+          onClose={() => setShowGoogle(false)}
+          onLogin={googleLogin}
+        />
+      )}
     </>
+  )
+}
+
+/**
+ * GoogleLoginDialog - Simulates the Google account chooser flow.
+ *
+ * In production with real Google OAuth, clicking "Continue with Google" would
+ * redirect to accounts.google.com, the user picks their Google account, and
+ * Google redirects back with an ID token. Here we simulate that flow by
+ * asking for the Google email directly (just like the Google account picker
+ * does) and a display name for new accounts.
+ */
+function GoogleLoginDialog({ loading, onClose, onLogin }: {
+  loading: boolean
+  onClose: () => void
+  onLogin: (email: string, name?: string) => void
+}) {
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+
+  const handleSubmit = () => {
+    if (!email.trim()) return
+    onLogin(email.trim(), name.trim() || undefined)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-card border border-border rounded-xl p-6 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Google-style header */}
+        <div className="flex flex-col items-center text-center mb-5">
+          <div className="mb-3">
+            <svg className="h-10 w-10" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold">Sign in with Google</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Choose an account to continue to CrypEx
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Mail className="h-3 w-3" /> Google Email
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your.email@gmail.com"
+              className="mt-1"
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Display Name (optional, for new accounts)</label>
+            <Input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Your Name"
+              className="mt-1"
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+            />
+          </div>
+
+          <Button
+            className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
+            onClick={handleSubmit}
+            disabled={loading || !email.trim()}
+          >
+            {loading ? 'Signing in...' : 'Continue'}
+          </Button>
+
+          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-2">
+            <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span>
+              CrypEx will use your Google email to create or access your account.
+              We don't access your Google data or store your Google password.
+            </span>
+          </div>
+
+          <button
+            className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+          >
+            Back to sign in options
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
