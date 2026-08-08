@@ -216,9 +216,10 @@ model P2POrder {
   price        Float    // fiat price per unit
   total        Float    // fiat total
   paymentMethod String
-  // Status flow: PENDING_PAYMENT -> PAID -> RELEASED -> COMPLETED | DISPUTED | CANCELED
-  status       String   @default("PENDING_PAYMENT")
-  paymentProof String?
+  // Payment proof screenshot (base64 compressed image) — required before order is placed
+  paymentScreenshot String? // base64 image of payment confirmation screenshot
+  // Status flow: PENDING_REVIEW -> PENDING_PAYMENT -> PAID -> RELEASED -> COMPLETED | DISPUTED | CANCELED
+  status       String   @default("PENDING_REVIEW")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   completedAt  DateTime?

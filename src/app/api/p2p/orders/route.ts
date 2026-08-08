@@ -13,11 +13,12 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { listingId, amount, paymentMethod } = await req.json()
+    const { listingId, amount, paymentMethod, paymentScreenshot } = await req.json()
     if (!listingId || !amount || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // For SELL listings (buyer is buying), payment screenshot is required
     const listing = await db.p2PListing.findUnique({
       where: { id: listingId },
       include: { user: true },
@@ -25,6 +26,11 @@ export async function POST(req: NextRequest) {
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
     if (listing.status !== 'ACTIVE') return NextResponse.json({ error: 'Listing not active' }, { status: 400 })
     if (listing.userId === user.id) return NextResponse.json({ error: 'Cannot trade with yourself' }, { status: 400 })
+
+    // If buyer is buying (SELL listing), require payment screenshot
+    if (listing.side === 'SELL' && !paymentScreenshot) {
+      return NextResponse.json({ error: 'Payment screenshot is required before placing the order' }, { status: 400 })
+    }
 
     const fiatTotal = amount * listing.price
     if (fiatTotal < listing.minOrder) {
@@ -86,7 +92,10 @@ export async function POST(req: NextRequest) {
         price: listing.price,
         total: fiatTotal,
         paymentMethod,
-        status: 'PENDING_PAYMENT',
+        paymentScreenshot: paymentScreenshot || null,
+        // If buyer uploaded payment proof, start in PENDING_REVIEW for admin verification
+        // Otherwise PENDING_PAYMENT (for SELL listings where buyer sells)
+        status: listing.side === 'SELL' ? 'PENDING_REVIEW' : 'PENDING_PAYMENT',
       },
       include: {
         buyer: { select: { name: true } },

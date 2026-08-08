@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,10 +16,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Users, Shield, Check, Clock, X, MessageCircle, Plus, Star,
-  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck, Smartphone,
+  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck, Smartphone, Upload,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatDateTime, formatCompact } from '@/lib/utils'
 import { BackButton } from '@/components/back-button'
+import { compressImageToBase64, formatFileSize } from '@/lib/image-compression'
 
 interface Listing {
   id: string
@@ -396,11 +397,41 @@ function TradeDialog({ listing, onClose, onSuccess }: {
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState(listing.paymentMethods[0])
   const [loading, setLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [paymentScreenshot, setPaymentScreenshot] = useState<{ data: string; name: string; size: number } | null>(null)
+  const fileScreenshotRef = useRef<HTMLInputElement>(null)
 
   const amountNum = parseFloat(amount) || 0
   const fiatTotal = amountNum * listing.price
   const minCrypto = listing.minOrder / listing.price
   const maxCrypto = Math.min(listing.available, listing.maxOrder / listing.price)
+  const isBuying = listing.side === 'SELL' // SELL listing means buyer is buying
+
+  // Handle screenshot upload with compression
+  const handleScreenshotUpload = async (file: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' })
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum 20MB', variant: 'destructive' })
+      return
+    }
+    setCompressing(true)
+    try {
+      const compressed = await compressImageToBase64(file, {
+        maxWidth: 1600, maxHeight: 1600, quality: 0.8, mimeType: 'image/jpeg',
+      })
+      const size = Math.round((compressed.length - 'data:image/jpeg;base64,'.length) * 0.75)
+      setPaymentScreenshot({ data: compressed, name: file.name, size })
+      toast({ title: 'Screenshot uploaded', description: `${formatFileSize(size)} · ready to submit` })
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setCompressing(false)
+    }
+  }
 
   const submit = async () => {
     if (!user) {
@@ -420,6 +451,11 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       toast({ title: `Maximum is ${formatQty(maxCrypto)} ${listing.asset}`, variant: 'destructive' })
       return
     }
+    // Require payment screenshot for buy orders
+    if (isBuying && !paymentScreenshot) {
+      toast({ title: 'Payment screenshot required', description: 'Upload proof of payment before placing the order', variant: 'destructive' })
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch('/api/p2p/orders', {
@@ -429,13 +465,14 @@ function TradeDialog({ listing, onClose, onSuccess }: {
           listingId: listing.id,
           amount: amountNum,
           paymentMethod,
+          paymentScreenshot: paymentScreenshot?.data,
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       toast({
-        title: 'Order created',
-        description: `${listing.side === 'SELL' ? 'Buying' : 'Selling'} ${amountNum} ${listing.asset} for ${formatPrice(fiatTotal)} ${listing.fiatCurrency}`,
+        title: 'Order submitted for review',
+        description: `Payment proof sent to admin. You'll be notified once verified.`,
       })
       onSuccess()
     } catch (e: any) {
@@ -570,6 +607,56 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             </div>
           )}
 
+          {/* Payment screenshot upload — required for buy orders */}
+          {isBuying && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Upload className="h-3 w-3" /> Payment Screenshot (required)
+                <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Upload a screenshot of your payment confirmation. This will be sent to the admin for verification before the order is placed.
+              </p>
+              <input
+                ref={fileScreenshotRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { if (e.target.files?.[0]) handleScreenshotUpload(e.target.files[0]) }}
+              />
+              {paymentScreenshot ? (
+                <div className="relative border-2 border-green-500/50 rounded-lg overflow-hidden">
+                  <img src={paymentScreenshot.data} alt="Payment proof" className="w-full h-32 object-cover" />
+                  <button
+                    onClick={() => setPaymentScreenshot(null)}
+                    className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-black"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] px-2 py-0.5">
+                    {paymentScreenshot.name} · {formatFileSize(paymentScreenshot.size)}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileScreenshotRef.current?.click()}
+                  disabled={compressing}
+                  className="w-full h-28 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center hover:border-primary/50 transition disabled:opacity-50"
+                >
+                  {compressing ? (
+                    <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                      <span className="text-xs font-medium">Upload Payment Screenshot</span>
+                      <span className="text-xs text-muted-foreground">JPG/PNG · auto-compressed</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Terms */}
           {listing.terms && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs">
@@ -596,6 +683,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 
 function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void }) {
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Payment Under Review' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending Payment' },
     PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Paid - Awaiting Release' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Completed' },
@@ -720,6 +808,36 @@ function OrderDialog({ order, onClose, onSuccess }: {
           </div>
 
           {/* Action buttons based on role + status */}
+          {order.status === 'PENDING_REVIEW' && order.myRole === 'BUYER' && (
+            <div className="space-y-3">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+                <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
+                <p className="text-sm font-medium">Payment proof under admin review</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your payment screenshot has been sent to the admin. Once verified, the seller will release the {order.asset}.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
+                Cancel Order
+              </Button>
+            </div>
+          )}
+
+          {order.status === 'PENDING_REVIEW' && order.myRole === 'SELLER' && (
+            <div className="space-y-3">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+                <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
+                <p className="text-sm font-medium">Buyer's payment is being verified</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The buyer uploaded a payment screenshot. Admin is verifying it. Once approved, you can release the {order.asset}.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
+                Cancel Order
+              </Button>
+            </div>
+          )}
+
           {order.status === 'PENDING_PAYMENT' && order.myRole === 'BUYER' && (
             <div className="space-y-3">
               {/* Payment instructions */}
