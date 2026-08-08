@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
     if (!documentFront) {
       return NextResponse.json({ error: 'Front of ID document photo is required' }, { status: 400 })
     }
+    if (!documentBack) {
+      return NextResponse.json({ error: 'Back of ID document photo is required' }, { status: 400 })
+    }
 
     // Check if already verified or pending
     const existing = await db.user.findUnique({ where: { id: user.id } })

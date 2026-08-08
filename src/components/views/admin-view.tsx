@@ -543,16 +543,68 @@ function UsersTab() {
 }
 
 /**
- * DocumentViewerDialog - shows the KYC document images for admin review.
+ * DocumentViewerDialog - shows the KYC document images and info for admin review,
+ * with Approve and Reject buttons directly in the dialog.
  */
-function DocumentViewerDialog({ user, onClose }: { user: any; onClose: () => void }) {
+function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose: () => void; onAction?: (userId: string, action: string, payload?: any) => void }) {
+  const { toast } = useToast()
+  const [rejectMode, setRejectMode] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [processing, setProcessing] = useState(false)
+
+  const handleApprove = async () => {
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/admin/users/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 1 }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1)` })
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      toast({ title: 'Reason required', description: 'Please provide a reason for rejection', variant: 'destructive' })
+      return
+    }
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/admin/users/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, action: 'rejectKyc', reason: rejectReason.trim() }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'KYC Rejected', description: `${user.name} has been notified` })
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const isPending = user.kycStatus === 'PENDING'
+  const isApproved = user.kycStatus === 'APPROVED'
+  const isRejected = user.kycStatus === 'REJECTED'
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            KYC Documents — {user.name}
+            KYC Review — {user.name}
           </DialogTitle>
           <DialogDescription>
             {user.email} · Submitted {user.kycSubmittedAt ? formatDateTime(user.kycSubmittedAt) : 'N/A'}
@@ -560,47 +612,143 @@ function DocumentViewerDialog({ user, onClose }: { user: any; onClose: () => voi
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Status badge */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Status:</span>
+            {isApproved && <Badge className="bg-green-500/15 text-green-600 dark:text-green-400"><CheckCircle2 className="h-3 w-3 mr-1" />Approved (L{user.kycLevel})</Badge>}
+            {isPending && <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"><Clock className="h-3 w-3 mr-1" />Pending Review</Badge>}
+            {isRejected && <Badge className="bg-red-500/15 text-red-600 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>}
+            {user.kycStatus === 'NONE' && <Badge variant="secondary">Not Submitted</Badge>}
+          </div>
+
           {/* KYC info */}
           <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
             <div><span className="text-muted-foreground">Full Name:</span> <span className="font-medium">{user.kycFullName || 'N/A'}</span></div>
             <div><span className="text-muted-foreground">ID Type:</span> <span className="font-medium">{user.kycIdType || 'N/A'}</span></div>
           </div>
 
-          {/* Document images */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {user.kycDocumentFront ? (
+          {/* Document images — front and back side by side */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Uploaded Documents</p>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Front of Document</p>
-                <img
-                  src={user.kycDocumentFront}
-                  alt="Document front"
-                  className="w-full rounded-lg border border-border"
-                />
+                <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                  <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">1</span>
+                  Front
+                </p>
+                {user.kycDocumentFront ? (
+                  <img
+                    src={user.kycDocumentFront}
+                    alt="Document front"
+                    className="w-full rounded-lg border-2 border-border"
+                  />
+                ) : (
+                  <div className="text-xs text-muted-foreground text-center py-12 border-2 border-dashed border-border rounded-lg">
+                    No front photo
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg">
-                No front document
-              </div>
-            )}
-            {user.kycDocumentBack ? (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Back of Document</p>
-                <img
-                  src={user.kycDocumentBack}
-                  alt="Document back"
-                  className="w-full rounded-lg border border-border"
-                />
+                <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                  <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">2</span>
+                  Back
+                </p>
+                {user.kycDocumentBack ? (
+                  <img
+                    src={user.kycDocumentBack}
+                    alt="Document back"
+                    className="w-full rounded-lg border-2 border-border"
+                  />
+                ) : (
+                  <div className="text-xs text-muted-foreground text-center py-12 border-2 border-dashed border-border rounded-lg">
+                    No back photo
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg hidden sm:block">
-                No back document
-              </div>
-            )}
+            </div>
           </div>
 
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2 text-xs text-blue-700 dark:text-blue-400">
-            Images are compressed client-side before upload to reduce bandwidth and storage.
-          </div>
+          {/* Rejection reason (if rejected previously) */}
+          {isRejected && user.kycRejectionReason && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+              <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Rejection Reason:</p>
+              <p className="text-sm text-muted-foreground">{user.kycRejectionReason}</p>
+            </div>
+          )}
+
+          {/* Approve / Reject actions */}
+          {!isApproved && (
+            <div className="border-t border-border pt-4 space-y-3">
+              {!rejectMode ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={onClose}
+                    disabled={processing}
+                  >
+                    Close
+                  </Button>
+                  {isPending || isRejected ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+                        onClick={() => setRejectMode(true)}
+                        disabled={processing}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" /> Reject
+                      </Button>
+                      <Button
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                        onClick={handleApprove}
+                        disabled={processing}
+                      >
+                        {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                        Approve
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Reason for rejection</label>
+                    <Textarea
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value)}
+                      placeholder="e.g. Document photo is blurry, please retake with better lighting"
+                      rows={3}
+                      className="mt-1 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setRejectMode(false); setRejectReason('') }}
+                      disabled={processing}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                      onClick={handleReject}
+                      disabled={processing || !rejectReason.trim()}
+                    >
+                      {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+                      Confirm Rejection
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isApproved && (
+            <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

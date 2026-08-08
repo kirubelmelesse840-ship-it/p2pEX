@@ -119,7 +119,11 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
       return
     }
     if (!documentFront) {
-      toast({ title: 'Document photo required', description: 'Please upload the front of your ID document', variant: 'destructive' })
+      toast({ title: 'Front photo required', description: 'Please upload the front of your ID document', variant: 'destructive' })
+      return
+    }
+    if (!documentBack) {
+      toast({ title: 'Back photo required', description: 'Please upload the back of your ID document', variant: 'destructive' })
       return
     }
     setLoading(true)
@@ -271,85 +275,111 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               </Select>
             </div>
 
-            {/* Document upload with client-side compression */}
+            {/* Document upload with client-side compression — front and back side by side */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">
-                ID Document Photos (will be compressed before upload)
+                ID Document Photos (required — both sides)
               </label>
+              <p className="text-xs text-muted-foreground">
+                Upload clear photos of your {form.idType || 'ID document'}. Images are compressed before upload.
+              </p>
 
-              {/* Front of document */}
-              <input
-                ref={fileFrontRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'front') }}
-              />
-              {documentFront ? (
-                <div className="relative border border-border rounded-lg overflow-hidden">
-                  <img src={documentFront.data} alt="Document front" className="w-full h-32 object-cover" />
-                  <button
-                    onClick={() => setDocumentFront(null)}
-                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
-                    Front · {formatFileSize(documentFront.compressedSize)}
-                    <span className="text-green-400 ml-1">({Math.round((1 - documentFront.compressedSize / documentFront.originalSize) * 100)}% smaller)</span>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => fileFrontRef.current?.click()}
-                  disabled={compressing}
-                  className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition disabled:opacity-50"
-                >
-                  {compressing ? (
-                    <>
-                      <div className="animate-spin h-5 w-5 mx-auto border-2 border-primary border-t-transparent rounded-full mb-1" />
-                      <p className="text-xs text-muted-foreground">Compressing...</p>
-                    </>
+              <div className="grid grid-cols-2 gap-3">
+                {/* FRONT of document */}
+                <div>
+                  <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                    <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">1</span>
+                    Front Side
+                    <span className="text-red-500">*</span>
+                  </p>
+                  <input
+                    ref={fileFrontRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'front') }}
+                  />
+                  {documentFront ? (
+                    <div className="relative border-2 border-green-500/50 rounded-lg overflow-hidden">
+                      <img src={documentFront.data} alt="Document front" className="w-full h-28 object-cover" />
+                      <button
+                        onClick={() => setDocumentFront(null)}
+                        className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-black"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[9px] px-2 py-0.5">
+                        Front · {formatFileSize(documentFront.compressedSize)}
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                      <p className="text-xs font-medium">Upload Front of ID</p>
-                      <p className="text-xs text-muted-foreground">JPG/PNG · auto-compressed</p>
-                    </>
+                    <button
+                      onClick={() => fileFrontRef.current?.click()}
+                      disabled={compressing}
+                      className="w-full h-28 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center hover:border-primary/50 transition disabled:opacity-50"
+                    >
+                      {compressing ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                      ) : (
+                        <>
+                          <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                          <span className="text-xs font-medium">Upload Front</span>
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
-              )}
-
-              {/* Back of document (optional) */}
-              <input
-                ref={fileBackRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'back') }}
-              />
-              {documentBack ? (
-                <div className="relative border border-border rounded-lg overflow-hidden">
-                  <img src={documentBack.data} alt="Document back" className="w-full h-32 object-cover" />
-                  <button
-                    onClick={() => setDocumentBack(null)}
-                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
-                    Back · {formatFileSize(documentBack.compressedSize)}
-                  </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => fileBackRef.current?.click()}
-                  disabled={compressing}
-                  className="w-full border-2 border-dashed border-border rounded-lg p-3 text-center hover:border-primary/50 transition disabled:opacity-50"
-                >
-                  <ImageIcon className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-                  <p className="text-xs text-muted-foreground">Upload Back of ID (optional)</p>
-                </button>
+
+                {/* BACK of document */}
+                <div>
+                  <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                    <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">2</span>
+                    Back Side
+                    <span className="text-red-500">*</span>
+                  </p>
+                  <input
+                    ref={fileBackRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'back') }}
+                  />
+                  {documentBack ? (
+                    <div className="relative border-2 border-green-500/50 rounded-lg overflow-hidden">
+                      <img src={documentBack.data} alt="Document back" className="w-full h-28 object-cover" />
+                      <button
+                        onClick={() => setDocumentBack(null)}
+                        className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-black"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[9px] px-2 py-0.5">
+                        Back · {formatFileSize(documentBack.compressedSize)}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileBackRef.current?.click()}
+                      disabled={compressing}
+                      className="w-full h-28 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center hover:border-primary/50 transition disabled:opacity-50"
+                    >
+                      {compressing ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                      ) : (
+                        <>
+                          <ImageIcon className="h-5 w-5 text-muted-foreground mb-1" />
+                          <span className="text-xs font-medium">Upload Back</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {documentFront && documentBack && (
+                <p className="text-xs text-green-500 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Both document photos uploaded
+                </p>
               )}
             </div>
 
