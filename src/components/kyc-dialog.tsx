@@ -15,8 +15,8 @@ import {
 import {
   Shield, ShieldCheck, ShieldAlert, Clock, XCircle, CheckCircle2, FileText, Upload, AlertCircle, ImageIcon, X,
 } from 'lucide-react'
-import { formatDateTime, formatFileSize } from '@/lib/utils'
-import { compressImageToBase64 } from '@/lib/image-compression'
+import { formatDateTime } from '@/lib/utils'
+import { compressImageToBase64, formatFileSize } from '@/lib/image-compression'
 
 interface KycDialogProps {
   open: boolean

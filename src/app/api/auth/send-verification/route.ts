@@ -36,53 +36,56 @@ async function sendVerificationEmail(toEmail: string, code: string): Promise<boo
   // If SMTP is configured, send a real email
   if (smtpHost && smtpUser && smtpPass) {
     try {
-      // Dynamic import of nodemailer (only if installed)
-      let nodemailer: any
+      // Try to dynamically import nodemailer (only if installed)
+      let transporter: any = null
       try {
-        nodemailer = await import('nodemailer')
+        // Use eval to prevent Next.js from trying to resolve the module at build time
+        const mod = await (new Function("return import('nodemailer')")() as Promise<any>)
+        transporter = mod.createTransport || (mod.default?.createTransport)
       } catch {
         // nodemailer not installed - fall back to console
         console.log(`[email] (nodemailer not installed) Verification code for ${toEmail}: ${code}`)
         return true
       }
 
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_PORT === '465',
-        auth: { user: smtpUser, pass: smtpPass },
-      })
-
-      await transporter.sendMail({
-        from: fromEmail,
-        to: toEmail,
-        subject: 'Your CrypEx Verification Code',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: #f59e0b; margin: 0;">CrypEx</h1>
-              <p style="color: #6b7280; font-size: 14px;">Cryptocurrency Exchange</p>
-            </div>
-            <h2 style="color: #111827;">Email Verification</h2>
-            <p style="color: #4b5563;">You're verifying your email address for your CrypEx account. Use the code below to complete verification:</p>
-            <div style="text-align: center; margin: 32px 0;">
-              <div style="display: inline-block; background: #f3f4f6; padding: 16px 32px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #111827; font-family: monospace;">
-                ${code}
+      if (transporter) {
+        const t = transporter({
+          host: smtpHost,
+          port: parseInt(process.env.SMTP_PORT || '587'),
+          secure: process.env.SMTP_PORT === '465',
+          auth: { user: smtpUser, pass: smtpPass },
+        })
+        await t.sendMail({
+          from: fromEmail,
+          to: toEmail,
+          subject: 'Your CrypEx Verification Code',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #f59e0b; margin: 0;">CrypEx</h1>
+                <p style="color: #6b7280; font-size: 14px;">Cryptocurrency Exchange</p>
               </div>
+              <h2 style="color: #111827;">Email Verification</h2>
+              <p style="color: #4b5563;">You're verifying your email address for your CrypEx account. Use the code below to complete verification:</p>
+              <div style="text-align: center; margin: 32px 0;">
+                <div style="display: inline-block; background: #f3f4f6; padding: 16px 32px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #111827; font-family: monospace;">
+                  ${code}
+                </div>
+              </div>
+              <p style="color: #6b7280; font-size: 14px;">This code expires in <strong>5 minutes</strong>. If you didn't request this code, you can safely ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+              <p style="color: #9ca3af; font-size: 12px; text-align: center;">© 2026 CrypEx. All rights reserved.</p>
             </div>
-            <p style="color: #6b7280; font-size: 14px;">This code expires in <strong>5 minutes</strong>. If you didn't request this code, you can safely ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">© 2026 CrypEx. All rights reserved.</p>
-          </div>
-        `,
-        text: `Your CrypEx verification code is: ${code}. It expires in 5 minutes.`,
-      })
-
-      console.log(`[email] Verification code sent to ${toEmail}`)
+          `,
+          text: `Your CrypEx verification code is: ${code}. It expires in 5 minutes.`,
+        })
+        console.log(`[email] Verification code sent to ${toEmail}`)
+        return true
+      }
+      console.log(`[email] (nodemailer not available) Verification code for ${toEmail}: ${code}`)
       return true
     } catch (e: any) {
       console.error(`[email] Failed to send to ${toEmail}:`, e.message)
-      // Fall back to console logging
       console.log(`[email] (fallback) Verification code for ${toEmail}: ${code}`)
       return true
     }
