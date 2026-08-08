@@ -379,7 +379,6 @@ function UsersTab() {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="banned">Banned</SelectItem>
-            <SelectItem value="admin">Admins</SelectItem>
           </SelectContent>
         </Select>
         <Select value={kycFilter} onValueChange={setKycFilter}>
@@ -417,15 +416,14 @@ function UsersTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
-              ) : users.length === 0 ? (
+              ) : users.filter(u => !u.isAdmin).length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No users found</td></tr>
               ) : (
-                users.map(u => (
+                users.filter(u => !u.isAdmin).map(u => (
                   <tr key={u.id} className="border-t border-border/40 hover:bg-muted/30">
                     <td className="px-3 py-3">
                       <div className="font-medium flex items-center gap-1">
                         {u.name}
-                        {u.isAdmin && <Shield className="h-3 w-3 text-red-500" />}
                       </div>
                       <div className="text-xs text-muted-foreground">{u._count.orders} orders · {u._count.transactions} txs</div>
                     </td>
@@ -512,17 +510,6 @@ function UsersTab() {
                           <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Unban user"
                             onClick={() => act(u.id, 'unban')}>
                             <CheckCircle2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                        {!u.isAdmin ? (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Make admin"
-                            onClick={() => act(u.id, 'makeAdmin')}>
-                            <ShieldAlert className="h-3 w-3" />
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Remove admin"
-                            onClick={() => act(u.id, 'removeAdmin')}>
-                            <Shield className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
