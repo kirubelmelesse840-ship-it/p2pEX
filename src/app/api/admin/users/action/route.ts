@@ -76,7 +76,20 @@ export async function POST(req: NextRequest) {
       }
       message = `User ${target.email} KYC rejected`
       break
+    case 'unapproveKyc':
+      // Revoke verification but keep the submitted documents/info
+      // User goes back to PENDING status so admin can re-review
+      updateData = {
+        kycVerified: false,
+        kycLevel: 0,
+        kycStatus: 'PENDING',
+        kycReviewedAt: new Date(),
+        kycRejectionReason: 'Verification revoked by admin',
+      }
+      message = `User ${target.email} verification revoked (back to pending)`
+      break
     case 'resetKyc':
+      // Completely wipe all KYC data (documents, info, everything)
       updateData = {
         kycVerified: false,
         kycLevel: 0,
@@ -87,11 +100,13 @@ export async function POST(req: NextRequest) {
         kycIdType: null,
         kycIdNumber: null,
         kycAddress: null,
+        kycDocumentFront: null,
+        kycDocumentBack: null,
         kycSubmittedAt: null,
         kycReviewedAt: null,
         kycRejectionReason: null,
       }
-      message = `User ${target.email} KYC reset`
+      message = `User ${target.email} KYC completely reset`
       break
     case 'deleteUser':
       await db.user.delete({ where: { id: userId } })

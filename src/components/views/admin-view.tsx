@@ -455,27 +455,37 @@ function UsersTab() {
                     </td>
                     <td className="px-3 py-3 text-right">
                       <div className="flex gap-1 justify-end flex-wrap">
-                        {/* KYC actions */}
+                        {/* KYC actions — Approve / Reject / Unapprove based on status */}
                         {u.kycStatus === 'PENDING' && (
                           <>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve KYC L1"
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve KYC"
                               onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
                               <ShieldCheck className="h-3 w-3" /> Approve
                             </Button>
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Reject KYC"
                               onClick={() => {
                                 const reason = prompt('Reason for rejection:')
-                                if (reason !== null) act(u.id, 'rejectKyc', { reason })
+                                if (reason !== null && reason.trim()) act(u.id, 'rejectKyc', { reason })
                               }}>
                               <XCircle className="h-3 w-3" /> Reject
                             </Button>
                           </>
                         )}
-                        {u.kycVerified && u.kycLevel < 2 && (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Upgrade to L2"
-                            onClick={() => act(u.id, 'verifyKyc', { level: 2 })}>
-                            <Star className="h-3 w-3" />
-                          </Button>
+                        {u.kycStatus === 'APPROVED' && (
+                          <>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Upgrade to Level 2"
+                              onClick={() => act(u.id, 'verifyKyc', { level: 2 })}>
+                              <Star className="h-3 w-3" /> Upgrade L2
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-orange-500" title="Revoke verification (unapprove)"
+                              onClick={() => {
+                                if (confirm(`Revoke verification for ${u.name}? They will become unverified and return to pending status.`)) {
+                                  act(u.id, 'unapproveKyc')
+                                }
+                              }}>
+                              <ShieldAlert className="h-3 w-3" /> Unapprove
+                            </Button>
+                          </>
                         )}
                         {u.kycStatus === 'REJECTED' && (
                           <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve after re-review"
@@ -586,6 +596,26 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
       const d = await res.json()
       if (d.error) throw new Error(d.error)
       toast({ title: 'KYC Rejected', description: `${user.name} has been notified` })
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleUnapprove = async () => {
+    if (!confirm(`Revoke verification for ${user.name}? They will become unverified.`)) return
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/admin/users/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, action: 'unapproveKyc' }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'Verification Revoked', description: `${user.name} is now unverified` })
       onClose()
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' })
@@ -746,8 +776,52 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
             </div>
           )}
 
+          {/* Actions for APPROVED users — can unapprove (revoke) */}
           {isApproved && (
-            <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+            <div className="border-t border-border pt-4">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={onClose}
+                  disabled={processing}
+                >
+                  Close
+                </Button>
+                {user.kycLevel < 2 && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-green-500 text-green-500 hover:bg-green-500/10"
+                    onClick={() => {
+                      setProcessing(true)
+                      fetch('/api/admin/users/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 2 }),
+                      }).then(r => r.json()).then(d => {
+                        if (d.error) throw new Error(d.error)
+                        toast({ title: 'Upgraded', description: `${user.name} is now Level 2 verified` })
+                        onClose()
+                      }).catch(e => {
+                        toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+                      }).finally(() => setProcessing(false))
+                    }}
+                    disabled={processing}
+                  >
+                    <Star className="h-4 w-4 mr-1" /> Upgrade to L2
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                  onClick={handleUnapprove}
+                  disabled={processing}
+                >
+                  {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <ShieldAlert className="h-4 w-4 mr-1" />}
+                  Unapprove
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </DialogContent>
