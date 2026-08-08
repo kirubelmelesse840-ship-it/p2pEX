@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
         minOrder: l.minOrder,
         maxOrder: l.maxOrder,
         paymentMethods: JSON.parse(l.paymentMethods),
+        paymentDetails: l.paymentDetails ? JSON.parse(l.paymentDetails) : null,
         terms: l.terms,
         status: l.status,
         createdAt: l.createdAt,

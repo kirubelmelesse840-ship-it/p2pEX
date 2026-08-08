@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Users, Shield, Check, Clock, X, MessageCircle, Plus, Star,
-  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck,
+  ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck, Smartphone,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatDateTime, formatCompact } from '@/lib/utils'
 import { BackButton } from '@/components/back-button'
@@ -32,6 +32,7 @@ interface Listing {
   minOrder: number
   maxOrder: number
   paymentMethods: string[]
+  paymentDetails?: Record<string, { phone?: string; name?: string; account?: string; email?: string; iban?: string; cashtag?: string }> | null
   terms?: string
   status: string
   createdAt: string
@@ -514,6 +515,61 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             </Select>
           </div>
 
+          {/* Payment instructions — show the seller's payment details for the selected method */}
+          {listing.side === 'SELL' && listing.paymentDetails && listing.paymentDetails[paymentMethod] && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <Smartphone className="h-3 w-3" /> Send Payment To:
+              </p>
+              {(() => {
+                const details = listing.paymentDetails[paymentMethod]
+                return (
+                  <div className="space-y-1 text-sm">
+                    {details.phone && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Phone Number:</span>
+                        <span className="font-mono font-bold text-foreground">{details.phone}</span>
+                      </div>
+                    )}
+                    {details.account && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Account Number:</span>
+                        <span className="font-mono font-bold text-foreground">{details.account}</span>
+                      </div>
+                    )}
+                    {details.email && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="font-mono font-bold text-foreground">{details.email}</span>
+                      </div>
+                    )}
+                    {details.iban && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">IBAN:</span>
+                        <span className="font-mono font-bold text-foreground">{details.iban}</span>
+                      </div>
+                    )}
+                    {details.cashtag && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Cashtag:</span>
+                        <span className="font-mono font-bold text-foreground">{details.cashtag}</span>
+                      </div>
+                    )}
+                    {details.name && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Account Name:</span>
+                        <span className="font-bold text-foreground">{details.name}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+              <div className="text-xs text-muted-foreground pt-1 border-t border-blue-500/20">
+                Send exactly <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.
+              </div>
+            </div>
+          )}
+
           {/* Terms */}
           {listing.terms && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs">
@@ -665,11 +721,43 @@ function OrderDialog({ order, onClose, onSuccess }: {
 
           {/* Action buttons based on role + status */}
           {order.status === 'PENDING_PAYMENT' && order.myRole === 'BUYER' && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Send <strong>{formatPrice(order.total)} {order.fiatCurrency}</strong> to the seller via {order.paymentMethod}.
-                After sending, click "I've Paid" to notify the seller.
-              </p>
+            <div className="space-y-3">
+              {/* Payment instructions */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  Payment Instructions
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Send <strong className="text-blue-600 dark:text-blue-400">{formatPrice(order.total)} {order.fiatCurrency}</strong> to the seller via {order.paymentMethod}.
+                </p>
+                <div className="bg-card rounded p-2 space-y-1 text-sm border border-blue-500/20">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Payment Method:</span>
+                    <span className="font-medium">{order.paymentMethod}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount to Send:</span>
+                    <span className="font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatPrice(order.total)} {order.fiatCurrency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Send To (Seller):</span>
+                    <span className="font-medium">{order.sellerName}</span>
+                  </div>
+                  {order.paymentMethod === 'Telebirr' || order.paymentMethod === 'CBE Birr' ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Phone Number:</span>
+                      <span className="font-mono font-bold">962404391</span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Account Name:</span>
+                    <span className="font-bold">Kirubel</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  After sending the payment, click "I've Paid" below to notify the seller.
+                </p>
+              </div>
               <Button className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => action('mark_paid')} disabled={loading}>
                 <Check className="h-4 w-4 mr-1.5" /> I've Paid
               </Button>

@@ -186,6 +186,8 @@ model P2PListing {
   maxOrder     Float    @default(10000) // max fiat amount
   // Payment methods supported (stored as JSON string)
   paymentMethods String // JSON: ["Bank Transfer", "PayPal", "Wise", "Cash App"]
+  // Payment account details (JSON: { "Telebirr": {phone:"962404391", name:"Kirubel"}, ... })
+  paymentDetails String? // JSON map of payment method -> {phone, name}
   // Terms
   terms        String?
   // Status
