@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -40,8 +39,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
     dateOfBirth: '',
     nationality: '',
     idType: '',
-    idNumber: '',
-    address: '',
   })
 
   // Load current KYC status
@@ -58,8 +55,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
           dateOfBirth: d.kycDateOfBirth || '',
           nationality: d.kycNationality || '',
           idType: d.kycIdType || '',
-          idNumber: d.kycIdNumber || '',
-          address: d.kycAddress || '',
         })
       }
     } catch {}
@@ -70,7 +65,7 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
   }, [open])
 
   const submit = async () => {
-    if (!form.fullName || !form.dateOfBirth || !form.nationality || !form.idType || !form.idNumber || !form.address) {
+    if (!form.fullName || !form.dateOfBirth || !form.nationality || !form.idType) {
       toast({ title: 'All fields are required', variant: 'destructive' })
       return
     }
@@ -154,8 +149,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               <div className="flex justify-between"><span className="text-muted-foreground">Date of Birth</span><span>{kycData?.kycDateOfBirth}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Nationality</span><span>{kycData?.kycNationality}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">ID Type</span><span>{kycData?.kycIdType}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">ID Number</span><span className="font-mono">{kycData?.kycIdNumber}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Address</span><span className="text-right max-w-[200px]">{kycData?.kycAddress}</span></div>
             </div>
             <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
           </div>
@@ -211,36 +204,14 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">ID Type</label>
-                <Select value={form.idType} onValueChange={(v) => setForm(f => ({ ...f, idType: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {ID_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">ID Number</label>
-                <Input
-                  value={form.idNumber}
-                  onChange={e => setForm(f => ({ ...f, idNumber: e.target.value }))}
-                  placeholder="ID number"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Residential Address</label>
-              <Textarea
-                value={form.address}
-                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                placeholder="Street, City, State, Zip Code, Country"
-                rows={2}
-                className="mt-1 text-sm"
-              />
+              <label className="text-xs font-medium text-muted-foreground">ID Type</label>
+              <Select value={form.idType} onValueChange={(v) => setForm(f => ({ ...f, idType: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select your document type" /></SelectTrigger>
+                <SelectContent>
+                  {ID_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Document upload placeholder */}

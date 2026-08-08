@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore, View } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,9 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import {
+  Dialog, DialogContent,
+} from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
@@ -24,7 +27,7 @@ import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
-  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail,
+  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -337,14 +340,8 @@ function AuthButtons() {
       </Button>
 
       {showAuth && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setShowAuth(null)}
-        >
-          <div
-            className="w-full max-w-md bg-card border border-border rounded-xl p-6 shadow-xl"
-            onClick={e => e.stopPropagation()}
-          >
+        <Dialog open onOpenChange={() => setShowAuth(null)}>
+          <DialogContent className="max-w-md">
             <div className="flex items-center gap-2 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
                 <Bitcoin className="h-6 w-6 text-white" />
@@ -438,8 +435,8 @@ function AuthButtons() {
                 Demo account has sample balances: 50,000 USDT, 0.85 BTC, 12.5 ETH and more.
               </p>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showGoogle && (
@@ -456,34 +453,99 @@ function AuthButtons() {
 /**
  * GoogleLoginDialog - Simulates the Google account chooser flow.
  *
- * In production with real Google OAuth, clicking "Continue with Google" would
- * redirect to accounts.google.com, the user picks their Google account, and
- * Google redirects back with an ID token. Here we simulate that flow by
- * asking for the Google email directly (just like the Google account picker
- * does) and a display name for new accounts.
+ * Features:
+ * 1. Detects and displays Google accounts already signed into the device
+ *    (persisted in localStorage from previous Google logins on this browser).
+ * 2. Lets the user pick an existing account or "Use another account".
+ * 3. For new Google accounts, triggers an email verification code flow.
+ *
+ * In production with real Google OAuth, the account list would come from the
+ * Google Identity Services library. Here we simulate it.
  */
 function GoogleLoginDialog({ loading, onClose, onLogin }: {
   loading: boolean
   onClose: () => void
   onLogin: (email: string, name?: string) => void
 }) {
+  const [step, setStep] = useState<'choose' | 'manual' | 'verify'>('choose')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [sentCode, setSentCode] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
-  const handleSubmit = () => {
+  // Load detected Google accounts from localStorage
+  const [detectedAccounts, setDetectedAccounts] = useState<Array<{ email: string; name: string }>>([])
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('google-signed-accounts')
+      if (stored) {
+        const accounts = JSON.parse(stored)
+        if (Array.isArray(accounts)) setDetectedAccounts(accounts)
+      }
+    } catch {}
+  }, [])
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
+
+  const sendVerificationCode = async (toEmail: string) => {
+    try {
+      const res = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: toEmail }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      setSentCode(d.code || '') // In production, code is emailed and not returned
+      setResendCooldown(60)
+    } catch (e) {
+      // Fallback: generate a code client-side for demo
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      setSentCode(code)
+      setResendCooldown(60)
+    }
+  }
+
+  const pickAccount = (acc: { email: string; name: string }) => {
+    // Account already on device - no verification needed (already verified by Google)
+    onLogin(acc.email, acc.name)
+  }
+
+  const proceedWithManualEmail = async () => {
     if (!email.trim()) return
-    onLogin(email.trim(), name.trim() || undefined)
+    // Check if this account is already on the device
+    const known = detectedAccounts.find(a => a.email.toLowerCase() === email.trim().toLowerCase())
+    if (known) {
+      onLogin(known.email, known.name)
+      return
+    }
+    // New account - send verification code
+    await sendVerificationCode(email.trim())
+    setStep('verify')
+  }
+
+  const verifyAndLogin = () => {
+    if (verificationCode.trim() !== sentCode) {
+      return // invalid code - the button will be disabled
+    }
+    // Save this account to detected accounts for next time
+    const newAcc = { email: email.trim(), name: name.trim() || email.split('@')[0] }
+    const updated = [...detectedAccounts.filter(a => a.email !== newAcc.email), newAcc]
+    setDetectedAccounts(updated)
+    try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
+    onLogin(newAcc.email, newAcc.name)
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-card border border-border rounded-xl p-6 shadow-xl"
-        onClick={e => e.stopPropagation()}
-      >
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
         {/* Google-style header */}
         <div className="flex flex-col items-center text-center mb-5">
           <div className="mb-3">
@@ -494,63 +556,180 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
           </div>
-          <h2 className="text-lg font-bold">Sign in with Google</h2>
+          <h2 className="text-lg font-bold">
+            {step === 'verify' ? 'Verify your email' : 'Sign in with Google'}
+          </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Choose an account to continue to CrypEx
+            {step === 'choose' && 'Choose an account to continue to CrypEx'}
+            {step === 'manual' && 'Enter your Google email to continue'}
+            {step === 'verify' && `We sent a 6-digit code to ${email}`}
           </p>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <Mail className="h-3 w-3" /> Google Email
-            </label>
-            <Input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your.email@gmail.com"
-              className="mt-1"
-              autoFocus
-              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
-            />
+        {/* STEP 1: Choose account (detected accounts on device) */}
+        {step === 'choose' && (
+          <div className="space-y-2">
+            {detectedAccounts.length > 0 && (
+              <>
+                <div className="text-xs text-muted-foreground px-1 mb-1">
+                  Accounts on this device:
+                </div>
+                {detectedAccounts.map(acc => (
+                  <button
+                    key={acc.email}
+                    onClick={() => pickAccount(acc)}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition text-left disabled:opacity-50"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm font-bold flex-shrink-0">
+                      {acc.name.slice(0, 1).toUpperCase() || acc.email.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{acc.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{acc.email}</div>
+                    </div>
+                  </button>
+                ))}
+                <div className="border-t border-border my-2" />
+              </>
+            )}
+
+            <button
+              onClick={() => setStep('manual')}
+              disabled={loading}
+              className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition text-left disabled:opacity-50"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-muted-foreground text-muted-foreground flex-shrink-0">
+                <Plus className="h-4 w-4" />
+              </div>
+              <div className="text-sm font-medium">Use another account</div>
+            </button>
+
+            <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-2 mt-3">
+              <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                CrypEx will use your Google email to create or access your account.
+                We don't access your Google data or store your Google password.
+              </span>
+            </div>
           </div>
+        )}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Display Name (optional, for new accounts)</label>
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Your Name"
-              className="mt-1"
-              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
-            />
+        {/* STEP 2: Manual email entry */}
+        {step === 'manual' && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Mail className="h-3 w-3" /> Google Email
+              </label>
+              <Input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your.email@gmail.com"
+                className="mt-1"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') proceedWithManualEmail() }}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Display Name (for new accounts)</label>
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your Name"
+                className="mt-1"
+                onKeyDown={e => { if (e.key === 'Enter') proceedWithManualEmail() }}
+              />
+            </div>
+
+            <Button
+              className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
+              onClick={proceedWithManualEmail}
+              disabled={loading || !email.trim()}
+            >
+              {loading ? 'Processing...' : 'Continue'}
+            </Button>
+
+            <button
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setStep('choose')}
+            >
+              ← Back to account list
+            </button>
+
+            <div className="text-xs text-yellow-600 dark:text-yellow-500 bg-yellow-500/10 rounded p-2">
+              <Mail className="h-3 w-3 inline mr-1" />
+              New accounts require email verification with a 6-digit code.
+            </div>
           </div>
+        )}
 
-          <Button
-            className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
-            onClick={handleSubmit}
-            disabled={loading || !email.trim()}
-          >
-            {loading ? 'Signing in...' : 'Continue'}
-          </Button>
+        {/* STEP 3: Email verification */}
+        {step === 'verify' && (
+          <div className="space-y-3">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm text-center">
+              <Mail className="h-5 w-5 mx-auto text-blue-500 mb-1" />
+              <p className="text-xs">
+                Enter the 6-digit verification code sent to
+              </p>
+              <p className="font-medium text-sm">{email}</p>
+            </div>
 
-          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-2">
-            <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            <span>
-              CrypEx will use your Google email to create or access your account.
-              We don't access your Google data or store your Google password.
-            </span>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Verification Code</label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={verificationCode}
+                onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="mt-1 text-center text-2xl tracking-[0.5em] font-bold tabular-nums"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && verificationCode === sentCode) verifyAndLogin() }}
+              />
+            </div>
+
+            {sentCode && (
+              <div className="text-xs text-center text-muted-foreground bg-muted/30 rounded p-2">
+                Demo mode: your code is <span className="font-mono font-bold text-foreground">{sentCode}</span>
+              </div>
+            )}
+
+            {verificationCode && verificationCode !== sentCode && (
+              <div className="text-xs text-red-500 text-center">
+                Invalid code. Please check and try again.
+              </div>
+            )}
+
+            <Button
+              className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white"
+              onClick={verifyAndLogin}
+              disabled={loading || verificationCode !== sentCode}
+            >
+              {loading ? 'Verifying...' : 'Verify & Continue'}
+            </Button>
+
+            <div className="flex items-center justify-between text-xs">
+              <button
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setStep('manual')}
+              >
+                ← Change email
+              </button>
+              <button
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                disabled={resendCooldown > 0}
+                onClick={() => sendVerificationCode(email)}
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+              </button>
+            </div>
           </div>
-
-          <button
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
-            onClick={onClose}
-          >
-            Back to sign in options
-          </button>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

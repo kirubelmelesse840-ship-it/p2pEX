@@ -44,8 +44,11 @@ export async function POST(req: NextRequest) {
           email: normalizedEmail,
           name: derivedName,
           passwordHash: hashPassword(randomPassword),
+          // New Google users start as explicitly UNVERIFIED until they submit KYC
+          // and an admin approves it.
           kycVerified: false,
           kycLevel: 0,
+          kycStatus: 'NONE',
           fiatCurrency: 'USD',
           isActive: true,
         },

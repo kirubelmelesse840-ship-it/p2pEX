@@ -26,8 +26,11 @@ export async function POST(req: NextRequest) {
         email,
         name: name || email.split('@')[0],
         passwordHash: hashPassword(password),
+        // New users start as explicitly UNVERIFIED until they submit KYC
+        // and an admin approves it.
         kycVerified: false,
         kycLevel: 0,
+        kycStatus: 'NONE',
         fiatCurrency: 'USD',
       },
     })

@@ -14,10 +14,10 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
     const body = await req.json()
-    const { fullName, dateOfBirth, nationality, idType, idNumber, address } = body
+    const { fullName, dateOfBirth, nationality, idType } = body
 
-    // Validate required fields
-    if (!fullName || !dateOfBirth || !nationality || !idType || !idNumber || !address) {
+    // Validate required fields (ID Number and Residential Address removed)
+    if (!fullName || !dateOfBirth || !nationality || !idType) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
@@ -41,8 +41,6 @@ export async function POST(req: NextRequest) {
         kycDateOfBirth: dateOfBirth,
         kycNationality: nationality,
         kycIdType: idType,
-        kycIdNumber: idNumber,
-        kycAddress: address,
         kycSubmittedAt: new Date(),
         kycRejectionReason: null,
         // Reset verified status until admin approves
