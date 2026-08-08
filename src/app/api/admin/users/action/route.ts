@@ -77,16 +77,19 @@ export async function POST(req: NextRequest) {
       message = `User ${target.email} KYC rejected`
       break
     case 'unapproveKyc':
-      // Revoke verification but keep the submitted documents/info
-      // User goes back to PENDING status so admin can re-review
+      // Revoke verification and allow user to submit new info immediately
+      // Clears old documents so user starts fresh
       updateData = {
         kycVerified: false,
         kycLevel: 0,
-        kycStatus: 'PENDING',
+        kycStatus: 'NONE',
+        kycSubmittedAt: null,
         kycReviewedAt: new Date(),
-        kycRejectionReason: 'Verification revoked by admin',
+        kycRejectionReason: 'Verification revoked by admin — please resubmit',
+        kycDocumentFront: null,
+        kycDocumentBack: null,
       }
-      message = `User ${target.email} verification revoked (back to pending)`
+      message = `User ${target.email} verification revoked — can resubmit immediately`
       break
     case 'resetKyc':
       // Completely wipe all KYC data (documents, info, everything)

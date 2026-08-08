@@ -225,9 +225,15 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
             <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
           </div>
         ) : (
-          /* Show form for NONE or REJECTED status */
+          /* Show form for NONE status (includes unapproved/rejected users) */
           <div className="space-y-3">
-            {status === 'REJECTED' && (
+            {kycData?.kycRejectionReason && (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded p-2 text-xs text-orange-600 dark:text-orange-400 flex items-start gap-2">
+                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span>{kycData.kycRejectionReason}</span>
+              </div>
+            )}
+            {status === 'REJECTED' && !kycData?.kycRejectionReason && (
               <div className="bg-red-500/10 border border-red-500/30 rounded p-2 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span>Your previous submission was rejected. Please review and resubmit with correct information.</span>
