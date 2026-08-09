@@ -521,7 +521,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
         body: JSON.stringify({
           email: email.trim(),
           password,
-          name: name.trim() || email.split('@')[0],
+          name: email.split('@')[0],
         }),
       })
       const d = await res.json()
@@ -628,16 +628,6 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
                 placeholder="your.email@gmail.com"
                 className="mt-1"
                 autoFocus
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Name (optional)</label>
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Your Name"
-                className="mt-1"
               />
             </div>
 

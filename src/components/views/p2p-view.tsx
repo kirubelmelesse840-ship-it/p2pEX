@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Users, Shield, Check, Clock, X, MessageCircle, Plus, Star,
   ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck, Smartphone, Upload,
+  CheckCircle2, XCircle,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatDateTime, formatCompact } from '@/lib/utils'
 import { BackButton } from '@/components/back-button'
@@ -95,6 +96,8 @@ export function P2PView() {
   const [orderDialog, setOrderDialog] = useState<P2POrder | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
+  const [prevOrderStatuses, setPrevOrderStatuses] = useState<Record<string, string>>({})
+
   const load = useCallback(async () => {
     try {
       const [listRes, ordersRes] = await Promise.all([
@@ -105,19 +108,43 @@ export function P2PView() {
       setListings(listData.listings || [])
       if (ordersRes) {
         const ordersData = await ordersRes.json()
-        setOrders(ordersData.orders || [])
+        const newOrders = ordersData.orders || []
+        // Detect status changes and notify the user
+        for (const o of newOrders) {
+          const prevStatus = prevOrderStatuses[o.id]
+          if (prevStatus && prevStatus !== o.status) {
+            // Status changed — show notification
+            if (o.status === 'PAID' && o.myRole === 'BUYER') {
+              toast({ title: '✅ Payment Approved!', description: `Your payment for ${o.amount} ${o.asset} has been verified. The seller will release your crypto shortly.` })
+            } else if (o.status === 'PAID' && o.myRole === 'SELLER') {
+              toast({ title: '💰 Payment Verified', description: `The buyer's payment for ${o.amount} ${o.asset} has been verified. You can now release the crypto.` })
+            } else if (o.status === 'CANCELED' && o.myRole === 'BUYER') {
+              toast({ title: '❌ Payment Rejected', description: `Your payment for ${o.amount} ${o.asset} was rejected. The order has been canceled. You can place a new order.`, variant: 'destructive' })
+            } else if (o.status === 'CANCELED' && o.myRole === 'SELLER') {
+              toast({ title: '❌ Order Canceled', description: `The order for ${o.amount} ${o.asset} has been canceled.`, variant: 'destructive' })
+            } else if (o.status === 'COMPLETED') {
+              toast({ title: '🎉 Trade Completed!', description: `Your trade of ${o.amount} ${o.asset} has been completed successfully.` })
+            }
+          }
+        }
+        // Update previous statuses
+        const newStatuses: Record<string, string> = {}
+        for (const o of newOrders) newStatuses[o.id] = o.status
+        setPrevOrderStatuses(newStatuses)
+        setOrders(newOrders)
       }
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [filters.asset, filters.fiat, user])
+  }, [filters.asset, filters.fiat, user, prevOrderStatuses, toast])
 
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!user) return
-    const t = setInterval(load, 10000)
+    // Poll every 5 seconds for faster status updates
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [user, load])
 
@@ -670,9 +697,9 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             <Button
               className={listing.side === 'SELL' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
               onClick={submit}
-              disabled={loading || !amount}
+              disabled={loading || !amount || (isBuying && !paymentScreenshot)}
             >
-              {loading ? 'Creating...' : `${listing.side === 'SELL' ? 'Buy' : 'Sell'} ${listing.asset}`}
+              {loading ? 'Submitting...' : isBuying ? (paymentScreenshot ? 'Submit' : 'Upload Payment Proof') : `Sell ${listing.asset}`}
             </Button>
           </DialogFooter>
         </div>
@@ -917,8 +944,32 @@ function OrderDialog({ order, onClose, onSuccess }: {
             </p>
           )}
 
-          {(order.status === 'COMPLETED' || order.status === 'CANCELED') && (
-            <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+          {(order.status === 'COMPLETED') && (
+            <div className="space-y-3">
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
+                <CheckCircle2 className="h-8 w-8 mx-auto text-green-500 mb-2" />
+                <p className="text-sm font-medium">Trade Completed</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This trade has been completed successfully.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+            </div>
+          )}
+
+          {order.status === 'CANCELED' && (
+            <div className="space-y-3">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
+                <XCircle className="h-8 w-8 mx-auto text-red-500 mb-2" />
+                <p className="text-sm font-medium">{order.myRole === 'BUYER' ? 'Payment Rejected' : 'Order Canceled'}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {order.myRole === 'BUYER'
+                    ? `Your payment was rejected by the admin. You can place a new order.`
+                    : `This order has been canceled.`}
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+            </div>
           )}
 
           <Button variant="ghost" className="w-full" disabled>
