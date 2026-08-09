@@ -101,7 +101,7 @@ export function Navbar() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
                 <Bitcoin className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-bold">P2PET</span>
+              <span className="text-lg font-bold">P2PEX</span>
             </div>
             <nav className="flex flex-col gap-1">
               {NAV_ITEMS.map(item => (
@@ -128,7 +128,7 @@ export function Navbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
             <Bitcoin className="h-5 w-5 text-white" />
           </div>
-          <span className="text-lg font-bold hidden sm:inline">P2PET</span>
+          <span className="text-lg font-bold hidden sm:inline">P2PEX</span>
           {isAdmin && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 ml-1">ADMIN</Badge>}
         </button>
 
@@ -367,7 +367,7 @@ function AuthButtons() {
               </div>
               <div>
                 <h2 className="text-lg font-bold">{showAuth === 'login' ? 'Log In' : 'Create Account'}</h2>
-                <p className="text-xs text-muted-foreground">P2PET Exchange</p>
+                <p className="text-xs text-muted-foreground">P2PEX</p>
               </div>
             </div>
 
@@ -551,7 +551,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
       setDetectedAccounts(updated)
       try { localStorage.setItem('google-signed-accounts', JSON.stringify(updated)) } catch {}
 
-      toast({ title: 'Account created!', description: `Welcome to P2PET, ${d.user.name}` })
+      toast({ title: 'Account created!', description: `Welcome to P2PEX, ${d.user.name}` })
       // Call onLogin to set the user state (the signup already set the session cookie)
       onLogin(email.trim(), d.user.name)
     } catch (e: any) {
@@ -578,7 +578,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             {step === 'signup' ? 'Create your account' : 'Sign in with Google'}
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            {step === 'choose' && 'Choose an account to continue to P2PET'}
+            {step === 'choose' && 'Choose an account to continue to P2PEX'}
             {step === 'signup' && 'Enter your details to create a new account'}
           </p>
         </div>
@@ -625,7 +625,7 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
             <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 flex items-start gap-2 mt-3">
               <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
               <span>
-                P2PET will use your email to create or access your account.
+                P2PEX will use your email to create or access your account.
                 We don't access your Google data or store your Google password.
               </span>
             </div>

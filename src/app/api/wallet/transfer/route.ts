@@ -1,8 +1,8 @@
 /**
- * POST /api/wallet/transfer - internal transfer between P2PET users
+ * POST /api/wallet/transfer - internal transfer between P2PEX users
  * Body: { asset, amount, recipientEmail, note? }
  *
- * Transfers crypto from the sender's wallet to another P2PET user's wallet
+ * Transfers crypto from the sender's wallet to another P2PEX user's wallet
  * of the same asset. Instant, on-chain fee-free.
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         type: 'INTERNAL_TRANSFER',
         amount,
         fee: 0,
-        network: 'P2PET',
+        network: 'P2PEX',
         toAddress: `user:${recipient.email}`,
         note: note || `Internal transfer to ${recipient.name} (${recipient.email})`,
         status: 'COMPLETED',
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         type: 'INTERNAL_TRANSFER',
         amount,
         fee: 0,
-        network: 'P2PET',
+        network: 'P2PEX',
         fromAddress: `user:${user.email}`,
         note: note || `Internal transfer from ${user.name} (${user.email})`,
         status: 'COMPLETED',

@@ -16,17 +16,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "P2PET Exchange - Cryptocurrency Exchange",
+  title: "P2PEX - Cryptocurrency Exchange",
   description: "Trade Bitcoin, Ethereum, USDT and 100+ cryptocurrencies. Spot trading, P2P marketplace, and secure multi-asset wallet.",
-  keywords: ["crypto", "exchange", "P2PET", "bitcoin", "ethereum", "USDT", "trading", "P2P", "wallet"],
-  authors: [{ name: "P2PET Exchange Team" }],
+  keywords: ["crypto", "exchange", "P2PEX", "bitcoin", "ethereum", "USDT", "trading", "P2P", "wallet"],
+  authors: [{ name: "P2PEX Team" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "P2PET Exchange - Cryptocurrency Exchange",
+    title: "P2PEX - Cryptocurrency Exchange",
     description: "Trade Bitcoin, Ethereum, USDT and 100+ cryptocurrencies.",
-    siteName: "P2PET Exchange",
+    siteName: "P2PEX",
     type: "website",
   },
 };

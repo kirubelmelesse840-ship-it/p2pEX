@@ -21,7 +21,7 @@ const DEFAULTS: Record<string, string> = {
   minKycLevel: '0',
   maxDailyWithdrawUsd: '10000',
   supportEmail: 'support@crypex.com',
-  announcement: 'Welcome to P2PET — trade securely with confidence!',
+  announcement: 'Welcome to P2PEX — trade securely with confidence!',
 }
 
 export async function GET(req: NextRequest) {

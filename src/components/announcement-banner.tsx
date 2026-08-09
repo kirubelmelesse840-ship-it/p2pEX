@@ -34,7 +34,7 @@ export function AnnouncementBanner() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Under Maintenance</h1>
           <p className="text-sm text-muted-foreground mb-6">
-            P2PET Exchange is undergoing scheduled maintenance to improve your trading experience.
+            P2PEX is undergoing scheduled maintenance to improve your trading experience.
             We'll be back online shortly. Thank you for your patience.
           </p>
           <Button variant="outline" onClick={() => window.location.reload()}>

@@ -27,7 +27,7 @@ export function Footer() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
                   <Bitcoin className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-bold">P2PET</span>
+                <span className="font-bold">P2PEX</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 The world's leading cryptocurrency exchange. Trade Bitcoin, Ethereum, USDT and 100+ digital assets with confidence.
@@ -64,7 +64,7 @@ export function Footer() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-muted-foreground">
-            <p>© 2026 P2PET Exchange. All rights reserved.</p>
+            <p>© 2026 P2PEX. All rights reserved.</p>
             <div className="flex gap-3">
               <span className="hover:text-primary cursor-pointer">Terms</span>
               <span className="hover:text-primary cursor-pointer">Privacy</span>

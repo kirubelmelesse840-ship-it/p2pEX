@@ -20,7 +20,7 @@ import {
   Shield, Users, TrendingUp, DollarSign, Activity, Settings, AlertTriangle,
   CheckCircle2, XCircle, Clock, Search, Star, Ban, ShieldCheck, ShieldAlert,
   Zap, BarChart3, ArrowUpRight, ArrowDownRight, Plus, Trash2, Edit3, Power,
-  Wallet, RefreshCw, FileText,
+  Wallet, RefreshCw, FileText, Bell,
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import {
@@ -64,9 +64,12 @@ export function AdminView() {
             Logged in as <span className="font-medium text-foreground">{user.name}</span> ({user.email})
           </p>
         </div>
-        <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
-          <Shield className="h-3 w-3 mr-1" /> ADMIN
-        </Badge>
+        <div className="flex items-center gap-2">
+          <AdminNotifications />
+          <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
+            <Shield className="h-3 w-3 mr-1" /> ADMIN
+          </Badge>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1921,6 +1924,120 @@ function ToggleRow({ label, description, value, onChange, icon, danger }: {
         <p className={`text-xs mt-1 font-medium ${danger ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
           ⚠ {label} is currently {danger ? 'ENABLED' : 'active'}
         </p>
+      )}
+    </div>
+  )
+}
+
+// =================== ADMIN NOTIFICATIONS ===================
+function AdminNotifications() {
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [highCount, setHighCount] = useState(0)
+  const [open, setOpen] = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/notifications')
+      const d = await res.json()
+      if (d.error) return
+      setNotifications(d.notifications || [])
+      setHighCount(d.highPriorityCount || 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 10000)
+    return () => clearInterval(t)
+  }, [load])
+
+  const formatTimeAgo = (time: string) => {
+    const diff = Date.now() - new Date(time).getTime()
+    if (diff < 60000) return 'just now'
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago'
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago'
+    return Math.floor(diff / 86400000) + 'd ago'
+  }
+
+  const iconForType = (type: string) => {
+    switch (type) {
+      case 'payment': return <Clock className="h-4 w-4 text-orange-500" />
+      case 'kyc': return <ShieldCheck className="h-4 w-4 text-blue-500" />
+      case 'user': return <Users className="h-4 w-4 text-green-500" />
+      case 'trade': return <TrendingUp className="h-4 w-4 text-purple-500" />
+      default: return <Activity className="h-4 w-4 text-muted-foreground" />
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative"
+        onClick={() => { setOpen(!open); if (!open) load() }}
+      >
+        <Bell className="h-5 w-5" />
+        {highCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+            {highCount > 9 ? '9+' : highCount}
+          </span>
+        )}
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
+            <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
+              <span className="text-sm font-semibold">Notifications</span>
+              {highCount > 0 && (
+                <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 text-[10px]">
+                  {highCount} urgent
+                </Badge>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No notifications
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {notifications.map(n => (
+                  <div
+                    key={n.id}
+                    className={'p-3 hover:bg-muted/30 transition cursor-pointer ' + (n.priority === 'high' ? 'bg-red-500/5' : '')}
+                    onClick={() => setOpen(false)}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0 mt-0.5">
+                        {iconForType(n.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-medium">{n.title}</span>
+                          {n.priority === 'high' && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.description}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.time)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="sticky bottom-0 bg-card border-t border-border p-2">
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => load()}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

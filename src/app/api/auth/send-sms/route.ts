@@ -32,7 +32,7 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
       const body = new URLSearchParams({
         From: twilioFrom,
         To: phone,
-        Body: `Your P2PET verification code is: ${code}. It expires in 5 minutes.`,
+        Body: `Your P2PEX verification code is: ${code}. It expires in 5 minutes.`,
       })
       await fetch(twilioUrl, {
         method: 'POST',
