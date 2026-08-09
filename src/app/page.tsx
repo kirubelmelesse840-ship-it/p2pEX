@@ -13,7 +13,7 @@ import { AdminView } from '@/components/views/admin-view'
 import { AnnouncementBanner } from '@/components/announcement-banner'
 
 export default function Home() {
-  const { view, user, setUser, theme } = useAppStore()
+  const { view, user, setUser, theme, setView } = useAppStore()
 
   // Restore session on mount
   useEffect(() => {
@@ -25,22 +25,32 @@ export default function Home() {
     fetch('/api/auth', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (data.user) setUser(data.user)
+        if (data.user) {
+          setUser(data.user)
+          // If admin logs in, force them to the admin panel
+          if (data.user.isAdmin) {
+            setView('admin')
+          }
+        }
       })
       .catch(() => {})
   }, [])
+
+  // If the user is an admin, always show the admin panel regardless of view
+  const isAdmin = user?.isAdmin
+  const effectiveView = isAdmin ? 'admin' : view
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AnnouncementBanner />
       <Navbar />
-      <main className="flex-1 pb-16 md:pb-0">
-        {view === 'home' && <HomeView />}
-        {view === 'markets' && <MarketsView />}
-        {view === 'spot' && <SpotView />}
-        {view === 'p2p' && <P2PView />}
-        {view === 'wallet' && <WalletView />}
-        {view === 'admin' && <AdminView />}
+      <main className={`flex-1 ${isAdmin ? '' : 'pb-16 md:pb-0'}`}>
+        {effectiveView === 'home' && <HomeView />}
+        {effectiveView === 'markets' && <MarketsView />}
+        {effectiveView === 'spot' && <SpotView />}
+        {effectiveView === 'p2p' && <P2PView />}
+        {effectiveView === 'wallet' && <WalletView />}
+        {effectiveView === 'admin' && <AdminView />}
       </main>
       <Footer />
     </div>

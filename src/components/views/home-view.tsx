@@ -8,7 +8,7 @@ import {
   Bitcoin, TrendingUp, Users, Wallet, Shield, Zap, Globe, ArrowRight,
   ArrowUp, ArrowDown, Star, BarChart3,
 } from 'lucide-react'
-import { formatPrice, formatPercent, formatCompact, formatUsd } from '@/lib/utils'
+import { formatPrice, formatPercent, formatCompact } from '@/lib/utils'
 
 export function HomeView() {
   const { tickers, connected } = useTickers()
@@ -20,10 +20,6 @@ export function HomeView() {
       gainers: sorted.filter(t => t.changePercent > 0).slice(0, 4),
       losers: sorted.filter(t => t.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent).slice(0, 4),
     }
-  }, [tickers])
-
-  const totalMktCap = useMemo(() => {
-    return tickers.reduce((sum, t) => sum + (t.quoteVolume24h || 0), 0)
   }, [tickers])
 
   return (
@@ -65,21 +61,6 @@ export function HomeView() {
               View Markets
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-6 text-sm">
-            <div>
-              <div className="text-2xl font-bold tabular-nums">{formatUsd(totalMktCap)}</div>
-              <div className="text-xs text-muted-foreground">24h Volume</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold tabular-nums">{tickers.length}</div>
-              <div className="text-xs text-muted-foreground">Trading Pairs</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold tabular-nums">2.5M+</div>
-              <div className="text-xs text-muted-foreground">Active Users</div>
-            </div>
           </div>
         </div>
       </section>

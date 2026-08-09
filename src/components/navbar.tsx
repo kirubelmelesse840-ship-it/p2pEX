@@ -58,6 +58,8 @@ export function Navbar() {
   const [kycOpen, setKycOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const isAdmin = user?.isAdmin
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
@@ -85,7 +87,8 @@ export function Navbar() {
     <>
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
-        {/* Mobile menu */}
+        {/* Mobile menu — hidden for admins */}
+        {!isAdmin && (
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden">
@@ -115,19 +118,22 @@ export function Navbar() {
             </nav>
           </SheetContent>
         </Sheet>
+        )}
 
         {/* Logo */}
         <button
-          onClick={() => setView('home')}
+          onClick={() => !isAdmin && setView('home')}
           className="flex items-center gap-2 mr-1 hover:opacity-80 transition"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
             <Bitcoin className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold hidden sm:inline">CrypEx</span>
+          {isAdmin && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 ml-1">ADMIN</Badge>}
         </button>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — hidden for admins */}
+        {!isAdmin && (
         <nav className="hidden md:flex items-center gap-1 ml-2">
           {NAV_ITEMS.map(item => (
             <Button
@@ -141,8 +147,10 @@ export function Navbar() {
             </Button>
           ))}
         </nav>
+        )}
 
-        {/* Search */}
+        {/* Search — hidden for admins */}
+        {!isAdmin && (
         <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-sm mx-auto">
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -155,8 +163,9 @@ export function Navbar() {
             />
           </div>
         </form>
-
-        <div className="flex-1 lg:hidden" />
+        )}
+        {isAdmin && <div className="flex-1" />}
+        {!isAdmin && <div className="flex-1 lg:hidden" />}
 
         {/* Theme toggle */}
         <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme">

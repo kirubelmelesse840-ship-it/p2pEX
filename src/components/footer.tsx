@@ -12,11 +12,13 @@ const FOOTER_NAV: Array<{ id: View; label: string; icon: any }> = [
 ]
 
 export function Footer() {
-  const { view, setView } = useAppStore()
+  const { view, setView, user } = useAppStore()
+  const isAdmin = user?.isAdmin
 
   return (
     <>
-      {/* Desktop footer */}
+      {/* Desktop footer — hidden for admins */}
+      {!isAdmin && (
       <footer className="hidden md:block mt-auto border-t border-border bg-card">
         <div className="container mx-auto px-4 py-6 max-w-7xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -71,8 +73,10 @@ export function Footer() {
           </div>
         </div>
       </footer>
+      )}
 
-      {/* Mobile bottom navigation - FIXED so it's always visible */}
+      {/* Mobile bottom navigation — hidden for admins */}
+      {!isAdmin && (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 safe-area-bottom">
         <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
           {FOOTER_NAV.map(item => (
@@ -89,6 +93,7 @@ export function Footer() {
           ))}
         </div>
       </nav>
+      )}
     </>
   )
 }
