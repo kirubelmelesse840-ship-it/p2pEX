@@ -11,7 +11,7 @@ import { RealTimeLineChart } from '@/components/realtime-chart'
 import { DepthChart } from '@/components/depth-chart'
 import { BackButton } from '@/components/back-button'
 import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
-import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus } from 'lucide-react'
+import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 
 // Local order book component (live from socket)
 function OrderBook({ symbol }: { symbol: string }) {
@@ -762,6 +762,182 @@ export function SpotView() {
           <RecentTrades symbol={symbol} />
         </div>
       </div>
+
+      {/* Profit/Loss Panel — right side */}
+      <ProfitLossPanel symbol={symbol} user={user} />
+    </div>
+  )
+}
+
+// =================== PROFIT/LOSS PANEL ===================
+function ProfitLossPanel({ symbol, user }: { symbol: string; user: any }) {
+  const [trades, setTrades] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!user) { setTrades([]); setLoading(false); return }
+    try {
+      const res = await fetch(`/api/trade/trades?symbol=${symbol}&limit=50`)
+      const data = await res.json()
+      setTrades(data.trades || [])
+    } catch {
+      setTrades([])
+    } finally {
+      setLoading(false)
+    }
+  }, [user, symbol])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 10000)
+    return () => clearInterval(t)
+  }, [load])
+
+  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+
+  // Calculate PnL from trade history
+  // For BUY trades: profit = (currentPrice - buyPrice) * quantity
+  // For SELL trades: profit = (sellPrice - avgBuyPrice) * quantity
+  const prices: Record<string, number> = {
+    BTC: 67500, ETH: 3450, BNB: 585, SOL: 165, XRP: 0.62, ADA: 0.45,
+    DOGE: 0.16, AVAX: 38, LINK: 18.5, DOT: 7.2, MATIC: 0.72, LTC: 85,
+    USDT: 1, USDC: 1,
+  }
+  const currentPrice = prices[base] || 0
+
+  // Calculate total PnL
+  let totalBuyCost = 0
+  let totalBuyQty = 0
+  let totalSellRevenue = 0
+  let totalSellQty = 0
+  let realizedPnL = 0
+
+  // First pass: calculate average buy price
+  const buyTrades = trades.filter(t => t.side === 'BUY')
+  const sellTrades = trades.filter(t => t.side === 'SELL')
+
+  for (const t of buyTrades) {
+    totalBuyCost += t.price * t.quantity
+    totalBuyQty += t.quantity
+  }
+  const avgBuyPrice = totalBuyQty > 0 ? totalBuyCost / totalBuyQty : 0
+
+  for (const t of sellTrades) {
+    totalSellRevenue += t.price * t.quantity
+    totalSellQty += t.quantity
+    // Realized PnL = (sell price - avg buy price) * sell qty
+    realizedPnL += (t.price - avgBuyPrice) * t.quantity
+  }
+
+  // Unrealized PnL = (current price - avg buy price) * remaining qty
+  const remainingQty = totalBuyQty - totalSellQty
+  const unrealizedPnL = remainingQty > 0 ? (currentPrice - avgBuyPrice) * remainingQty : 0
+
+  // Total PnL = realized + unrealized
+  const totalPnL = realizedPnL + unrealizedPnL
+  const pnlPercent = totalBuyCost > 0 ? (totalPnL / totalBuyCost) * 100 : 0
+
+  const isProfit = totalPnL >= 0
+
+  if (!user) return null
+
+  return (
+    <div className="mt-2 bg-card rounded-lg border border-border overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Wallet className="h-4 w-4" />
+          Profit & Loss
+        </h3>
+        <span className="text-xs text-muted-foreground">{base}/{quote}</span>
+      </div>
+
+      {loading ? (
+        <div className="p-6 text-center text-xs text-muted-foreground">Loading PnL...</div>
+      ) : trades.length === 0 ? (
+        <div className="p-6 text-center">
+          <TrendingUp className="h-8 w-8 mx-auto text-muted-foreground mb-2 opacity-30" />
+          <p className="text-xs text-muted-foreground">No trades yet for {base}/{quote}</p>
+          <p className="text-xs text-muted-foreground mt-1">Your profit/loss will appear here after you trade.</p>
+        </div>
+      ) : (
+        <div className="p-4 space-y-4">
+          {/* Total PnL — big number */}
+          <div className={`rounded-lg p-4 text-center ${isProfit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+            <p className="text-xs text-muted-foreground mb-1">Total PnL</p>
+            <p className={`text-3xl font-bold tabular-nums ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+              {isProfit ? '+' : ''}{formatPrice(totalPnL)} {quote}
+            </p>
+            <p className={`text-sm font-medium mt-1 ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+              {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
+            </p>
+          </div>
+
+          {/* Breakdown */}
+          <div className="space-y-2">
+            {/* Realized PnL */}
+            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-2">
+                {realizedPnL >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+                <div>
+                  <span className="text-xs font-medium">Realized PnL</span>
+                  <p className="text-[10px] text-muted-foreground">From closed trades</p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold tabular-nums ${realizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {realizedPnL >= 0 ? '+' : ''}{formatPrice(realizedPnL)} {quote}
+              </span>
+            </div>
+
+            {/* Unrealized PnL */}
+            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-2">
+                {unrealizedPnL >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+                <div>
+                  <span className="text-xs font-medium">Unrealized PnL</span>
+                  <p className="text-[10px] text-muted-foreground">Open position ({formatQty(remainingQty)} {base})</p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold tabular-nums ${unrealizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {unrealizedPnL >= 0 ? '+' : ''}{formatPrice(unrealizedPnL)} {quote}
+              </span>
+            </div>
+          </div>
+
+          {/* Trade stats */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+            <div className="text-center p-2 bg-muted/20 rounded-lg">
+              <p className="text-[10px] text-muted-foreground">Total Bought</p>
+              <p className="text-sm font-medium tabular-nums">{formatQty(totalBuyQty)} {base}</p>
+              <p className="text-[10px] text-muted-foreground">{formatPrice(avgBuyPrice)} {quote} avg</p>
+            </div>
+            <div className="text-center p-2 bg-muted/20 rounded-lg">
+              <p className="text-[10px] text-muted-foreground">Total Sold</p>
+              <p className="text-sm font-medium tabular-nums">{formatQty(totalSellQty)} {base}</p>
+              <p className="text-[10px] text-muted-foreground">{trades.length} trades</p>
+            </div>
+          </div>
+
+          {/* Current position */}
+          {remainingQty > 0 && (
+            <div className="flex items-center justify-between p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <span className="text-xs text-muted-foreground">Current Position:</span>
+              <div className="text-right">
+                <span className="text-sm font-bold tabular-nums">{formatQty(remainingQty)} {base}</span>
+                <p className="text-[10px] text-muted-foreground">≈ {formatPrice(remainingQty * currentPrice)} {quote}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
