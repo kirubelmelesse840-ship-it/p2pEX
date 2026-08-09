@@ -20,7 +20,7 @@ import {
   Shield, Users, TrendingUp, DollarSign, Activity, Settings, AlertTriangle,
   CheckCircle2, XCircle, Clock, Search, Star, Ban, ShieldCheck, ShieldAlert,
   Zap, BarChart3, ArrowUpRight, ArrowDownRight, Plus, Trash2, Edit3, Power,
-  Wallet, RefreshCw, FileText, Bell,
+  Wallet, RefreshCw, FileText, Bell, Send,
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import {
@@ -65,6 +65,7 @@ export function AdminView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SendNotificationButton />
           <AdminNotifications />
           <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
             <Shield className="h-3 w-3 mr-1" /> ADMIN
@@ -2040,5 +2041,177 @@ function AdminNotifications() {
         </>
       )}
     </div>
+  )
+}
+
+// =================== SEND NOTIFICATION (Admin → User) ===================
+function SendNotificationButton() {
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [target, setTarget] = useState<'all' | 'user'>('all')
+  const [selectedUser, setSelectedUser] = useState('')
+  const [users, setUsers] = useState<any[]>([])
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [type, setType] = useState('info')
+  const [sending, setSending] = useState(false)
+
+  const loadUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users?limit=100')
+      const d = await res.json()
+      setUsers((d.users || []).filter((u: any) => !u.isAdmin))
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (open) loadUsers()
+  }, [open])
+
+  const send = async () => {
+    if (!title || !message) {
+      toast({ title: 'Title and message required', variant: 'destructive' })
+      return
+    }
+    if (target === 'user' && !selectedUser) {
+      toast({ title: 'Select a user', variant: 'destructive' })
+      return
+    }
+    setSending(true)
+    try {
+      const res = await fetch('/api/admin/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: target === 'user' ? selectedUser : null,
+          title,
+          message,
+          type,
+        }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'Notification sent!', description: d.message })
+      setOpen(false)
+      setTitle(''); setMessage(''); setSelectedUser(''); setTarget('all'); setType('info')
+    } catch (e: any) {
+      toast({ title: 'Failed to send', description: e.message, variant: 'destructive' })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        title="Send notification to users"
+        onClick={() => setOpen(true)}
+      >
+        <Send className="h-5 w-5" />
+      </Button>
+
+      {open && (
+        <Dialog open onOpenChange={() => setOpen(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" /> Send Notification
+              </DialogTitle>
+              <DialogDescription>
+                Send a message notification to users. They will see it in their notification bell.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              {/* Target */}
+              <div className="flex gap-2">
+                <Button
+                  variant={target === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setTarget('all')}
+                >
+                  All Users (Broadcast)
+                </Button>
+                <Button
+                  variant={target === 'user' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setTarget('user')}
+                >
+                  Specific User
+                </Button>
+              </div>
+
+              {target === 'user' && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Select User</label>
+                  <Select value={selectedUser} onValueChange={setSelectedUser}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a user" /></SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {users.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Type */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Notification Type</label>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">ℹ️ Info (blue)</SelectItem>
+                    <SelectItem value="success">✅ Success (green)</SelectItem>
+                    <SelectItem value="warning">⚠️ Warning (yellow)</SelectItem>
+                    <SelectItem value="announcement">📢 Announcement (purple)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Title</label>
+                <Input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="e.g. System Maintenance"
+                  className="mt-1"
+                  maxLength={100}
+                />
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Message</label>
+                <Textarea
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  placeholder="Type your message to the user(s)..."
+                  rows={4}
+                  className="mt-1 text-sm"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{message.length}/500 characters</p>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={send}
+                  disabled={sending || !title || !message || (target === 'user' && !selectedUser)}
+                >
+                  {sending ? 'Sending...' : 'Send Notification'}
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }

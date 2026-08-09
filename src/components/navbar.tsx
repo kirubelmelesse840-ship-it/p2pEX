@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAppStore, View } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,7 @@ import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
-  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff,
+  TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -171,6 +171,9 @@ export function Navbar() {
         <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme">
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+
+        {/* User notification bell (for non-admin logged-in users) */}
+        {user && !isAdmin && <UserNotificationBell />}
 
         {/* User menu */}
         {user ? (
@@ -706,5 +709,128 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+// =================== USER NOTIFICATION BELL ===================
+function UserNotificationBell() {
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [open, setOpen] = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications')
+      const d = await res.json()
+      if (d.error) return
+      setNotifications(d.notifications || [])
+      setUnreadCount(d.unreadCount || 0)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 15000)
+    return () => clearInterval(t)
+  }, [load])
+
+  const markRead = async (id: string) => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id }),
+      })
+      load()
+    } catch {}
+  }
+
+  const markAllRead = async () => {
+    for (const n of notifications.filter(n => !n.isRead)) {
+      await markRead(n.id)
+    }
+  }
+
+  const formatTimeAgo = (time: string) => {
+    const diff = Date.now() - new Date(time).getTime()
+    if (diff < 60000) return 'just now'
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago'
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago'
+    return Math.floor(diff / 86400000) + 'd ago'
+  }
+
+  const colorForType = (type: string) => {
+    switch (type) {
+      case 'success': return 'text-green-500'
+      case 'warning': return 'text-yellow-500'
+      case 'announcement': return 'text-purple-500'
+      default: return 'text-blue-500'
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative"
+        onClick={() => { setOpen(!open); if (!open) load() }}
+        title="Notifications"
+      >
+        <Bell className="h-4 w-4" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold px-1">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
+            <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
+              <span className="text-sm font-semibold">Notifications</span>
+              {unreadCount > 0 && (
+                <button className="text-xs text-primary hover:underline" onClick={markAllRead}>
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No notifications
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {notifications.map(n => (
+                  <div
+                    key={n.id}
+                    className={'p-3 hover:bg-muted/30 transition ' + (!n.isRead ? 'bg-primary/5' : '')}
+                    onClick={() => { if (!n.isRead) markRead(n.id) }}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={'flex-shrink-0 mt-0.5 ' + colorForType(n.type)}>
+                        <Bell className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-medium">{n.title}</span>
+                          {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.createdAt)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   )
 }

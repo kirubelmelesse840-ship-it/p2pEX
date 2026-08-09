@@ -63,6 +63,17 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+// ============ ADMIN NOTIFICATIONS (messages sent from admin to users) ============
+model AdminNotification {
+  id        String   @id @default(cuid())
+  userId    String?  // null = broadcast to all users
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, success, announcement
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
 model Session {
   id           String   @id @default(cuid())
   userId       String
