@@ -261,16 +261,26 @@ function AuthButtons() {
   const setUser = useAppStore(s => s.setUser)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   const submit = async (mode: 'login' | 'signup') => {
+    if (mode === 'signup') {
+      if (password.length < 6) {
+        toast({ title: 'Password too short', description: 'At least 6 characters required', variant: 'destructive' })
+        return
+      }
+      if (password !== confirmPassword) {
+        toast({ title: 'Passwords do not match', variant: 'destructive' })
+        return
+      }
+    }
     setLoading(true)
     try {
       const url = mode === 'login' ? '/api/auth/login' : '/api/auth'
       const body = mode === 'login'
         ? { email, password }
-        : { email, password, name: name || email.split('@')[0] }
+        : { email, password, name: email.split('@')[0] }
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,7 +294,7 @@ function AuthButtons() {
         description: `Logged in as ${data.user.name}`,
       })
       setShowAuth(null)
-      setEmail(''); setPassword(''); setName('')
+      setEmail(''); setPassword(''); setConfirmPassword('')
     } catch (e: any) {
       toast({ title: 'Authentication failed', description: e.message, variant: 'destructive' })
     } finally {
@@ -362,17 +372,6 @@ function AuthButtons() {
             </div>
 
             <div className="space-y-3">
-              {showAuth === 'signup' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Name</label>
-                  <Input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="mt-1"
-                  />
-                </div>
-              )}
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Email</label>
                 <Input
@@ -394,11 +393,30 @@ function AuthButtons() {
                   onKeyDown={e => { if (e.key === 'Enter') submit(showAuth) }}
                 />
               </div>
+              {showAuth === 'signup' && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Confirm Password</label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`mt-1 ${confirmPassword && confirmPassword !== password ? 'border-red-500' : confirmPassword && confirmPassword === password ? 'border-green-500' : ''}`}
+                    onKeyDown={e => { if (e.key === 'Enter') submit(showAuth) }}
+                  />
+                  {confirmPassword && confirmPassword !== password && (
+                    <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                  )}
+                  {confirmPassword && confirmPassword === password && (
+                    <p className="text-xs text-green-500 mt-1">✓ Passwords match</p>
+                  )}
+                </div>
+              )}
 
               <Button
                 className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
                 onClick={() => submit(showAuth)}
-                disabled={loading || !email || !password}
+                disabled={loading || !email || !password || (showAuth === 'signup' && (!confirmPassword || password !== confirmPassword))}
               >
                 {loading ? 'Please wait...' : showAuth === 'login' ? 'Log In' : 'Create Account'}
               </Button>
