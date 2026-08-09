@@ -11,7 +11,7 @@ import { RealTimeLineChart } from '@/components/realtime-chart'
 import { DepthChart } from '@/components/depth-chart'
 import { BackButton } from '@/components/back-button'
 import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
-import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus, TrendingUp, TrendingDown, Wallet, Shield, User } from 'lucide-react'
 
 // Local order book component (live from socket)
 function OrderBook({ symbol }: { symbol: string }) {
@@ -700,8 +700,12 @@ export function SpotView() {
         </div>
       </div>
 
-      {/* Main grid: chart + order book + trade panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px_320px] gap-2 mb-2">
+      {/* Main grid: user profile (left) + chart + order book + trade panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px_320px] gap-2 mb-2">
+        {/* User Profile — left side */}
+        <div className="hidden lg:block">
+          <UserProfilePanel symbol={symbol} user={user} />
+        </div>
         {/* Chart */}
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
@@ -765,6 +769,147 @@ export function SpotView() {
 
       {/* Profit/Loss Panel — right side */}
       <ProfitLossPanel symbol={symbol} user={user} />
+    </div>
+  )
+}
+
+// =================== USER PROFILE PANEL (left side) ===================
+function UserProfilePanel({ symbol, user }: { symbol: string; user: any }) {
+  const [wallets, setWallets] = useState<any[]>([])
+  const [totalUsd, setTotalUsd] = useState(0)
+
+  const load = useCallback(async () => {
+    if (!user) return
+    try {
+      const res = await fetch('/api/wallet')
+      const data = await res.json()
+      setWallets(data.wallets || [])
+      setTotalUsd(data.totalUsd || 0)
+    } catch {}
+  }, [user])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 10000)
+    return () => clearInterval(t)
+  }, [load])
+
+  if (!user) {
+    return (
+      <div className="bg-card rounded-lg border border-border p-4 text-center">
+        <User className="h-8 w-8 mx-auto text-muted-foreground mb-2 opacity-30" />
+        <p className="text-xs text-muted-foreground">Log in to view your profile</p>
+      </div>
+    )
+  }
+
+  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+
+  const baseWallet = wallets.find(w => w.asset === base)
+  const quoteWallet = wallets.find(w => w.asset === quote)
+
+  return (
+    <div className="bg-card rounded-lg border border-border overflow-hidden sticky top-16">
+      {/* Profile header */}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-lg flex-shrink-0">
+            {user.name?.slice(0, 2).toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">{user.name}</div>
+            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+          </div>
+        </div>
+
+        {/* KYC badge */}
+        <div className="mt-3 flex items-center gap-2">
+          {user.kycVerified ? (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-500/15 text-green-600 dark:text-green-400">
+              <Shield className="h-3 w-3" /> Verified L{user.kycLevel}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+              <Shield className="h-3 w-3" /> Unverified
+            </span>
+          )}
+          {user.isAdmin && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400">
+              <Shield className="h-3 w-3" /> Admin
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Total balance */}
+      <div className="p-3 border-b border-border">
+        <p className="text-xs text-muted-foreground">Total Balance</p>
+        <p className="text-lg font-bold tabular-nums">${formatPrice(totalUsd)}</p>
+      </div>
+
+      {/* Current pair balances */}
+      <div className="p-3 border-b border-border space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">{base}/{quote} Balances</p>
+
+        {/* Base asset */}
+        {baseWallet && (
+          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
+                {base.slice(0, 3)}
+              </div>
+              <div>
+                <div className="text-xs font-medium">{base}</div>
+                <div className="text-[10px] text-muted-foreground">Available</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs font-bold tabular-nums">{formatQty(baseWallet.available)}</div>
+              {baseWallet.locked > 0 && (
+                <div className="text-[10px] text-yellow-500 tabular-nums">🔒 {formatQty(baseWallet.locked)}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quote asset */}
+        {quoteWallet && (
+          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500/20 text-green-600 dark:text-green-400 text-[10px] font-bold">
+                {quote.slice(0, 3)}
+              </div>
+              <div>
+                <div className="text-xs font-medium">{quote}</div>
+                <div className="text-[10px] text-muted-foreground">Available</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs font-bold tabular-nums">{formatQty(quoteWallet.available)}</div>
+              {quoteWallet.locked > 0 && (
+                <div className="text-[10px] text-yellow-500 tabular-nums">🔒 {formatQty(quoteWallet.locked)}</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick stats */}
+      <div className="p-3 space-y-2">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Active Wallets</span>
+          <span className="font-medium tabular-nums">{wallets.filter(w => w.balance > 0).length}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Total Wallets</span>
+          <span className="font-medium tabular-nums">{wallets.length}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Member Since</span>
+          <span className="font-medium">{new Date(user.id?.slice(-8) ? Date.now() : Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+        </div>
+      </div>
     </div>
   )
 }
