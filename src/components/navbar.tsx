@@ -98,9 +98,7 @@ export function Navbar() {
           </SheetTrigger>
           <SheetContent side="left" className="w-72">
             <div className="flex items-center gap-2 px-2 py-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
-                <Bitcoin className="h-5 w-5 text-white" />
-              </div>
+              <img src="/logo.png" alt="P2PEX" className="h-8 w-8 object-contain rounded-full" />
               <span className="text-lg font-bold">P2PEX</span>
             </div>
             <nav className="flex flex-col gap-1">
@@ -125,9 +123,7 @@ export function Navbar() {
           onClick={() => !isAdmin && setView('home')}
           className="flex items-center gap-2 mr-1 hover:opacity-80 transition"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
-            <Bitcoin className="h-5 w-5 text-white" />
-          </div>
+          <img src="/logo.png" alt="P2PEX" className="h-8 w-8 object-contain rounded-full" />
           <span className="text-lg font-bold hidden sm:inline">P2PEX</span>
           {isAdmin && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 ml-1">ADMIN</Badge>}
         </button>
@@ -365,9 +361,7 @@ function AuthButtons() {
         <Dialog open onOpenChange={() => setShowAuth(null)}>
           <DialogContent className="max-w-md">
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
-                <Bitcoin className="h-6 w-6 text-white" />
-              </div>
+              <img src="/logo.png" alt="P2PEX" className="h-10 w-10 object-contain rounded-full" />
               <div>
                 <h2 className="text-lg font-bold">{showAuth === 'login' ? 'Log In' : 'Create Account'}</h2>
                 <p className="text-xs text-muted-foreground">P2PEX</p>

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   keywords: ["crypto", "exchange", "P2PEX", "bitcoin", "ethereum", "USDT", "trading", "P2P", "wallet"],
   authors: [{ name: "P2PEX Team" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.png",
   },
   openGraph: {
     title: "P2PEX - Cryptocurrency Exchange",

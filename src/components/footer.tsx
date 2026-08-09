@@ -25,7 +25,7 @@ export function Footer() {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
-                  <Bitcoin className="h-4 w-4 text-white" />
+                  <img src="/logo.png" alt="P2PEX" className="h-7 w-7 object-contain rounded-full" />
                 </div>
                 <span className="font-bold">P2PEX</span>
               </div>
