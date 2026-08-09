@@ -123,7 +123,7 @@ export function HomeView() {
 
       {/* Three Feature Cards: Bank-Grade Security, High-Performance Engine, Global Coverage */}
       <section className="mb-6">
-        <h2 className="text-lg font-bold mb-3">Why CrypEx?</h2>
+        <h2 className="text-lg font-bold mb-3">Why P2PET?</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <FeatureCard
             icon={<Shield className="h-5 w-5" />}

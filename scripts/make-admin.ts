@@ -25,7 +25,7 @@ async function makeAdmin() {
     { key: 'minKycLevel', value: '0' },
     { key: 'maxDailyWithdrawUsd', value: '10000' },
     { key: 'supportEmail', value: 'support@crypex.com' },
-    { key: 'announcement', value: 'Welcome to CrypEx — trade securely with confidence!' },
+    { key: 'announcement', value: 'Welcome to P2PET — trade securely with confidence!' },
   ]
   for (const s of defaults) {
     const existing = await db.setting.findUnique({ where: { key: s.key } })

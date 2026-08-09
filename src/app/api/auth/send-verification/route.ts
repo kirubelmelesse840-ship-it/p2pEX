@@ -36,7 +36,7 @@ async function getTransporter() {
         secure: process.env.SMTP_PORT === '465',
         auth: { user: smtpUser, pass: smtpPass },
       }),
-      from: process.env.FROM_EMAIL || 'CrypEx <noreply@crypex.com>',
+      from: process.env.FROM_EMAIL || 'P2PET <noreply@crypex.com>',
       isEthereal: false,
     }
   }
@@ -68,7 +68,7 @@ async function getTransporter() {
 
   return {
     transporter,
-    from: 'CrypEx <noreply@crypex.com>',
+    from: 'P2PET <noreply@crypex.com>',
     isEthereal: true,
   }
 }
@@ -119,16 +119,16 @@ export async function POST(req: NextRequest) {
     const info = await transporter.sendMail({
       from,
       to: normalizedEmail,
-      subject: 'Your CrypEx Verification Code',
+      subject: 'Your P2PET Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #ffffff;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">CrypEx</h1>
+            <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">P2PET</h1>
             <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Cryptocurrency Exchange</p>
           </div>
           <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
             <h2 style="color: #111827; margin: 0 0 12px 0; font-size: 20px;">Email Verification</h2>
-            <p style="color: #4b5563; margin: 0 0 20px 0;">You're verifying your email address for your CrypEx account. Use the code below to complete verification:</p>
+            <p style="color: #4b5563; margin: 0 0 20px 0;">You're verifying your email address for your P2PET account. Use the code below to complete verification:</p>
             <div style="text-align: center; margin: 24px 0;">
               <div style="display: inline-block; background: #ffffff; border: 2px solid #f59e0b; padding: 16px 40px; border-radius: 8px; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">
                 ${code}
@@ -138,10 +138,10 @@ export async function POST(req: NextRequest) {
           </div>
           <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">If you didn't request this code, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 11px; text-align: center;">© 2026 CrypEx. All rights reserved.</p>
+          <p style="color: #9ca3af; font-size: 11px; text-align: center;">© 2026 P2PET. All rights reserved.</p>
         </div>
       `,
-      text: `Your CrypEx verification code is: ${code}\n\nIt expires in 5 minutes.\n\nIf you didn't request this code, you can safely ignore this email.`,
+      text: `Your P2PET verification code is: ${code}\n\nIt expires in 5 minutes.\n\nIf you didn't request this code, you can safely ignore this email.`,
     })
 
     // Get the preview URL (for Ethereal) or message ID

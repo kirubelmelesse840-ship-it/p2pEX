@@ -274,7 +274,7 @@ export function WalletView() {
                       <td className="px-4 py-3 text-xs hidden sm:table-cell">
                         {isInternal ? (
                           <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                            <Zap className="h-3 w-3" /> CrypEx
+                            <Zap className="h-3 w-3" /> P2PET
                           </span>
                         ) : (
                           <span>{t.network}</span>
@@ -637,7 +637,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Deposit Crypto</DialogTitle>
-          <DialogDescription>Receive crypto to your CrypEx wallet</DialogDescription>
+          <DialogDescription>Receive crypto to your P2PET wallet</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -712,7 +712,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
 }
 
 /**
- * TransferDialog - internal transfer between CrypEx users by email
+ * TransferDialog - internal transfer between P2PET users by email
  * Instant, fee-free, no blockchain confirmation needed
  */
 function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
@@ -776,7 +776,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
             Internal Transfer
           </DialogTitle>
           <DialogDescription>
-            Send crypto to another CrypEx user instantly — no blockchain fees, no confirmation delays.
+            Send crypto to another P2PET user instantly — no blockchain fees, no confirmation delays.
           </DialogDescription>
         </DialogHeader>
 
@@ -790,7 +790,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                   <li>Free — no network fees</li>
                   <li>Instant — confirmed immediately</li>
-                  <li>Only between CrypEx users (by email)</li>
+                  <li>Only between P2PET users (by email)</li>
                 </ul>
               </div>
             </div>
@@ -811,7 +811,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Recipient Email (CrypEx user)</label>
+            <label className="text-xs font-medium text-muted-foreground">Recipient Email (P2PET user)</label>
             <Input
               type="email"
               value={recipientEmail}
@@ -820,7 +820,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
               className="mt-1"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              The recipient must have a CrypEx account.
+              The recipient must have a P2PET account.
             </p>
           </div>
 

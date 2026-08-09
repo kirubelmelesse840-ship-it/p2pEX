@@ -78,7 +78,7 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: 'crypex-store',
+      name: 'p2pet-store',
       partialize: (state) => ({
         symbol: state.symbol,
         theme: state.theme,
