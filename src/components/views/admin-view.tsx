@@ -1775,7 +1775,6 @@ function PaymentReviewTab() {
           <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="PENDING_REVIEW">⏳ Pending Review</SelectItem>
-            <SelectItem value="PAID">✅ Verified (Paid)</SelectItem>
             <SelectItem value="CANCELED">❌ Rejected/Canceled</SelectItem>
             <SelectItem value="COMPLETED">✓ Completed</SelectItem>
           </SelectContent>
@@ -1860,7 +1859,8 @@ function PaymentReviewTab() {
                         className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white"
                         onClick={() => act(o.id, 'approve')}
                       >
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        {o.sellerPaymentMethod ? 'Finish' : 'Approve'}
                       </Button>
                       <Button
                         size="sm"
@@ -1928,6 +1928,16 @@ function PaymentReviewTab() {
                 )}
               </div>
 
+              {/* Seller payment details (for SELL orders — user selling USDT) */}
+              {reviewDialog.sellerPaymentMethod && reviewDialog.sellerAccountNumber && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 space-y-1 text-sm">
+                  <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1">Seller's Payment Details (to receive fiat)</p>
+                  <div><span className="text-muted-foreground">Method:</span> <span className="font-medium">{reviewDialog.sellerPaymentMethod}</span></div>
+                  <div><span className="text-muted-foreground">Account Number/Phone:</span> <span className="font-mono font-bold">{reviewDialog.sellerAccountNumber}</span></div>
+                  <div><span className="text-muted-foreground">Account Name:</span> <span className="font-medium">{reviewDialog.sellerAccountName}</span></div>
+                </div>
+              )}
+
               {/* Actions */}
               {reviewDialog.status === 'PENDING_REVIEW' && (
                 <div className="flex gap-2 border-t border-border pt-4">
@@ -1939,13 +1949,14 @@ function PaymentReviewTab() {
                     className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
                     onClick={() => act(reviewDialog.id, 'reject')}
                   >
-                    <XCircle className="h-4 w-4 mr-1" /> Reject Payment
+                    <XCircle className="h-4 w-4 mr-1" /> Reject
                   </Button>
                   <Button
                     className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                     onClick={() => act(reviewDialog.id, 'approve')}
                   >
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> Approve Payment
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    {reviewDialog.sellerPaymentMethod ? 'Finish Order' : 'Approve & Transfer'}
                   </Button>
                 </div>
               )}

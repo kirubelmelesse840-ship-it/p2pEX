@@ -665,8 +665,6 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {details.email && copyField('Email', details.email)}
                     {details.iban && copyField('IBAN', details.iban)}
                     {details.cashtag && copyField('Cashtag', details.cashtag)}
-                    {/* Hide Account Name (person name) when user is selling — only network + address are needed */}
-                    {details.name && isBuying && copyField('Account Name', details.name)}
                   </div>
                 )
               })()}
@@ -800,9 +798,9 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 
 function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void }) {
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Payment Under Review' },
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Under Admin Review' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending Payment' },
-    PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Paid - Awaiting Release' },
+    PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Completed' },
     CANCELED: { color: 'text-red-500 bg-red-500/10', icon: X, label: 'Canceled' },
     DISPUTED: { color: 'text-orange-500 bg-orange-500/10', icon: AlertCircle, label: 'Disputed' },
@@ -872,8 +870,9 @@ function OrderDialog({ order, onClose, onSuccess }: {
   }
 
   const statusMap: Record<string, { color: string; label: string }> = {
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Under Admin Review' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', label: 'Pending Payment' },
-    PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Paid - Awaiting Release' },
+    PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', label: 'Completed' },
     CANCELED: { color: 'text-red-500 bg-red-500/10', label: 'Canceled' },
     DISPUTED: { color: 'text-orange-500 bg-orange-500/10', label: 'Disputed' },
@@ -925,28 +924,18 @@ function OrderDialog({ order, onClose, onSuccess }: {
           </div>
 
           {/* Action buttons based on role + status */}
-          {order.status === 'PENDING_REVIEW' && order.myRole === 'BUYER' && (
+          {order.status === 'PENDING_REVIEW' && (
             <div className="space-y-3">
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
                 <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
-                <p className="text-sm font-medium">Payment proof under admin review</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your payment screenshot has been sent to the admin. Once verified, the seller will release the {order.asset}.
+                <p className="text-sm font-medium">
+                  {order.myRole === 'BUYER' ? 'Payment proof under admin review' : 'Order under admin review'}
                 </p>
-              </div>
-              <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
-                Cancel Order
-              </Button>
-            </div>
-          )}
-
-          {order.status === 'PENDING_REVIEW' && order.myRole === 'SELLER' && (
-            <div className="space-y-3">
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
-                <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
-                <p className="text-sm font-medium">Buyer's payment is being verified</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  The buyer uploaded a payment screenshot. Admin is verifying it. Once approved, you can release the {order.asset}.
+                  {order.myRole === 'BUYER'
+                    ? `Your payment screenshot has been sent to the admin. Once approved, ${order.amount} ${order.asset} will be credited to your wallet automatically.`
+                    : `The order has been sent to the admin. Once the admin finishes the order, ${order.amount} ${order.asset} will be transferred to the buyer and your balance will decrease.`
+                  }
                 </p>
               </div>
               <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
@@ -978,19 +967,9 @@ function OrderDialog({ order, onClose, onSuccess }: {
                     <span className="text-muted-foreground">Send To (Seller):</span>
                     <span className="font-medium">{order.sellerName}</span>
                   </div>
-                  {order.paymentMethod === 'Telebirr' || order.paymentMethod === 'CBE Birr' ? (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Phone Number:</span>
-                      <span className="font-mono font-bold">962404391</span>
-                    </div>
-                  ) : null}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Account Name:</span>
-                    <span className="font-bold">Kirubel</span>
-                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  After sending the payment, click "I've Paid" below to notify the seller.
+                  After sending the payment, click "I've Paid" below. The order will then be sent to admin for verification.
                 </p>
               </div>
               <Button className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => action('mark_paid')} disabled={loading}>
@@ -1003,16 +982,12 @@ function OrderDialog({ order, onClose, onSuccess }: {
           )}
 
           {order.status === 'PAID' && order.myRole === 'SELLER' && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                The buyer has marked this order as paid. Verify the payment in your account, then release the {order.asset}.
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+              <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
+              <p className="text-sm font-medium">Awaiting admin approval</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The buyer's payment is being verified by the admin. Once the admin approves, the {order.asset} will be transferred automatically.
               </p>
-              <Button className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => action('release')} disabled={loading}>
-                <Check className="h-4 w-4 mr-1.5" /> Release {order.asset}
-              </Button>
-              <Button variant="outline" className="w-full text-orange-500" onClick={() => action('dispute')} disabled={loading}>
-                <AlertCircle className="h-4 w-4 mr-1.5" /> Report Issue
-              </Button>
             </div>
           )}
 

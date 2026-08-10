@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
-export const bodySizeLimit = '10mb'
+
+// Ensure this route runs in the Node.js runtime (not Edge) for full body support
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser(req as unknown as Request)
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })

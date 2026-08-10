@@ -1,8 +1,21 @@
 /**
  * POST /api/p2p/orders - create a P2P order (start a trade)
- * Body: { listingId, amount, paymentMethod }
+ * Body: { listingId, amount, paymentMethod, paymentScreenshot?, sellerPaymentMethod?, sellerAccountNumber?, sellerAccountName? }
  *
  * GET /api/p2p/orders - list user's P2P orders
+ *
+ * Flow:
+ *  - BUY order (user buying USDT from a SELL listing):
+ *    -> Lock the seller's USDT (move from available to locked)
+ *    -> Create order with status PENDING_REVIEW (admin must approve payment)
+ *    -> Admin approves -> transfer USDT from seller to buyer, mark COMPLETED
+ *    -> Admin rejects -> refund seller's locked USDT, mark CANCELED
+ *
+ *  - SELL order (user selling USDT to a BUY listing):
+ *    -> Lock the seller's (responder's) USDT
+ *    -> Create order with status PENDING_REVIEW (sent to admin automatically)
+ *    -> Admin finishes -> transfer USDT from seller to buyer, mark COMPLETED
+ *    -> Admin rejects -> refund seller's locked USDT, mark CANCELED
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -13,12 +26,12 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { listingId, amount, paymentMethod, paymentScreenshot } = await req.json()
+    const { listingId, amount, paymentMethod, paymentScreenshot,
+            sellerPaymentMethod, sellerAccountNumber, sellerAccountName } = await req.json()
     if (!listingId || !amount || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // For SELL listings (buyer is buying), payment screenshot is required
     const listing = await db.p2PListing.findUnique({
       where: { id: listingId },
       include: { user: true },
@@ -27,9 +40,16 @@ export async function POST(req: NextRequest) {
     if (listing.status !== 'ACTIVE') return NextResponse.json({ error: 'Listing not active' }, { status: 400 })
     if (listing.userId === user.id) return NextResponse.json({ error: 'Cannot trade with yourself' }, { status: 400 })
 
-    // If buyer is buying (SELL listing), require payment screenshot
+    // For SELL listings (buyer is buying), payment screenshot is required
     if (listing.side === 'SELL' && !paymentScreenshot) {
       return NextResponse.json({ error: 'Payment screenshot is required before placing the order' }, { status: 400 })
+    }
+
+    // For BUY listings (user is selling), require seller payment details
+    if (listing.side === 'BUY') {
+      if (!sellerAccountNumber || !sellerAccountName) {
+        return NextResponse.json({ error: 'Seller payment details are required' }, { status: 400 })
+      }
     }
 
     const fiatTotal = amount * listing.price
@@ -49,28 +69,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine buyer / seller
-    // If listing.side === 'SELL', the listing owner is the seller, the responder is the buyer.
-    // If listing.side === 'BUY',  the listing owner is the buyer,  the responder is the seller.
     const buyerId = listing.side === 'SELL' ? user.id : listing.userId
     const sellerId = listing.side === 'SELL' ? listing.userId : user.id
 
-    // For SELL listings, the asset was already locked when the listing was created.
-    // For BUY listings, the responder (seller) needs to have the asset, and we lock it now.
-    if (listing.side === 'BUY') {
-      const sellerWallet = await db.wallet.findUnique({
-        where: { userId_asset: { userId: user.id, asset: listing.asset } },
-      })
-      if (!sellerWallet || sellerWallet.available < amount) {
-        return NextResponse.json({ error: `Insufficient ${listing.asset} balance` }, { status: 400 })
-      }
-      await db.wallet.update({
-        where: { id: sellerWallet.id },
-        data: {
-          available: { decrement: amount },
-          locked: { increment: amount },
-        },
-      })
+    // Lock the seller's USDT for BOTH buy and sell orders
+    // (ensures the USDT is reserved and can't be spent elsewhere while the trade is pending)
+    const sellerWallet = await db.wallet.findUnique({
+      where: { userId_asset: { userId: sellerId, asset: listing.asset } },
+    })
+    if (!sellerWallet || sellerWallet.available < amount) {
+      return NextResponse.json({ error: `Insufficient ${listing.asset} balance for the seller` }, { status: 400 })
     }
+    await db.wallet.update({
+      where: { id: sellerWallet.id },
+      data: {
+        available: { decrement: amount },
+        locked: { increment: amount },
+      },
+    })
 
     // Decrement listing available
     await db.p2PListing.update({
@@ -80,6 +96,16 @@ export async function POST(req: NextRequest) {
         ...(listing.available - amount <= 0 ? { status: 'COMPLETED' } : {}),
       },
     })
+
+    // Build seller payment details for SELL orders (user selling USDT)
+    let sellerPaymentDetails: any = null
+    if (listing.side === 'BUY' && sellerPaymentMethod && sellerAccountNumber && sellerAccountName) {
+      sellerPaymentDetails = JSON.stringify({
+        method: sellerPaymentMethod,
+        accountNumber: sellerAccountNumber,
+        accountName: sellerAccountName,
+      })
+    }
 
     const order = await db.p2POrder.create({
       data: {
@@ -93,9 +119,12 @@ export async function POST(req: NextRequest) {
         total: fiatTotal,
         paymentMethod,
         paymentScreenshot: paymentScreenshot || null,
-        // If buyer uploaded payment proof, start in PENDING_REVIEW for admin verification
-        // Otherwise PENDING_PAYMENT (for SELL listings where buyer sells)
-        status: listing.side === 'SELL' ? 'PENDING_REVIEW' : 'PENDING_PAYMENT',
+        // Store seller payment details for SELL orders
+        sellerPaymentMethod: sellerPaymentMethod || null,
+        sellerAccountNumber: sellerAccountNumber || null,
+        sellerAccountName: sellerAccountName || null,
+        // ALL orders go to admin review — no transaction completes without admin approval
+        status: 'PENDING_REVIEW',
       },
       include: {
         buyer: { select: { name: true } },
@@ -122,7 +151,7 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
     const url = new URL(req.url)
-    const role = url.searchParams.get('role') || 'all' // all | buyer | seller
+    const role = url.searchParams.get('role') || 'all'
 
     const where = role === 'buyer'
       ? { buyerId: user.id }
@@ -135,19 +164,48 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {
-        buyer: { select: { name: true } },
-        seller: { select: { name: true } },
+        buyer: { select: { name: true, userId: true, username: true } },
+        seller: { select: { name: true, userId: true, username: true } },
+        listing: {
+          select: {
+            side: true,
+            paymentMethods: true,
+            paymentDetails: true,
+            user: { select: { name: true } },
+          },
+        },
       },
     })
 
     return NextResponse.json({
-      orders: orders.map(o => ({
-        ...o,
-        buyerName: o.buyer.name,
-        sellerName: o.seller.name,
-        // current user's role
-        myRole: o.buyerId === user.id ? 'BUYER' : 'SELLER',
-      })),
+      orders: orders.map(o => {
+        // Determine the ad poster's display name from the listing's paymentDetails
+        let adPosterName: string | null = null
+        try {
+          const pd = typeof o.listing.paymentDetails === 'string'
+            ? JSON.parse(o.listing.paymentDetails)
+            : o.listing.paymentDetails
+          const methods = typeof o.listing.paymentMethods === 'string'
+            ? JSON.parse(o.listing.paymentMethods)
+            : o.listing.paymentMethods
+          if (pd && methods && methods.length > 0) {
+            const firstMethod = methods[0]
+            if (pd[firstMethod]?.name) adPosterName = pd[firstMethod].name
+          }
+        } catch {}
+        if (!adPosterName) adPosterName = o.listing.user?.name || null
+
+        const buyerName = o.buyer.userId || o.buyer.username || o.buyer.name
+        const sellerName = adPosterName || o.seller.name
+
+        return {
+          ...o,
+          buyerName,
+          sellerName,
+          adPosterName,
+          myRole: o.buyerId === user.id ? 'BUYER' : 'SELLER',
+        }
+      }),
     })
   } catch (e: any) {
     console.error('[p2p/orders GET]', e)
