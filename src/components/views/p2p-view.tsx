@@ -929,14 +929,20 @@ function OrderDialog({ order, onClose, onSuccess }: {
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
                 <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
                 <p className="text-sm font-medium">
-                  {order.myRole === 'BUYER' ? 'Payment proof under admin review' : 'Order under admin review'}
+                  {order.myRole === 'BUYER' ? 'Payment under admin review' : 'Order under admin review'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {order.myRole === 'BUYER'
-                    ? `Your payment screenshot has been sent to the admin. Once approved, ${order.amount} ${order.asset} will be credited to your wallet automatically.`
-                    : `The order has been sent to the admin. Once the admin finishes the order, ${order.amount} ${order.asset} will be transferred to the buyer and your balance will decrease.`
+                    ? `The admin is checking both sides — verifying your payment screenshot and confirming with the seller. Once approved, ${order.amount} ${order.asset} will be credited to your wallet automatically.`
+                    : `The admin is checking both sides — verifying the buyer's payment and confirming with you. Once the admin finishes the order, ${order.amount} ${order.asset} will be transferred to the buyer and your balance will decrease.`
                   }
                 </p>
+                <div className="mt-2 pt-2 border-t border-blue-500/20 text-[10px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Admin verifies payment proof · contacts both parties · approves transfer
+                  </span>
+                </div>
               </div>
               <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
                 Cancel Order
