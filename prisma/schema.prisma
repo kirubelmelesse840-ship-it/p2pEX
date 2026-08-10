@@ -13,6 +13,8 @@ datasource db {
 // ============ USERS ============
 model User {
   id            String   @id @default(cuid())
+  userId        String   @unique  // numerical ID like 000001
+  username      String   @unique  // auto-generated like @kirubel8402
   email         String   @unique
   name          String
   passwordHash  String
@@ -54,6 +56,8 @@ model User {
   p2pSellOrders P2POrder[]       @relation("p2pSellerOrders")
   transactions  Transaction[]
   sessions      Session[]
+  supportMessages SupportMessage[]
+  pushSubscriptions PushSubscription[]
 }
 
 // ============ SETTINGS (singleton-style key/value store) ============
@@ -83,6 +87,34 @@ model Session {
   ipAddress    String?
   userAgent    String?
   createdAt    DateTime @default(now())
+}
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([userId])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    String
+  message   String
+  type      String   @default("text")
+  imageData String?
+  voiceData String?
+  videoData String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
 }
 
 // ============ WALLETS ============
@@ -201,6 +233,9 @@ model P2PListing {
   paymentDetails String? // JSON map of payment method -> {phone, name}
   // Terms
   terms        String?
+  // Admin-editable display fields
+  tradesCount  Int      @default(0)
+  rating       Float    @default(4.9)
   // Status
   status       String   @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | CANCELED
   createdAt    DateTime @default(now())
@@ -229,6 +264,9 @@ model P2POrder {
   paymentMethod String
   // Payment proof screenshot (base64 compressed image) — required before order is placed
   paymentScreenshot String? // base64 image of payment confirmation screenshot
+  sellerPaymentMethod String?
+  sellerAccountNumber  String?
+  sellerAccountName    String?
   // Status flow: PENDING_REVIEW -> PENDING_PAYMENT -> PAID -> RELEASED -> COMPLETED | DISPUTED | CANCELED
   status       String   @default("PENDING_REVIEW")
   createdAt    DateTime @default(now())

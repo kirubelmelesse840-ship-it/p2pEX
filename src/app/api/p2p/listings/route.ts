@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
         paymentMethods: JSON.parse(l.paymentMethods),
         paymentDetails: l.paymentDetails ? JSON.parse(l.paymentDetails) : null,
         terms: l.terms,
+        tradesCount: l.tradesCount,
+        rating: l.rating,
         status: l.status,
         createdAt: l.createdAt,
         user: {

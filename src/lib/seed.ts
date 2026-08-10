@@ -62,13 +62,34 @@ function genAddress(prefix: string): string {
 export async function seedDatabase() {
   console.log('[seed] starting...')
 
-  // 1. Create demo user
+  // 1. Create admin user
+  let adminUser = await db.user.findUnique({ where: { email: 'kirubelmelesse840@gmail.com' } })
+  if (!adminUser) {
+    adminUser = await db.user.create({
+      data: {
+        email: 'kirubelmelesse840@gmail.com',
+        name: 'Kirubel Melesse',
+        userId: '000001',
+        username: 'kirubel0001',
+        passwordHash: hashPassword('admin123'),
+        kycVerified: true,
+        kycLevel: 2,
+        fiatCurrency: 'ETB',
+        isAdmin: true,
+      },
+    })
+    console.log(`[seed] created admin user: ${adminUser.id}`)
+  }
+
+  // 1b. Create demo user
   let user = await db.user.findUnique({ where: { email: 'demo@crypex.com' } })
   if (!user) {
     user = await db.user.create({
       data: {
         email: 'demo@crypex.com',
         name: 'Demo Trader',
+        userId: '000000',
+        username: 'demotrader1234',
         passwordHash: hashPassword('demo12345'),
         kycVerified: true,
         kycLevel: 2,

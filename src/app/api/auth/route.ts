@@ -21,13 +21,19 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
+    // Auto-generate numerical userId and username
+    const userCount = await db.user.count()
+    const newUserId = String(userCount + 1).padStart(6, '0')
+    const baseName = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '')
+    const newUsername = baseName + Math.floor(Math.random() * 9000 + 1000)
+
     const user = await db.user.create({
       data: {
         email,
         name: name || email.split('@')[0],
+        userId: newUserId,
+        username: newUsername,
         passwordHash: hashPassword(password),
-        // New users start as explicitly UNVERIFIED until they submit KYC
-        // and an admin approves it.
         kycVerified: false,
         kycLevel: 0,
         kycStatus: 'NONE',
@@ -60,10 +66,15 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // Credit welcome bonus (10 USDT)
+    import('@/lib/welcome-bonus').then(m => { m.creditWelcomeBonus(user.id) }).catch(() => {})
+    // Notify admin
+    import('@/lib/admin-email-notifications').then(m => { m.notifyAdminUserSignup(user.name, user.email, user.userId) }).catch(() => {})
+
     const session = await createSession(user.id, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined)
 
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, kycVerified: user.kycVerified, kycLevel: user.kycLevel, kycStatus: user.kycStatus, fiatCurrency: user.fiatCurrency, isAdmin: user.isAdmin },
+      user: { id: user.id, userId: user.userId, email: user.email, name: user.name, username: user.username, kycVerified: user.kycVerified, kycLevel: user.kycLevel, kycStatus: user.kycStatus, fiatCurrency: user.fiatCurrency, isAdmin: user.isAdmin },
       token: session.token,
     })
     response.cookies.set('session_token', session.token, {
@@ -89,8 +100,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     user: {
       id: user.id,
+      userId: user.userId,
       email: user.email,
       name: user.name,
+      username: user.username,
       kycVerified: user.kycVerified,
       kycLevel: user.kycLevel,
       kycStatus: user.kycStatus,

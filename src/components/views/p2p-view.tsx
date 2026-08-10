@@ -34,8 +34,10 @@ interface Listing {
   minOrder: number
   maxOrder: number
   paymentMethods: string[]
-  paymentDetails?: Record<string, { phone?: string; name?: string; account?: string; email?: string; iban?: string; cashtag?: string }> | null
+  paymentDetails?: Record<string, { phone?: string; name?: string; account?: string; email?: string; iban?: string; cashtag?: string; network?: string; address?: string }> | null
   terms?: string
+  tradesCount?: number
+  rating?: number
   status: string
   createdAt: string
   user: { name: string; kycVerified: boolean; kycLevel: number }
@@ -315,11 +317,9 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
   const isMine = user && listing.user.name === user.name
   const hasVerification = listing.user.kycVerified
   const kycLevel = listing.user.kycLevel || 0
-  // Deterministic trades count based on listing id (stable across renders)
-  const tradesCount = useMemo(() => {
-    const hash = listing.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-    return 50 + (hash % 500)
-  }, [listing.id])
+  // Use real trades count and rating from the listing (set by admin)
+  const tradesCount = listing.tradesCount || 0
+  const rating = listing.rating || 4.9
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
@@ -356,7 +356,7 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
               )}
               <span className="mx-1">·</span>
               <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-              <span>4.9</span>
+              <span>{rating.toFixed(1)}</span>
               <span className="mx-1">·</span>
               <span>{tradesCount} trades</span>
             </div>
