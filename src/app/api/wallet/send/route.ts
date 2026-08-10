@@ -1,6 +1,11 @@
 /**
- * POST /api/wallet/send - send crypto to external address (simulated)
- * Body: { asset, network, address, amount }
+ * POST /api/wallet/send - request a withdrawal to an external address
+ * Body: { asset, network, address, amount, memo? }
+ *
+ * The wallet balance is NOT debited here. Instead, the requested amount
+ * (amount + fee) is moved from `available` to `locked`. The actual balance
+ * deduction happens only when the admin approves the withdrawal.
+ * If the admin rejects, the locked funds are returned to `available`.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -70,15 +75,17 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Deduct balance immediately (will be unlocked on confirmation)
+    // Lock funds: move amount+fee from `available` to `locked`.
+    // Balance (total) is NOT changed yet — the actual deduction happens on admin approval.
     await db.wallet.update({
       where: { id: wallet.id },
       data: {
-        balance: { decrement: total },
         available: { decrement: total },
+        locked: { increment: total },
       },
     })
 
+    // Create a PENDING withdrawal transaction
     const tx = await db.transaction.create({
       data: {
         userId: user.id,
@@ -88,28 +95,16 @@ export async function POST(req: NextRequest) {
         fee,
         network,
         toAddress: address,
-        note: memo,
+        note: memo || `Withdrawal to ${address.slice(0, 10)}... via ${network} — awaiting admin approval`,
         status: 'PENDING',
         confirmations: 0,
         requiredConfirmations: 1,
       },
     })
 
-    // Simulate confirmation after a short delay (immediately for demo)
-    setTimeout(async () => {
-      try {
-        await db.transaction.update({
-          where: { id: tx.id },
-          data: { status: 'COMPLETED', confirmations: 1, completedAt: new Date() as any },
-        })
-      } catch (e) {
-        console.error('[wallet/send] confirm error', e)
-      }
-    }, 2000)
-
     return NextResponse.json({
       transaction: tx,
-      message: 'Withdrawal submitted. Funds will be sent shortly.',
+      message: 'Withdrawal request submitted. Funds are locked pending admin approval.',
     })
   } catch (e: any) {
     console.error('[wallet/send]', e)

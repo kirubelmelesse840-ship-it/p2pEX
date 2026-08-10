@@ -1,7 +1,10 @@
 /**
- * POST /api/wallet/deposit - simulate deposit (mock - instantly credits)
+ * POST /api/wallet/deposit - create a pending deposit request
  * Body: { asset, network, amount }
- * In a real exchange, deposits come from on-chain monitoring.
+ *
+ * The wallet balance is NOT changed here. A PENDING transaction is created
+ * and the admin must approve it before the user's balance is credited.
+ * If the admin rejects, nothing changes (no funds were ever moved).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -20,10 +23,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 })
     }
 
-    const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: user.id, asset } } })
-    if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
+    // Find or create the user's wallet for this asset
+    let wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: user.id, asset } } })
+    if (!wallet) {
+      wallet = await db.wallet.create({
+        data: {
+          userId: user.id,
+          asset,
+          assetName: asset,
+          balance: 0,
+          available: 0,
+          locked: 0,
+          depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
+        },
+      })
+    }
 
-    // Create pending transaction
+    // Create a PENDING deposit transaction — do NOT credit the wallet.
+    // The admin will review and approve/reject via /api/admin/transactions/action
     const tx = await db.transaction.create({
       data: {
         userId: user.id,
@@ -32,42 +49,18 @@ export async function POST(req: NextRequest) {
         amount,
         fee: 0,
         network,
-        fromAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
+        fromAddress: 'external_deposit',
         txHash: '0x' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2),
         status: 'PENDING',
         confirmations: 0,
-        requiredConfirmations: asset === 'BTC' ? 3 : asset === 'ETH' ? 12 : 1,
+        requiredConfirmations: 1,
+        note: `Deposit request via ${network} — awaiting admin approval`,
       },
     })
 
-    // Simulate confirmation - credit immediately for demo
-    setTimeout(async () => {
-      try {
-        await db.$transaction([
-          db.wallet.update({
-            where: { id: wallet.id },
-            data: {
-              balance: { increment: amount },
-              available: { increment: amount },
-            },
-          }),
-          db.transaction.update({
-            where: { id: tx.id },
-            data: {
-              status: 'COMPLETED',
-              confirmations: tx.requiredConfirmations,
-            },
-          }),
-        ])
-        console.log(`[deposit] credited ${amount} ${asset} to user ${user.id}`)
-      } catch (e) {
-        console.error('[wallet/deposit] credit error', e)
-      }
-    }, 3000)
-
     return NextResponse.json({
       transaction: tx,
-      message: 'Deposit received. Awaiting confirmations.',
+      message: 'Deposit request submitted. Your balance will be credited after admin approval.',
     })
   } catch (e: any) {
     console.error('[wallet/deposit]', e)

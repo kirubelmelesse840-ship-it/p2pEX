@@ -546,10 +546,11 @@ function SendDialog({ wallet, wallets, onClose, onSuccess }: {
               <div className="text-blue-700 dark:text-blue-400">
                 <p className="font-medium mb-0.5">Admin Approval Required</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                  <li>Withdrawal requests are reviewed by our team</li>
-                  <li>Funds will be locked until processed</li>
-                  <li>Typical processing time: a few hours</li>
-                  <li>You will receive a notification once approved</li>
+                  <li>Funds are locked (moved from available) until processed</li>
+                  <li>Your total balance does NOT change until approved</li>
+                  <li>If approved, funds leave your wallet</li>
+                  <li>If rejected, locked funds return to your available balance</li>
+                  <li>You will receive a notification once processed</li>
                 </ul>
               </div>
             </div>
@@ -665,6 +666,21 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
               placeholder="0.00"
               className="tabular-nums"
             />
+          </div>
+
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs">
+            <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="text-blue-700 dark:text-blue-400">
+                <p className="font-medium mb-0.5">Admin Approval Required</p>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                  <li>Your balance will NOT change until admin approves</li>
+                  <li>Submit this form after sending the funds on-chain</li>
+                  <li>The admin verifies the on-chain transaction</li>
+                  <li>You will receive a notification once approved</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="text-xs text-muted-foreground bg-yellow-500/10 p-2 rounded">
