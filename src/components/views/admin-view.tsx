@@ -3134,7 +3134,10 @@ function SupportTab() {
   }, [])
 
   const send = async (type: string, data?: any) => {
-    if (!selectedUserId) return
+    if (!selectedUserId) {
+      toast({ title: 'No user selected', description: 'Select a conversation first', variant: 'destructive' })
+      return
+    }
     if (type === 'text' && !text.trim()) return
     setBusy(true)
     try {
@@ -3146,18 +3149,23 @@ function SupportTab() {
       if (data?.imageData) body.imageData = data.imageData
       if (data?.voiceData) body.voiceData = data.voiceData
       if (data?.videoData) body.videoData = data.videoData
+      console.log('[admin support] sending message:', { type, userId: selectedUserId, hasImage: !!data?.imageData, hasVoice: !!data?.voiceData, hasVideo: !!data?.videoData })
       const r = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       const d = await r.json()
-      if (d.error) throw new Error(d.error)
+      if (!r.ok || d.error) {
+        throw new Error(d.error || `HTTP ${r.status}`)
+      }
+      console.log('[admin support] message sent:', d.message?.id)
       if (type === 'text') setText('')
       await loadMessages()
       await loadConversations()
     } catch (e: any) {
-      toast({ title: 'Send failed', description: e.message, variant: 'destructive' })
+      console.error('[admin support] send error:', e)
+      toast({ title: 'Send failed', description: e.message || 'Unknown error', variant: 'destructive' })
     } finally {
       setBusy(false)
     }
