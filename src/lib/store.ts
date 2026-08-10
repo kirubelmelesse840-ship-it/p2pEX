@@ -30,6 +30,9 @@ interface AppState {
   // Auth
   user: User | null
   setUser: (user: User | null) => void
+  // Auth dialog (opened by SignupPrompt or navbar buttons)
+  authDialog: 'login' | 'signup' | null
+  setAuthDialog: (mode: 'login' | 'signup' | null) => void
 
   // Navigation
   view: View
@@ -53,6 +56,8 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       user: null,
       setUser: (user) => set({ user }),
+      authDialog: null,
+      setAuthDialog: (mode) => set({ authDialog: mode }),
 
       view: 'home',
       setView: (view) => set({ view }),

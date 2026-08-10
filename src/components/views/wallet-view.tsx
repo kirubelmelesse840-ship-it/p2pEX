@@ -691,8 +691,9 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
 }
 
 /**
- * TransferDialog - internal transfer between P2PEX users by email
- * Instant, fee-free, no blockchain confirmation needed
+ * TransferDialog - internal transfer between P2PEX users by User ID or @username.
+ * Funds are locked pending admin approval. Recipient is credited on approval;
+ * funds return to sender on rejection.
  */
 function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
   wallet: WalletData
@@ -702,7 +703,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
 }) {
   const { toast } = useToast()
   const [asset, setAsset] = useState(wallet.asset)
-  const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
@@ -712,8 +713,8 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
   const amountNum = parseFloat(amount) || 0
 
   const submit = async () => {
-    if (!recipientEmail) {
-      toast({ title: 'Enter recipient email', variant: 'destructive' })
+    if (!recipient.trim()) {
+      toast({ title: 'Enter recipient', description: 'Enter the recipient\'s user ID (e.g. 000001) or @username', variant: 'destructive' })
       return
     }
     if (amountNum <= 0) {
@@ -729,13 +730,13 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
       const res = await fetch('/api/wallet/transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ asset, amount: amountNum, recipientEmail, note }),
+        body: JSON.stringify({ asset, amount: amountNum, recipient: recipient.trim(), note }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       toast({
-        title: 'Transfer successful',
-        description: `${amountNum} ${asset} sent to ${recipientEmail}`,
+        title: 'Transfer submitted',
+        description: `${amountNum} ${asset} is locked pending admin approval. Recipient: ${recipient.trim()}.`,
       })
       onSuccess()
       onClose()
@@ -755,7 +756,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
             Internal Transfer
           </DialogTitle>
           <DialogDescription>
-            Send crypto to another P2PEX user instantly — no blockchain fees, no confirmation delays.
+            Send crypto to another P2PEX user by their User ID or @username. Requires admin approval before the recipient receives the funds.
           </DialogDescription>
         </DialogHeader>
 
@@ -763,13 +764,14 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
           {/* Info banner */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs">
             <div className="flex items-start gap-2">
-              <Zap className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <div className="text-blue-700 dark:text-blue-400">
-                <p className="font-medium mb-0.5">Internal transfers are:</p>
+                <p className="font-medium mb-0.5">How internal transfers work:</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                   <li>Free — no network fees</li>
-                  <li>Instant — confirmed immediately</li>
-                  <li>Only between P2PEX users (by email)</li>
+                  <li>Funds are locked until admin approves</li>
+                  <li>Recipient is credited only after approval</li>
+                  <li>If rejected, funds return to your available balance</li>
                 </ul>
               </div>
             </div>
@@ -790,16 +792,18 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Recipient Email (P2PEX user)</label>
+            <label className="text-xs font-medium text-muted-foreground">Recipient (User ID or @username)</label>
             <Input
-              type="email"
-              value={recipientEmail}
-              onChange={e => setRecipientEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="mt-1"
+              type="text"
+              value={recipient}
+              onChange={e => setRecipient(e.target.value)}
+              placeholder="e.g. 000001 or @kirubel"
+              className="mt-1 font-mono"
+              autoCapitalize="none"
+              autoCorrect="off"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              The recipient must have a P2PEX account.
+              Enter the recipient&apos;s numerical User ID (e.g. <span className="font-mono">000001</span>) or @username (e.g. <span className="font-mono">@kirubel</span>). The recipient must have a P2PEX account.
             </p>
           </div>
 
@@ -846,6 +850,10 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
               <span>Recipient receives</span>
               <span className="tabular-nums">{formatQty(amountNum)} {asset}</span>
             </div>
+            <div className="flex justify-between pt-1 border-t border-border text-yellow-600 dark:text-yellow-400">
+              <span>Status</span>
+              <span>Pending admin approval</span>
+            </div>
           </div>
 
           <DialogFooter>
@@ -853,9 +861,9 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
             <Button
               className="bg-blue-500 hover:bg-blue-600 text-white"
               onClick={submit}
-              disabled={loading || !recipientEmail || !amount}
+              disabled={loading || !recipient.trim() || !amount}
             >
-              {loading ? 'Sending...' : 'Send Transfer'}
+              {loading ? 'Submitting...' : 'Submit Transfer Request'}
             </Button>
           </DialogFooter>
         </div>

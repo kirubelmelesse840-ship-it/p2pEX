@@ -1,9 +1,17 @@
 /**
  * POST /api/wallet/transfer - internal transfer between P2PEX users
- * Body: { asset, amount, recipientEmail, note? }
+ * Body: { asset, amount, recipient, note? }
  *
- * Transfers crypto from the sender's wallet to another P2PEX user's wallet
- * of the same asset. Instant, on-chain fee-free.
+ * `recipient` may be:
+ *   - a numerical user ID  (e.g. "000001")
+ *   - a @username          (e.g. "@kirubel")
+ *   - a username without @ (e.g. "kirubel")
+ *
+ * The transfer is NOT instant. Funds are locked on the sender's wallet and
+ * the transaction is created with status=PENDING. The recipient's wallet is
+ * only credited when an admin approves the transfer (see
+ * /api/admin/transactions/action). If the admin rejects, the locked funds are
+ * returned to the sender's available balance.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -14,40 +22,46 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { asset, amount, recipientEmail, note } = await req.json()
-    if (!asset || !amount || !recipientEmail) {
+    const { asset, amount, recipient, note } = await req.json()
+    if (!asset || !amount || !recipient) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     if (amount <= 0) {
       return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 })
     }
 
-    // Find recipient
-    const recipient = await db.user.findUnique({ where: { email: recipientEmail.toLowerCase() } })
-    if (!recipient) {
-      return NextResponse.json({ error: `No user found with email ${recipientEmail}` }, { status: 404 })
-    }
-    if (recipient.id === user.id) {
-      return NextResponse.json({ error: 'Cannot transfer to yourself' }, { status: 400 })
+    // Normalize the recipient identifier — accept numerical userId or @username
+    const raw = String(recipient).trim()
+    if (!raw) {
+      return NextResponse.json({ error: 'Enter a recipient' }, { status: 400 })
     }
 
-    // Find or create recipient wallet
-    let recipientWallet = await db.wallet.findUnique({
-      where: { userId_asset: { userId: recipient.id, asset } },
-    })
-    if (!recipientWallet) {
-      // Auto-create empty wallet for recipient
-      recipientWallet = await db.wallet.create({
-        data: {
-          userId: recipient.id,
-          asset,
-          assetName: asset,
-          balance: 0,
-          available: 0,
-          locked: 0,
-          depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
-        },
+    // Strip leading "@" if present
+    const usernameForm = raw.startsWith('@') ? raw.slice(1) : raw
+    // A numerical user ID (e.g. "000001") — look up by userId field
+    const isNumericalId = /^\d+$/.test(usernameForm)
+
+    let recipientUser: { id: string; userId: string | null; username: string | null; name: string; email: string } | null = null
+    if (isNumericalId) {
+      recipientUser = await db.user.findFirst({
+        where: { userId: usernameForm },
+        select: { id: true, userId: true, username: true, name: true, email: true },
       })
+    } else {
+      // Look up by username (case-insensitive)
+      recipientUser = await db.user.findFirst({
+        where: { username: { equals: usernameForm, mode: 'insensitive' } },
+        select: { id: true, userId: true, username: true, name: true, email: true },
+      })
+    }
+
+    if (!recipientUser) {
+      return NextResponse.json({
+        error: `No user found with ${isNumericalId ? 'ID' : 'username'} ${raw}`,
+      }, { status: 404 })
+    }
+    if (recipientUser.id === user.id) {
+      return NextResponse.json({ error: 'Cannot transfer to yourself' }, { status: 400 })
     }
 
     // Find sender wallet
@@ -64,25 +78,22 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Atomic transfer: debit sender, credit recipient
-    await db.$transaction([
-      db.wallet.update({
-        where: { id: senderWallet.id },
-        data: {
-          balance: { decrement: amount },
-          available: { decrement: amount },
-        },
-      }),
-      db.wallet.update({
-        where: { id: recipientWallet.id },
-        data: {
-          balance: { increment: amount },
-          available: { increment: amount },
-        },
-      }),
-    ])
+    // Lock funds on sender's wallet — move from `available` to `locked`.
+    // Balance (total) is unchanged. The recipient is NOT credited yet.
+    await db.wallet.update({
+      where: { id: senderWallet.id },
+      data: {
+        available: { decrement: amount },
+        locked: { increment: amount },
+      },
+    })
 
-    // Create transaction records for both parties
+    // Build a human-readable recipient label for the admin UI
+    const recipientLabel = recipientUser.userId
+      ? `user:${recipientUser.userId} (${recipientUser.name})`
+      : `user:${recipientUser.email}`
+
+    // Create a PENDING transaction for the sender (admin must approve)
     const senderTx = await db.transaction.create({
       data: {
         userId: user.id,
@@ -91,33 +102,17 @@ export async function POST(req: NextRequest) {
         amount,
         fee: 0,
         network: 'P2PEX',
-        toAddress: `user:${recipient.email}`,
-        note: note || `Internal transfer to ${recipient.name} (${recipient.email})`,
-        status: 'COMPLETED',
-        confirmations: 1,
-        requiredConfirmations: 1,
-      },
-    })
-
-    await db.transaction.create({
-      data: {
-        userId: recipient.id,
-        asset,
-        type: 'INTERNAL_TRANSFER',
-        amount,
-        fee: 0,
-        network: 'P2PEX',
-        fromAddress: `user:${user.email}`,
-        note: note || `Internal transfer from ${user.name} (${user.email})`,
-        status: 'COMPLETED',
-        confirmations: 1,
+        toAddress: recipientLabel,
+        note: note || `Internal transfer to ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email})`,
+        status: 'PENDING',
+        confirmations: 0,
         requiredConfirmations: 1,
       },
     })
 
     return NextResponse.json({
       transaction: senderTx,
-      message: `Successfully sent ${amount} ${asset} to ${recipient.name}`,
+      message: `Transfer request submitted. ${amount} ${asset} is locked pending admin approval. Recipient: ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email}).`,
     })
   } catch (e: any) {
     console.error('[wallet/transfer]', e)

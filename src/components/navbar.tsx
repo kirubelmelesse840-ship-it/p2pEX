@@ -331,7 +331,9 @@ export function Navbar() {
 }
 
 function AuthButtons() {
-  const [showAuth, setShowAuth] = useState<'login' | 'signup' | null>(null)
+  // Use the global store so SignupPrompt (or any other component) can open the auth dialog
+  const showAuth = useAppStore(s => s.authDialog)
+  const setShowAuth = useAppStore(s => s.setAuthDialog)
   const [showGoogle, setShowGoogle] = useState(false)
   const { toast } = useToast()
   const setUser = useAppStore(s => s.setUser)
