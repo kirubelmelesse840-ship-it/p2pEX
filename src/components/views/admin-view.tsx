@@ -3286,10 +3286,10 @@ function SupportTab() {
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 h-[70vh]">
+      <div className="grid grid-cols-1 md:grid-cols-3 h-[600px] sm:h-[70vh]">
         {/* Conversation list */}
-        <div className={`border-r border-border flex flex-col ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-3 border-b border-border flex items-center justify-between">
+        <div className={`border-r border-border flex flex-col min-h-0 ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-3 border-b border-border flex items-center justify-between flex-shrink-0">
             <span className="font-semibold text-sm flex items-center gap-1.5">
               <Headphones className="h-4 w-4" /> Conversations ({conversations.length})
             </span>
@@ -3297,7 +3297,7 @@ function SupportTab() {
               <RefreshCw className="h-3 w-3" /> Refresh
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {conversations.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">
                 <Headphones className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -3330,7 +3330,7 @@ function SupportTab() {
         </div>
 
         {/* Chat area */}
-        <div className={`md:col-span-2 flex flex-col ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`md:col-span-2 flex flex-col min-h-0 ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
           {!selectedUserId ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -3340,7 +3340,7 @@ function SupportTab() {
             </div>
           ) : (
             <>
-              <div className="p-3 border-b border-border flex items-center gap-2">
+              <div className="p-3 border-b border-border flex items-center gap-2 flex-shrink-0">
                 <Button variant="ghost" size="sm" className="h-7 md:hidden text-xs" onClick={() => setSelectedUserId(null)}>
                   <ArrowUpRight className="h-3 w-3 rotate-180" /> Back
                 </Button>
@@ -3360,7 +3360,7 @@ function SupportTab() {
                 </Button>
               </div>
 
-              <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 {messages.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
@@ -3372,7 +3372,7 @@ function SupportTab() {
                     <div className={`max-w-[80%] rounded-2xl p-2.5 ${m.sender === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap">{m.message}</p>}
                       {m.type === 'image' && m.imageData && (
-                        <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-48 cursor-pointer" onClick={() => setViewer(m.imageData)} />
+                        <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-40 cursor-pointer" onClick={() => setViewer(m.imageData)} />
                       )}
                       {m.type === 'voice' && m.voiceData && (
                         <button onClick={() => play(m.voiceData, m.id)} className="flex items-center gap-2 p-1.5 w-full">
@@ -3381,7 +3381,7 @@ function SupportTab() {
                         </button>
                       )}
                       {m.type === 'video' && m.videoData && (
-                        <video src={m.videoData} controls className="rounded-lg max-w-full max-h-48" />
+                        <video src={m.videoData} controls className="rounded-lg max-w-full max-h-40" />
                       )}
                       <p className={`text-[10px] mt-1 ${m.sender === 'admin' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{fd(m.createdAt)}</p>
                     </div>
@@ -3398,17 +3398,17 @@ function SupportTab() {
                 </div>
               )}
 
-              <div className="border-t border-border p-2 flex-shrink-0">
+              <div className="border-t border-border p-2 flex-shrink-0 bg-card">
                 <div className="flex items-center gap-1">
                   <input ref={fImg} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImg(e.target.files[0]); e.target.value = '' }} />
                   <input ref={fVid} type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onVid(e.target.files[0]); e.target.value = '' }} />
-                  <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50" title="Send image">
+                  <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0" title="Send image">
                     <ImageIcon className="h-5 w-5" />
                   </button>
-                  <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted ${recording ? 'text-red-500' : ''}`} title="Record voice">
+                  <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted flex-shrink-0 ${recording ? 'text-red-500' : ''}`} title="Record voice">
                     {recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </button>
-                  <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50" title="Send video">
+                  <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0" title="Send video">
                     <Video className="h-5 w-5" />
                   </button>
                   <input
@@ -3417,10 +3417,10 @@ function SupportTab() {
                     onChange={e => setText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }}
                     placeholder={recording ? 'Recording...' : 'Type a reply...'}
-                    className="flex-1 h-9 px-3 rounded-lg border border-border bg-background text-sm"
+                    className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-background text-sm"
                     disabled={busy || recording}
                   />
-                  <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50" title="Send">
+                  <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 flex-shrink-0" title="Send">
                     <Send className="h-5 w-5" />
                   </button>
                 </div>

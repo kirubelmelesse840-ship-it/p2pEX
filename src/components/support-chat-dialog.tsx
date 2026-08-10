@@ -70,29 +70,29 @@ export function SupportChatDialog({ open, onClose }: Props) {
             <div className="flex-1"><p className="font-medium text-sm">P2PEX Support</p><p className="text-xs text-green-500">● Online</p></div>
             <button onClick={onClose} className="p-1.5 rounded hover:bg-muted"><X className="h-5 w-5" /></button>
           </div>
-          <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2" style={{ minHeight: '200px', maxHeight: '45vh' }}>
+          <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0" style={{ minHeight: '150px' }}>
             {messages.length === 0 ? (<div className="text-center py-8 text-muted-foreground"><Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" /><p className="text-sm font-medium">No messages yet</p><p className="text-xs">Send a message, image, voice, or video</p></div>) : messages.map(m => (
               <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] rounded-2xl p-2.5 ${m.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap">{m.message}</p>}
-                  {m.type === 'image' && m.imageData && <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-36 cursor-pointer" onClick={() => setViewer(m.imageData)} />}
+                  {m.type === 'image' && m.imageData && <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-32 cursor-pointer" onClick={() => setViewer(m.imageData)} />}
                   {m.type === 'voice' && m.voiceData && <button onClick={() => play(m.voiceData, m.id)} className="flex items-center gap-2 p-1.5 w-full">{playing === m.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}<span className="text-xs">Voice</span></button>}
-                  {m.type === 'video' && m.videoData && <video src={m.videoData} controls className="rounded-lg max-w-full max-h-36" />}
+                  {m.type === 'video' && m.videoData && <video src={m.videoData} controls className="rounded-lg max-w-full max-h-32" />}
                   <p className={`text-[10px] mt-1 ${m.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{fd(m.createdAt)}</p>
                 </div>
               </div>
             ))}
           </div>
           {recording && (<div className="flex items-center gap-2 p-2 bg-red-500/10 border-t border-red-500/30 flex-shrink-0"><span className="h-3 w-3 rounded-full bg-red-500 animate-pulse" /><span className="text-sm text-red-500 font-medium flex-1">Recording {ft(recTime)}</span><button onClick={cancelRec} className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-muted">Cancel</button><button onClick={stopRec} className="text-xs px-3 py-1 rounded bg-red-500 text-white font-medium">Send</button></div>)}
-          <div className="border-t border-border p-2 flex-shrink-0">
+          <div className="border-t border-border p-2 flex-shrink-0 bg-card">
             <div className="flex items-center gap-1">
               <input ref={fImg} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImg(e.target.files[0]); e.target.value = '' }} />
               <input ref={fVid} type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onVid(e.target.files[0]); e.target.value = '' }} />
-              <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50"><ImageIcon className="h-5 w-5" /></button>
-              <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted ${recording ? 'text-red-500' : ''}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}</button>
-              <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50"><Video className="h-5 w-5" /></button>
-              <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }} placeholder={recording ? 'Recording...' : 'Type...'} className="flex-1 h-9 px-3 rounded-lg border border-border bg-background text-sm" disabled={busy || recording} />
-              <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50"><Send className="h-5 w-5" /></button>
+              <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0"><ImageIcon className="h-5 w-5" /></button>
+              <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted flex-shrink-0 ${recording ? 'text-red-500' : ''}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}</button>
+              <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0"><Video className="h-5 w-5" /></button>
+              <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }} placeholder={recording ? 'Recording...' : 'Type...'} className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-background text-sm" disabled={busy || recording} />
+              <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 flex-shrink-0"><Send className="h-5 w-5" /></button>
             </div>
           </div>
         </DialogContent>
