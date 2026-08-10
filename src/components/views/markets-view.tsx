@@ -6,9 +6,10 @@ import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Star, ArrowUp, ArrowDown, Search, BarChart3, ChevronRight } from 'lucide-react'
+import { Star, ArrowUp, ArrowDown, Search, BarChart3, ChevronRight, TrendingUp } from 'lucide-react'
 import { RealTimeLineChart } from '@/components/realtime-chart'
 import { BackButton } from '@/components/back-button'
+import { SignupPrompt } from '@/components/signup-prompt'
 import { formatPrice, formatPercent, formatCompact } from '@/lib/utils'
 
 interface RowProps {
@@ -165,7 +166,7 @@ function FeaturedChart({ symbol }: { symbol: string }) {
 
 export function MarketsView() {
   const { tickers, connected } = useTickers()
-  const { favorites, toggleFavorite, setSymbol, setView } = useAppStore()
+  const { favorites, toggleFavorite, setSymbol, setView, user } = useAppStore()
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<'all' | 'favorites' | 'USDT' | 'USDC' | 'BTC' | 'ETH'>('all')
   const [chartSymbol, setChartSymbol] = useState('BTCUSDT')
@@ -202,6 +203,21 @@ export function MarketsView() {
   const handleTrade = (symbol: string) => {
     setSymbol(symbol)
     setView('spot')
+  }
+
+  if (!user) {
+    return (
+      <SignupPrompt
+        icon={<BarChart3 className="h-10 w-10" />}
+        title="Sign in to View Markets"
+        description="Log in or create an account to view real-time prices, track favorites, and start trading. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        features={[
+          { icon: <TrendingUp className="h-4 w-4" />, label: 'Live Prices' },
+          { icon: <Star className="h-4 w-4" />, label: 'Favorites' },
+          { icon: <BarChart3 className="h-4 w-4" />, label: 'Charts' },
+        ]}
+      />
+    )
   }
 
   return (

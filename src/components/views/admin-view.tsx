@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,8 @@ import {
   CheckCircle2, XCircle, Clock, Search, Star, Ban, ShieldCheck, ShieldAlert,
   Zap, BarChart3, ArrowUpRight, ArrowDownRight, Plus, Trash2, Edit3, Power,
   Wallet, RefreshCw, FileText, Bell, Send,
+  Headphones, Image as ImageIcon, Mic, Video, Play, Pause, X, Square,
+  ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Lock, User, Copy,
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import {
@@ -30,11 +32,35 @@ import {
   ComposedChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
 } from 'recharts'
 
-type Tab = 'dashboard' | 'users' | 'pairs' | 'p2p' | 'payment-review' | 'transactions' | 'orders' | 'settings'
+type Tab = 'dashboard' | 'users' | 'user-details' | 'pairs' | 'p2p' | 'payment-review' | 'support' | 'transactions' | 'dw-approvals' | 'orders' | 'settings'
 
 export function AdminView() {
   const { user, setView } = useAppStore()
   const [tab, setTab] = useState<Tab>('dashboard')
+  const [counts, setCounts] = useState({ kyc: 0, payments: 0, dw: 0 })
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const [notifRes, payRes, dwRes] = await Promise.all([
+          fetch('/api/admin/notifications'),
+          fetch('/api/admin/p2p-review?status=PENDING_REVIEW'),
+          fetch('/api/admin/transactions?status=pending'),
+        ])
+        const notifData = await notifRes.json()
+        const payData = await payRes.json()
+        const dwData = await dwRes.json().catch(() => ({ transactions: [] }))
+        setCounts({
+          kyc: notifData.highPriorityCount || 0,
+          payments: payData.orders?.length || 0,
+          dw: dwData.transactions?.length || 0,
+        })
+      } catch {}
+    }
+    loadCounts()
+    const t = setInterval(loadCounts, 10000)
+    return () => clearInterval(t)
+  }, [])
 
   if (!user?.isAdmin) {
     return (
@@ -77,23 +103,44 @@ export function AdminView() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
         <TabsList className="overflow-x-auto h-auto flex-wrap">
           <TabsTrigger value="dashboard" className="gap-1"><BarChart3 className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
-          <TabsTrigger value="users" className="gap-1"><Users className="h-3.5 w-3.5" /> Users</TabsTrigger>
+          <TabsTrigger value="users" className="gap-1">
+            <Users className="h-3.5 w-3.5" /> Users
+            {counts.kyc > 0 && (
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="user-details" className="gap-1"><Search className="h-3.5 w-3.5" /> User Details</TabsTrigger>
           <TabsTrigger value="pairs" className="gap-1"><TrendingUp className="h-3.5 w-3.5" /> Pairs</TabsTrigger>
           <TabsTrigger value="p2p" className="gap-1"><Shield className="h-3.5 w-3.5" /> P2P Moderation</TabsTrigger>
-          <TabsTrigger value="payment-review" className="gap-1"><Clock className="h-3.5 w-3.5" /> Payment Review</TabsTrigger>
+          <TabsTrigger value="payment-review" className="gap-1">
+            <Clock className="h-3.5 w-3.5" /> Payment Review
+            {counts.payments > 0 && (
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="dw-approvals" className="gap-1">
+            <ArrowDownToLine className="h-3.5 w-3.5" /> D/W Approvals
+            {counts.dw > 0 && (
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="orders" className="gap-1"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
           <TabsTrigger value="transactions" className="gap-1"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
+          <TabsTrigger value="support" className="gap-1"><Headphones className="h-3.5 w-3.5" /> Support</TabsTrigger>
           <TabsTrigger value="settings" className="gap-1"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {tab === 'dashboard' && <DashboardTab />}
       {tab === 'users' && <UsersTab />}
+      {tab === 'user-details' && <UserDetailsTab />}
       {tab === 'pairs' && <PairsTab />}
       {tab === 'p2p' && <P2PTab />}
       {tab === 'payment-review' && <PaymentReviewTab />}
+      {tab === 'dw-approvals' && <DepositWithdrawApprovalsTab />}
       {tab === 'orders' && <OrdersTab />}
       {tab === 'transactions' && <TransactionsTab />}
+      {tab === 'support' && <SupportTab />}
       {tab === 'settings' && <SettingsTab />}
     </div>
   )
@@ -1150,6 +1197,9 @@ function P2PTab() {
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editDialog, setEditDialog] = useState<any>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1183,9 +1233,22 @@ function P2PTab() {
     }
   }
 
+  // Filter listings by advertiser name (from paymentDetails) or user.name
+  const filtered = listings.filter(l => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase().trim()
+    const firstMethod = l.paymentMethods?.[0]
+    const advName = l.paymentDetails?.[firstMethod]?.name || l.user?.name || ''
+    return (
+      advName.toLowerCase().includes(q) ||
+      (l.user?.name || '').toLowerCase().includes(q) ||
+      (l.user?.email || '').toLowerCase().includes(q)
+    )
+  })
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -1196,9 +1259,25 @@ function P2PTab() {
             <SelectItem value="canceled">Canceled</SelectItem>
           </SelectContent>
         </Select>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by advertiser name..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 h-9"
+          />
+        </div>
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> Add New Ad
+        </Button>
+      </div>
+
+      <div className="text-xs text-muted-foreground">
+        Showing {filtered.length} of {listings.length} listings
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -1210,7 +1289,7 @@ function P2PTab() {
                 <th className="px-3 py-2 text-left font-medium">Pair</th>
                 <th className="px-3 py-2 text-right font-medium">Price</th>
                 <th className="px-3 py-2 text-right font-medium hidden sm:table-cell">Available</th>
-                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Methods</th>
+                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Methods / Account</th>
                 <th className="px-3 py-2 text-center font-medium">Status</th>
                 <th className="px-3 py-2 text-right font-medium">Actions</th>
               </tr>
@@ -1218,70 +1297,435 @@ function P2PTab() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
-              ) : listings.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No listings</td></tr>
-              ) : listings.map(l => (
-                <tr key={l.id} className="border-t border-border/40 hover:bg-muted/30">
-                  <td className="px-3 py-3">
-                    <div className="font-medium text-xs">{l.user.name}</div>
-                    <div className="text-xs text-muted-foreground">{l.user.email}</div>
-                    {l.user.isBanned && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 text-[10px]">Banned</Badge>}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="text-xs">{l.side === 'SELL' ? 'Selling' : 'Buying'} {l.asset}</div>
-                    <div className="text-xs text-muted-foreground">for {l.fiatCurrency}</div>
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums">{formatPrice(l.price)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">{formatQty(l.available)}</td>
-                  <td className="px-3 py-3 text-xs hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {l.paymentMethods.slice(0, 2).map((m: string) => (
-                        <Badge key={m} variant="secondary" className="text-[10px]">{m}</Badge>
-                      ))}
-                      {l.paymentMethods.length > 2 && <span className="text-[10px]">+{l.paymentMethods.length - 2}</span>}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <Badge variant="secondary" className={
-                      l.status === 'ACTIVE' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
-                      l.status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
-                      l.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
-                      ''
-                    }>{l.status}</Badge>
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex gap-1 justify-end">
-                      {l.status === 'ACTIVE' && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" title="Pause" onClick={() => act(l.id, 'pause')}>
-                          <Power className="h-3 w-3" />
-                        </Button>
+              ) : filtered.map(l => {
+                const firstMethod = l.paymentMethods?.[0]
+                const detail = l.paymentDetails?.[firstMethod]
+                const advertiserName = detail?.name || l.user?.name || 'Unknown'
+                const accountInfo = detail?.phone || detail?.account || detail?.address || detail?.email || detail?.iban || ''
+                return (
+                  <tr key={l.id} className="border-t border-border/40 hover:bg-muted/30">
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-xs flex items-center gap-1.5">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-medium flex-shrink-0">
+                          {advertiserName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span>{advertiserName}</span>
+                        {l.tradesCount != null && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500" />
+                            {(l.rating || 0).toFixed(1)} · {l.tradesCount} trades
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{l.user.email}</div>
+                      {l.user.isBanned && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 text-[10px]">Banned</Badge>}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="text-xs">{l.side === 'SELL' ? 'Selling' : 'Buying'} {l.asset}</div>
+                      <div className="text-xs text-muted-foreground">for {l.fiatCurrency}</div>
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">{formatPrice(l.price)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">{formatQty(l.available)}</td>
+                    <td className="px-3 py-3 text-xs hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {l.paymentMethods.slice(0, 2).map((m: string) => (
+                          <Badge key={m} variant="secondary" className="text-[10px]">{m}</Badge>
+                        ))}
+                        {l.paymentMethods.length > 2 && <span className="text-[10px]">+{l.paymentMethods.length - 2}</span>}
+                      </div>
+                      {accountInfo && (
+                        <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[160px]" title={accountInfo}>
+                          {accountInfo}
+                        </div>
                       )}
-                      {l.status === 'PAUSED' && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Resume" onClick={() => act(l.id, 'resume')}>
-                          <CheckCircle2 className="h-3 w-3" />
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <Badge variant="secondary" className={
+                        l.status === 'ACTIVE' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                        l.status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                        l.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                        ''
+                      }>{l.status}</Badge>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-500" title="Edit listing"
+                          onClick={() => setEditDialog(l)}>
+                          <Edit3 className="h-3 w-3" />
                         </Button>
-                      )}
-                      {(l.status === 'ACTIVE' || l.status === 'PAUSED') && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Cancel & refund" onClick={() => act(l.id, 'cancel')}>
-                          <XCircle className="h-3 w-3" />
+                        {l.status === 'ACTIVE' && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Pause" onClick={() => act(l.id, 'pause')}>
+                            <Power className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {l.status === 'PAUSED' && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Resume" onClick={() => act(l.id, 'resume')}>
+                            <CheckCircle2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {(l.status === 'ACTIVE' || l.status === 'PAUSED') && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Cancel & refund" onClick={() => act(l.id, 'cancel')}>
+                            <XCircle className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Delete" onClick={() => {
+                          if (confirm('Delete this listing permanently?')) act(l.id, 'delete')
+                        }}>
+                          <Trash2 className="h-3 w-3" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Delete" onClick={() => {
-                        if (confirm('Delete this listing permanently?')) act(l.id, 'delete')
-                      }}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
+      {createOpen && (
+        <CreateListingDialog onClose={() => setCreateOpen(false)} onSuccess={load} />
+      )}
+      {editDialog && (
+        <EditListingDialog listing={editDialog} onClose={() => setEditDialog(null)} onSuccess={load} />
+      )}
     </div>
   )
 }
+
+// =================== EDIT LISTING DIALOG ===================
+function EditListingDialog({ listing, onClose, onSuccess }: { listing: any; onClose: () => void; onSuccess: () => void }) {
+  const { toast } = useToast()
+  const firstMethod = listing.paymentMethods?.[0] || ''
+  const existingDetail = listing.paymentDetails?.[firstMethod] || {}
+
+  const [price, setPrice] = useState(String(listing.price || ''))
+  const [minOrder, setMinOrder] = useState(String(listing.minOrder ?? ''))
+  const [maxOrder, setMaxOrder] = useState(String(listing.maxOrder ?? ''))
+  const [tradesCount, setTradesCount] = useState(String(listing.tradesCount ?? 0))
+  const [rating, setRating] = useState(String(listing.rating ?? 4.9))
+  const [advertiserName, setAdvertiserName] = useState(existingDetail.name || listing.user?.name || '')
+  const [accountNumber, setAccountNumber] = useState(
+    existingDetail.phone || existingDetail.account || existingDetail.address || existingDetail.email || ''
+  )
+  const [terms, setTerms] = useState(listing.terms || '')
+  const [loading, setLoading] = useState(false)
+
+  const accountLabel = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(firstMethod)
+    ? 'Wallet Address'
+    : 'Account Number / Phone'
+
+  const submit = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/listings/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: listing.id,
+          action: 'edit',
+          price: parseFloat(price) || 0,
+          minOrder: parseFloat(minOrder) || 0,
+          maxOrder: parseFloat(maxOrder) || 0,
+          tradesCount: parseInt(tradesCount) || 0,
+          rating: parseFloat(rating) || 0,
+          advertiserName: advertiserName.trim(),
+          accountNumber: accountNumber.trim(),
+          terms: terms.trim(),
+        }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'Listing updated', description: d.message })
+      onSuccess()
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed to update', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit3 className="h-5 w-5 text-blue-500" /> Edit Listing
+          </DialogTitle>
+          <DialogDescription>
+            {listing.side === 'SELL' ? 'Selling' : 'Buying'} {listing.asset} for {listing.fiatCurrency} · Method: {firstMethod}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Price ({listing.fiatCurrency})</label>
+              <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="tabular-nums" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Min Order ({listing.fiatCurrency})</label>
+              <Input type="number" value={minOrder} onChange={e => setMinOrder(e.target.value)} className="tabular-nums" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Max Order ({listing.fiatCurrency})</label>
+              <Input type="number" value={maxOrder} onChange={e => setMaxOrder(e.target.value)} className="tabular-nums" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Trades Count</label>
+              <Input type="number" value={tradesCount} onChange={e => setTradesCount(e.target.value)} className="tabular-nums" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Star Rating (0-5)</label>
+            <Input type="number" step="0.1" min="0" max="5" value={rating} onChange={e => setRating(e.target.value)} className="tabular-nums" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Advertiser Name</label>
+            <Input value={advertiserName} onChange={e => setAdvertiserName(e.target.value)} placeholder="e.g. Kirubel Trader" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">{accountLabel}</label>
+            <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder={accountLabel} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Terms (optional)</label>
+            <Textarea value={terms} onChange={e => setTerms(e.target.value)} rows={2} placeholder="e.g. Release within 15 minutes." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={submit} disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// =================== CREATE LISTING DIALOG ===================
+const BUY_PAYMENT_METHODS = [
+  'Telebirr', 'CBE', 'Awash', 'Dashen', 'Hibret', 'Wegagen', 'Abay', 'Coopbank',
+  'Bank of Abyssinia', 'United', 'Nib', 'Berhan', 'Enat', 'Lion', 'Oromia', 'Zemen',
+]
+const SELL_PAYMENT_METHODS = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB']
+
+function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { toast } = useToast()
+  const [side, setSide] = useState<'BUY' | 'SELL'>('SELL')
+  const [asset, setAsset] = useState('USDT')
+  const [fiatCurrency, setFiatCurrency] = useState('ETB')
+  const [price, setPrice] = useState('')
+  const [amount, setAmount] = useState('')
+  const [minOrder, setMinOrder] = useState('100')
+  const [paymentMethod, setPaymentMethod] = useState(side === 'BUY' ? 'Telebirr' : 'TRC20')
+  const [advertiserName, setAdvertiserName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [terms, setTerms] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const methods = side === 'BUY' ? BUY_PAYMENT_METHODS : SELL_PAYMENT_METHODS
+  const accountLabel = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(paymentMethod)
+    ? 'Wallet Address'
+    : 'Account Number / Phone'
+
+  // Reset payment method when side changes
+  useEffect(() => {
+    setPaymentMethod(side === 'BUY' ? BUY_PAYMENT_METHODS[0] : SELL_PAYMENT_METHODS[0])
+  }, [side])
+
+  // Auto-generate terms if empty
+  const finalTerms = terms.trim() || (
+    side === 'SELL'
+      ? `Release crypto within 15 minutes of receiving payment via ${paymentMethod}. By trading, you agree to follow P2PEX P2P guidelines.`
+      : `Send payment within 30 minutes via ${paymentMethod}. Mark payment as made after sending the funds. By trading, you agree to follow P2PEX P2P guidelines.`
+  )
+
+  const submit = async () => {
+    if (!price || !amount) {
+      toast({ title: 'Price and amount required', variant: 'destructive' })
+      return
+    }
+    if (!advertiserName.trim()) {
+      toast({ title: 'Advertiser name required', variant: 'destructive' })
+      return
+    }
+    if (!accountNumber.trim()) {
+      toast({ title: accountLabel + ' required', variant: 'destructive' })
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/listings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset,
+          fiatCurrency,
+          side,
+          price: parseFloat(price),
+          amount: parseFloat(amount),
+          minOrder: parseFloat(minOrder) || 0,
+          maxOrder: parseFloat(price) * parseFloat(amount),
+          paymentMethods: [paymentMethod],
+          advertiserName: advertiserName.trim(),
+          accountNumber: accountNumber.trim(),
+          terms: finalTerms,
+          tradesCount: 128,
+          rating: 4.9,
+        }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: 'Ad created', description: `${side} ad for ${amount} ${asset} posted successfully` })
+      onSuccess()
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed to create ad', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" /> Create P2P Advertisement
+          </DialogTitle>
+          <DialogDescription>
+            Post a new P2P buy/sell ad as the admin
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {/* Buy/Sell toggle */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={side === 'BUY' ? 'default' : 'outline'}
+              className={side === 'BUY' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+              onClick={() => setSide('BUY')}
+            >
+              Buy Ad
+            </Button>
+            <Button
+              variant={side === 'SELL' ? 'default' : 'outline'}
+              className={side === 'SELL' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
+              onClick={() => setSide('SELL')}
+            >
+              Sell Ad
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Asset</label>
+              <Select value={asset} onValueChange={setAsset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['USDT', 'USDC', 'BTC', 'ETH', 'BNB', 'SOL'].map(a => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Fiat Currency</label>
+              <Select value={fiatCurrency} onValueChange={setFiatCurrency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['ETB', 'USD', 'EUR', 'KES', 'NGN'].map(f => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Price per {asset} ({fiatCurrency})</label>
+              <Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="tabular-nums" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Total Amount ({asset})</label>
+              <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="tabular-nums" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Min Order ({fiatCurrency})</label>
+            <Input type="number" value={minOrder} onChange={e => setMinOrder(e.target.value)} className="tabular-nums" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Payment Method <span className="text-muted-foreground/60">(filtered by ad type)</span>
+            </label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {methods.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {side === 'BUY' ? 'Ethiopian banks / mobile money' : 'Crypto networks for direct settlement'}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Advertiser Name</label>
+            <Input value={advertiserName} onChange={e => setAdvertiserName(e.target.value)} placeholder="e.g. Kirubel Trader" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">{accountLabel}</label>
+            <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder={accountLabel} />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Terms (optional — auto-generated if empty)</label>
+            <Textarea
+              value={terms}
+              onChange={e => setTerms(e.target.value)}
+              rows={2}
+              placeholder={finalTerms}
+            />
+          </div>
+
+          {/* Live summary preview */}
+          <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
+            <p className="font-semibold mb-1.5">Live Preview</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div><span className="text-muted-foreground">Type:</span> <span className={side === 'BUY' ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>{side}</span></div>
+              <div><span className="text-muted-foreground">Asset:</span> <span className="font-medium">{asset}</span></div>
+              <div><span className="text-muted-foreground">Price:</span> <span className="font-medium tabular-nums">{formatPrice(parseFloat(price) || 0)} {fiatCurrency}</span></div>
+              <div><span className="text-muted-foreground">Total:</span> <span className="font-medium tabular-nums">{formatQty(parseFloat(amount) || 0)} {asset}</span></div>
+              <div className="col-span-2"><span className="text-muted-foreground">Advertiser:</span> <span className="font-medium">{advertiserName || '—'}</span></div>
+              <div className="col-span-2"><span className="text-muted-foreground">{accountLabel}:</span> <span className="font-mono">{accountNumber || '—'}</span></div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={submit} disabled={loading || !price || !amount || !advertiserName.trim() || !accountNumber.trim()}>
+              {loading ? 'Creating...' : 'Create Advertisement'}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 
 // =================== PAYMENT REVIEW TAB ===================
 function PaymentReviewTab() {
@@ -2213,5 +2657,1046 @@ function SendNotificationButton() {
         </Dialog>
       )}
     </>
+  )
+}
+
+// =================== USER DETAILS TAB ===================
+function UserDetailsTab() {
+  const { toast } = useToast()
+  const [users, setUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [details, setDetails] = useState<any>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+
+  // Load all users on mount
+  const loadUsers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/users?limit=100')
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      setUsers((d.users || []).filter((u: any) => !u.isAdmin))
+    } catch (e: any) {
+      toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => { loadUsers() }, [loadUsers])
+
+  // Filter by name, email, ID, username
+  const filtered = users.filter(u => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase().trim()
+    return (
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.userId || '').toLowerCase().includes(q) ||
+      (u.username || '').toLowerCase().includes(q) ||
+      (u.id || '').toLowerCase().includes(q)
+    )
+  })
+
+  // Load selected user details
+  const loadDetails = useCallback(async (userId: string) => {
+    setDetailsLoading(true)
+    setDetails(null)
+    try {
+      const res = await fetch(`/api/admin/users/details?userId=${userId}`)
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      setDetails(d)
+    } catch (e: any) {
+      toast({ title: 'Failed to load user details', description: e.message, variant: 'destructive' })
+    } finally {
+      setDetailsLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => {
+    if (selectedUserId) loadDetails(selectedUserId)
+  }, [selectedUserId, loadDetails])
+
+  // Render details view if a user is selected
+  if (selectedUserId) {
+    return (
+      <div className="space-y-3">
+        <Button variant="outline" size="sm" onClick={() => { setSelectedUserId(null); setDetails(null) }}>
+          <ArrowUpRight className="h-3.5 w-3.5 rotate-180" /> Back to user list
+        </Button>
+
+        {detailsLoading || !details ? (
+          <div className="text-center py-12 text-muted-foreground">Loading user details...</div>
+        ) : (
+          <UserDetailsDetails user={details.user} wallets={details.wallets} transactions={details.transactions} p2pOrders={details.p2pOrders} orders={details.orders} />
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg border border-border">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, ID, or username..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 h-9"
+          />
+        </div>
+        <Button variant="outline" size="sm" onClick={loadUsers}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+      </div>
+
+      <div className="text-xs text-muted-foreground">Showing {filtered.length} of {users.length} users</div>
+
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="overflow-y-auto max-h-[70vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">User</th>
+                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Email</th>
+                <th className="px-3 py-2 text-left font-medium">ID</th>
+                <th className="px-3 py-2 text-left font-medium">KYC</th>
+                <th className="px-3 py-2 text-right font-medium hidden md:table-cell">Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">No users found</td></tr>
+              ) : filtered.map(u => (
+                <tr
+                  key={u.id}
+                  className="border-t border-border/40 hover:bg-muted/30 cursor-pointer"
+                  onClick={() => setSelectedUserId(u.id)}
+                >
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      {u.avatar ? (
+                        <img src={u.avatar} alt={u.name} className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
+                          {(u.name || '?').slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium text-sm">{u.name}</div>
+                        {u.username && <div className="text-[10px] text-muted-foreground">@{u.username}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-xs hidden sm:table-cell">{u.email}</td>
+                  <td className="px-3 py-3">
+                    <Badge variant="secondary" className="text-[10px] font-mono">#{u.userId || u.id.slice(-6).toUpperCase()}</Badge>
+                  </td>
+                  <td className="px-3 py-3">
+                    {u.kycVerified ? (
+                      <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">L{u.kycLevel}</Badge>
+                    ) : u.kycStatus === 'PENDING' ? (
+                      <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">Pending</Badge>
+                    ) : u.kycStatus === 'REJECTED' ? (
+                      <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">Rejected</Badge>
+                    ) : (
+                      <Badge variant="secondary">Unverified</Badge>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-right text-xs text-muted-foreground hidden md:table-cell">{formatDateTime(u.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UserDetailsDetails({ user, wallets, transactions, p2pOrders, orders }: {
+  user: any
+  wallets: any[]
+  transactions: any[]
+  p2pOrders: any[]
+  orders: any[]
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Profile card */}
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-start gap-4">
+          {user.avatar ? (
+            <img src={user.avatar} alt={user.name} className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+              {(user.name || '?').slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Name</p>
+              <p className="font-medium">{user.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">User ID</p>
+              <p className="font-mono text-sm">#{user.userId}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Username</p>
+              <p className="text-sm">@{user.username}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Email</p>
+              <p className="text-sm break-all">{user.email}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">KYC</p>
+              {user.kycVerified ? (
+                <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">Verified L{user.kycLevel}</Badge>
+              ) : user.kycStatus === 'PENDING' ? (
+                <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">Pending</Badge>
+              ) : user.kycStatus === 'REJECTED' ? (
+                <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">Rejected</Badge>
+              ) : (
+                <Badge variant="secondary">Unverified</Badge>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              {user.isBanned ? (
+                <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">Banned</Badge>
+              ) : user.isActive ? (
+                <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">Active</Badge>
+              ) : (
+                <Badge variant="secondary">Inactive</Badge>
+              )}
+            </div>
+            <div className="col-span-2 md:col-span-3">
+              <p className="text-xs text-muted-foreground">Join Date</p>
+              <p className="text-sm">{formatDateTime(user.createdAt)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Wallet balances grid */}
+      <div className="bg-card border border-border rounded-lg p-4">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Wallet className="h-4 w-4" /> Wallet Balances ({wallets.length})
+        </h3>
+        {wallets.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">No wallets</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {wallets.map(w => (
+              <div key={w.id} className="bg-muted/30 rounded-lg p-3">
+                <div className="text-xs text-muted-foreground">{w.asset}</div>
+                <div className="font-bold tabular-nums">{formatQty(w.balance)}</div>
+                <div className="text-[10px] text-muted-foreground">Available: {formatQty(w.available)}</div>
+                {w.locked > 0 && <div className="text-[10px] text-yellow-600 dark:text-yellow-400">Locked: {formatQty(w.locked)}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Transactions table */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Recent Transactions ({transactions.length})
+          </h3>
+        </div>
+        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Type</th>
+                <th className="px-3 py-2 text-left font-medium">Asset</th>
+                <th className="px-3 py-2 text-right font-medium">Amount</th>
+                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Network</th>
+                <th className="px-3 py-2 text-center font-medium">Status</th>
+                <th className="px-3 py-2 text-right font-medium hidden md:table-cell">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.length === 0 ? (
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No transactions</td></tr>
+              ) : transactions.map(t => (
+                <tr key={t.id} className="border-t border-border/40 hover:bg-muted/30">
+                  <td className="px-3 py-2">
+                    <Badge variant="secondary" className={
+                      t.type === 'DEPOSIT' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      t.type === 'WITHDRAW' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                      'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                    }>{t.type.replace('_', ' ')}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-xs">{t.asset}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(t.amount)}</td>
+                  <td className="px-3 py-2 text-xs hidden sm:table-cell">{t.network}</td>
+                  <td className="px-3 py-2 text-center">
+                    <Badge variant="secondary" className={
+                      t.status === 'COMPLETED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      t.status === 'PENDING' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                      'bg-red-500/15 text-red-600 dark:text-red-400'
+                    }>{t.status}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground hidden md:table-cell">{formatDateTime(t.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* P2P Orders table */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Shield className="h-4 w-4" /> P2P Orders ({p2pOrders.length})
+          </h3>
+        </div>
+        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Asset</th>
+                <th className="px-3 py-2 text-right font-medium">Amount</th>
+                <th className="px-3 py-2 text-right font-medium">Total</th>
+                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Method</th>
+                <th className="px-3 py-2 text-center font-medium">Status</th>
+                <th className="px-3 py-2 text-right font-medium hidden md:table-cell">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p2pOrders.length === 0 ? (
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No P2P orders</td></tr>
+              ) : p2pOrders.map(o => (
+                <tr key={o.id} className="border-t border-border/40 hover:bg-muted/30">
+                  <td className="px-3 py-2 text-xs">{o.asset}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(o.amount)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatPrice(o.total)} {o.fiatCurrency}</td>
+                  <td className="px-3 py-2 text-xs hidden sm:table-cell">{o.paymentMethod}</td>
+                  <td className="px-3 py-2 text-center">
+                    <Badge variant="secondary" className={
+                      o.status === 'COMPLETED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      o.status === 'PENDING_REVIEW' || o.status === 'PENDING_PAYMENT' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                      o.status === 'CANCELED' || o.status === 'DISPUTED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                      'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                    }>{o.status.replace('_', ' ')}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground hidden md:table-cell">{formatDateTime(o.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Spot Orders table */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4" /> Spot Orders ({orders.length})
+          </h3>
+        </div>
+        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Pair</th>
+                <th className="px-3 py-2 text-left font-medium">Side</th>
+                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Type</th>
+                <th className="px-3 py-2 text-right font-medium">Price</th>
+                <th className="px-3 py-2 text-right font-medium">Qty</th>
+                <th className="px-3 py-2 text-center font-medium">Status</th>
+                <th className="px-3 py-2 text-right font-medium hidden md:table-cell">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No spot orders</td></tr>
+              ) : orders.map(o => (
+                <tr key={o.id} className="border-t border-border/40 hover:bg-muted/30">
+                  <td className="px-3 py-2 text-xs font-medium">{o.symbol}</td>
+                  <td className="px-3 py-2">
+                    <span className={o.side === 'BUY' ? 'text-green-500 text-xs' : 'text-red-500 text-xs'}>
+                      {o.side}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{o.type}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatPrice(o.price)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(o.quantity)}</td>
+                  <td className="px-3 py-2 text-center">
+                    <Badge variant="secondary" className={
+                      o.status === 'FILLED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      o.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                      'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'
+                    }>{o.status}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground hidden md:table-cell">{formatDateTime(o.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =================== SUPPORT TAB ===================
+function SupportTab() {
+  const { toast } = useToast()
+  const [conversations, setConversations] = useState<any[]>([])
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<any[]>([])
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [viewer, setViewer] = useState<string | null>(null)
+  const [playing, setPlaying] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [recTime, setRecTime] = useState(0)
+
+  const mr = useRef<MediaRecorder | null>(null)
+  const chunks = useRef<Blob[]>([])
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stream = useRef<MediaStream | null>(null)
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const scroll = useRef<HTMLDivElement>(null)
+  const fImg = useRef<HTMLInputElement>(null)
+  const fVid = useRef<HTMLInputElement>(null)
+
+  // Load conversations (admin mode)
+  const loadConversations = useCallback(async () => {
+    try {
+      const r = await fetch('/api/support')
+      const d = await r.json()
+      if (!d.error) setConversations(d.conversations || [])
+    } catch {}
+  }, [])
+
+  // Load messages for selected user
+  const loadMessages = useCallback(async () => {
+    if (!selectedUserId) return
+    try {
+      const r = await fetch(`/api/support?userId=${selectedUserId}`)
+      const d = await r.json()
+      if (!d.error) setMessages(d.messages || [])
+    } catch {}
+  }, [selectedUserId])
+
+  // Polling
+  useEffect(() => {
+    loadConversations()
+    const t1 = setInterval(loadConversations, 3000)
+    return () => clearInterval(t1)
+  }, [loadConversations])
+
+  useEffect(() => {
+    if (selectedUserId) {
+      loadMessages()
+      const t2 = setInterval(loadMessages, 2500)
+      return () => clearInterval(t2)
+    } else {
+      setMessages([])
+    }
+  }, [selectedUserId, loadMessages])
+
+  // Auto-scroll
+  useEffect(() => {
+    if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
+  }, [messages])
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (timer.current) clearInterval(timer.current)
+    if (stream.current) stream.current.getTracks().forEach(t => t.stop())
+    if (audio.current) audio.current.pause()
+  }, [])
+
+  const send = async (type: string, data?: any) => {
+    if (!selectedUserId) return
+    if (type === 'text' && !text.trim()) return
+    setBusy(true)
+    try {
+      const body: any = {
+        type,
+        message: type === 'text' ? text.trim() : (data?.message || ''),
+        userId: selectedUserId,
+      }
+      if (data?.imageData) body.imageData = data.imageData
+      if (data?.voiceData) body.voiceData = data.voiceData
+      if (data?.videoData) body.videoData = data.videoData
+      const r = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const d = await r.json()
+      if (d.error) throw new Error(d.error)
+      if (type === 'text') setText('')
+      await loadMessages()
+      await loadConversations()
+    } catch (e: any) {
+      toast({ title: 'Send failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const startRec = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.current = s
+      chunks.current = []
+      let mt = 'audio/webm'
+      if (!MediaRecorder.isTypeSupported(mt)) {
+        mt = 'audio/mp4'
+        if (!MediaRecorder.isTypeSupported(mt)) mt = ''
+      }
+      const r = mt ? new MediaRecorder(s, { mimeType: mt }) : new MediaRecorder(s)
+      mr.current = r
+      r.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data) }
+      r.onstop = async () => {
+        const b = new Blob(chunks.current, { type: mt || 'audio/webm' })
+        if (b.size > 5e6) {
+          toast({ title: 'Too long', description: 'Keep under 1 min', variant: 'destructive' })
+          return
+        }
+        const rd = new FileReader()
+        rd.onload = async () => await send('voice', { voiceData: rd.result as string, message: 'Voice' })
+        rd.readAsDataURL(b)
+        if (stream.current) {
+          stream.current.getTracks().forEach(t => t.stop())
+          stream.current = null
+        }
+      }
+      r.start(1000)
+      setRecording(true)
+      setRecTime(0)
+      timer.current = setInterval(() => setRecTime(p => {
+        if (p >= 60) { stopRec(); return 60 }
+        return p + 1
+      }), 1000)
+    } catch {
+      toast({ title: 'Mic denied', description: 'Allow microphone access', variant: 'destructive' })
+    }
+  }
+
+  const stopRec = () => {
+    if (mr.current?.state === 'recording') mr.current.stop()
+    setRecording(false)
+    if (timer.current) { clearInterval(timer.current); timer.current = null }
+  }
+
+  const cancelRec = () => {
+    if (mr.current?.state === 'recording') {
+      mr.current.onstop = null
+      mr.current.stop()
+    }
+    setRecording(false)
+    setRecTime(0)
+    if (timer.current) { clearInterval(timer.current); timer.current = null }
+    if (stream.current) {
+      stream.current.getTracks().forEach(t => t.stop())
+      stream.current = null
+    }
+  }
+
+  const onImg = (f: File) => {
+    const r = new FileReader()
+    r.onload = () => {
+      const b = r.result as string
+      const img = new Image()
+      img.onload = () => {
+        const c = document.createElement('canvas')
+        const m = 600
+        let { width: w, height: h } = img
+        if (w > h && w > m) { h = h * m / w; w = m } else if (h > m) { w = w * m / h; h = m }
+        c.width = w; c.height = h
+        c.getContext('2d')?.drawImage(img, 0, 0, w, h)
+        send('image', { imageData: c.toDataURL('image/jpeg', 0.6), message: f.name })
+      }
+      img.src = b
+    }
+    r.readAsDataURL(f)
+  }
+
+  const onVid = (f: File) => {
+    if (f.size > 3e6) {
+      toast({ title: 'Too large', description: 'Under 3MB', variant: 'destructive' })
+      return
+    }
+    const r = new FileReader()
+    r.onload = () => send('video', { videoData: r.result as string, message: f.name })
+    r.readAsDataURL(f)
+  }
+
+  const play = (d: string, id: string) => {
+    if (playing === id) {
+      audio.current?.pause()
+      setPlaying(null)
+      return
+    }
+    if (audio.current) audio.current.pause()
+    try {
+      const b = d.includes(',') ? d.split(',')[1] : d
+      const m = d.match(/data:(.*?);/)?.[1] || 'audio/webm'
+      const bs = atob(b)
+      const ab = new ArrayBuffer(bs.length)
+      const ia = new Uint8Array(ab)
+      for (let i = 0; i < bs.length; i++) ia[i] = bs.charCodeAt(i)
+      audio.current = new Audio(URL.createObjectURL(new Blob([ab], { type: m })))
+      audio.current.onended = () => setPlaying(null)
+      audio.current.onerror = () => setPlaying(null)
+      audio.current.play().catch(() => setPlaying(null))
+      setPlaying(id)
+    } catch {}
+  }
+
+  const ft = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+  const fd = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 h-[70vh]">
+        {/* Conversation list */}
+        <div className={`border-r border-border flex flex-col ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-3 border-b border-border flex items-center justify-between">
+            <span className="font-semibold text-sm flex items-center gap-1.5">
+              <Headphones className="h-4 w-4" /> Conversations ({conversations.length})
+            </span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={loadConversations}>
+              <RefreshCw className="h-3 w-3" /> Refresh
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {conversations.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                <Headphones className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No conversations yet
+              </div>
+            ) : conversations.map(c => (
+              <button
+                key={c.userId}
+                onClick={() => setSelectedUserId(c.userId)}
+                className={`w-full text-left p-3 border-b border-border/40 hover:bg-muted/30 transition ${selectedUserId === c.userId ? 'bg-muted/50' : ''}`}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+                    {(c.userName || '?').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-sm font-medium truncate">{c.userName}</span>
+                      {c.unreadCount > 0 && (
+                        <Badge className="bg-red-500 text-white text-[10px] h-4 min-w-4 px-1 flex items-center justify-center">{c.unreadCount}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{c.lastMessage}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDateTime(c.lastTime)}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chat area */}
+        <div className={`md:col-span-2 flex flex-col ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
+          {!selectedUserId ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Select a conversation to start chatting</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="p-3 border-b border-border flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 md:hidden text-xs" onClick={() => setSelectedUserId(null)}>
+                  <ArrowUpRight className="h-3 w-3 rotate-180" /> Back
+                </Button>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  {(conversations.find(c => c.userId === selectedUserId)?.userName || '?').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">
+                    {conversations.find(c => c.userId === selectedUserId)?.userName || 'User'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {conversations.find(c => c.userId === selectedUserId)?.userEmail || ''}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={loadMessages}>
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              </div>
+
+              <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2">
+                {messages.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm font-medium">No messages yet</p>
+                    <p className="text-xs">Send a message to start the conversation</p>
+                  </div>
+                ) : messages.map(m => (
+                  <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] rounded-2xl p-2.5 ${m.sender === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap">{m.message}</p>}
+                      {m.type === 'image' && m.imageData && (
+                        <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-48 cursor-pointer" onClick={() => setViewer(m.imageData)} />
+                      )}
+                      {m.type === 'voice' && m.voiceData && (
+                        <button onClick={() => play(m.voiceData, m.id)} className="flex items-center gap-2 p-1.5 w-full">
+                          {playing === m.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                          <span className="text-xs">Voice message</span>
+                        </button>
+                      )}
+                      {m.type === 'video' && m.videoData && (
+                        <video src={m.videoData} controls className="rounded-lg max-w-full max-h-48" />
+                      )}
+                      <p className={`text-[10px] mt-1 ${m.sender === 'admin' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{fd(m.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {recording && (
+                <div className="flex items-center gap-2 p-2 bg-red-500/10 border-t border-red-500/30 flex-shrink-0">
+                  <span className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-sm text-red-500 font-medium flex-1">Recording {ft(recTime)}</span>
+                  <button onClick={cancelRec} className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-muted">Cancel</button>
+                  <button onClick={stopRec} className="text-xs px-3 py-1 rounded bg-red-500 text-white font-medium">Send</button>
+                </div>
+              )}
+
+              <div className="border-t border-border p-2 flex-shrink-0">
+                <div className="flex items-center gap-1">
+                  <input ref={fImg} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImg(e.target.files[0]); e.target.value = '' }} />
+                  <input ref={fVid} type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onVid(e.target.files[0]); e.target.value = '' }} />
+                  <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50" title="Send image">
+                    <ImageIcon className="h-5 w-5" />
+                  </button>
+                  <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted ${recording ? 'text-red-500' : ''}`} title="Record voice">
+                    {recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </button>
+                  <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50" title="Send video">
+                    <Video className="h-5 w-5" />
+                  </button>
+                  <input
+                    type="text"
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }}
+                    placeholder={recording ? 'Recording...' : 'Type a reply...'}
+                    className="flex-1 h-9 px-3 rounded-lg border border-border bg-background text-sm"
+                    disabled={busy || recording}
+                  />
+                  <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50" title="Send">
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {viewer && (
+        <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4" onClick={() => setViewer(null)}>
+          <button className="absolute top-4 right-4 text-white p-2 z-10" onClick={() => setViewer(null)}>
+            <X className="h-8 w-8" />
+          </button>
+          <img src={viewer} alt="Full" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =================== DEPOSIT/WITHDRAW APPROVALS TAB ===================
+function DepositWithdrawApprovalsTab() {
+  const { toast } = useToast()
+  const [txs, setTxs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('pending')
+  const [confirmDialog, setConfirmDialog] = useState<{ tx: any; action: 'approve' | 'reject' } | null>(null)
+  const [acting, setActing] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/transactions?status=${statusFilter}`)
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      // Filter to only DEPOSIT, WITHDRAW, INTERNAL_TRANSFER types
+      const filtered = (d.transactions || []).filter((t: any) =>
+        ['DEPOSIT', 'WITHDRAW', 'INTERNAL_TRANSFER'].includes(t.type)
+      )
+      setTxs(filtered)
+    } catch (e: any) {
+      toast({ title: 'Failed to load transactions', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [statusFilter, toast])
+
+  useEffect(() => { load() }, [load])
+
+  const act = async (tx: any, action: 'approve' | 'reject') => {
+    setActing(true)
+    try {
+      const res = await fetch('/api/admin/transactions/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId: tx.id, action }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: action === 'approve' ? 'Transaction approved' : 'Transaction rejected', description: d.message })
+      setConfirmDialog(null)
+      load()
+    } catch (e: any) {
+      toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const typeIcon = (type: string) => {
+    if (type === 'DEPOSIT') return <ArrowDownToLine className="h-3.5 w-3.5 text-green-500" />
+    if (type === 'WITHDRAW') return <ArrowUpFromLine className="h-3.5 w-3.5 text-red-500" />
+    if (type === 'INTERNAL_TRANSFER') return <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500" />
+    return null
+  }
+
+  const formatDetails = (t: any) => {
+    if (t.type === 'INTERNAL_TRANSFER') {
+      // toAddress may be "user:000001 (Name)"
+      const to = t.toAddress || ''
+      return (
+        <div className="text-xs">
+          <div className="text-muted-foreground">To: <span className="font-mono text-foreground">{to}</span></div>
+        </div>
+      )
+    }
+    if (t.type === 'DEPOSIT') {
+      return (
+        <div className="text-xs">
+          {t.fromAddress && <div className="text-muted-foreground">From: <span className="font-mono text-foreground">{t.fromAddress}</span></div>}
+          {t.txHash && <div className="text-muted-foreground">TxHash: <span className="font-mono text-foreground truncate inline-block max-w-[120px] align-bottom">{t.txHash}</span></div>}
+        </div>
+      )
+    }
+    if (t.type === 'WITHDRAW') {
+      return (
+        <div className="text-xs">
+          {t.toAddress && <div className="text-muted-foreground">To: <span className="font-mono text-foreground">{t.toAddress}</span></div>}
+          {t.txHash && <div className="text-muted-foreground">TxHash: <span className="font-mono text-foreground truncate inline-block max-w-[120px] align-bottom">{t.txHash}</span></div>}
+        </div>
+      )
+    }
+    return null
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={load}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+        {statusFilter === 'pending' && txs.length > 0 && (
+          <Badge className="ml-auto bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+            {txs.length} pending approval
+          </Badge>
+        )}
+      </div>
+
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">User</th>
+                <th className="px-3 py-2 text-left font-medium">Type</th>
+                <th className="px-3 py-2 text-left font-medium">Asset</th>
+                <th className="px-3 py-2 text-right font-medium">Amount</th>
+                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Network</th>
+                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Details</th>
+                <th className="px-3 py-2 text-center font-medium">Status</th>
+                <th className="px-3 py-2 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : txs.length === 0 ? (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No transactions</td></tr>
+              ) : txs.map(t => (
+                <tr key={t.id} className="border-t border-border/40 hover:bg-muted/30">
+                  <td className="px-3 py-3">
+                    <div className="font-medium text-xs">{t.userName}</div>
+                    <div className="text-[10px] text-muted-foreground">{t.userEmail}</div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1.5">
+                      {typeIcon(t.type)}
+                      <Badge variant="secondary" className={
+                        t.type === 'DEPOSIT' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                        t.type === 'WITHDRAW' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                        'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                      }>{t.type.replace('_', ' ')}</Badge>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-xs">{t.asset}</td>
+                  <td className="px-3 py-3 text-right tabular-nums font-medium">{formatQty(t.amount)}</td>
+                  <td className="px-3 py-3 text-xs hidden sm:table-cell">{t.network}</td>
+                  <td className="px-3 py-3 hidden md:table-cell">{formatDetails(t)}</td>
+                  <td className="px-3 py-3 text-center">
+                    <Badge variant="secondary" className={
+                      t.status === 'COMPLETED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                      t.status === 'PENDING' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                      t.status === 'REJECTED' || t.status === 'FAILED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                      ''
+                    }>{t.status}</Badge>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    {t.status === 'PENDING' ? (
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white"
+                          onClick={() => setConfirmDialog({ tx: t, action: 'approve' })}
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-red-500 text-red-500 hover:bg-red-500/10"
+                          onClick={() => setConfirmDialog({ tx: t, action: 'reject' })}
+                        >
+                          <XCircle className="h-3 w-3 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Confirm dialog */}
+      {confirmDialog && (
+        <Dialog open onOpenChange={() => !acting && setConfirmDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {confirmDialog.action === 'approve' ? (
+                  <><CheckCircle2 className="h-5 w-5 text-green-500" /> Confirm Approval</>
+                ) : (
+                  <><XCircle className="h-5 w-5 text-red-500" /> Confirm Rejection</>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {confirmDialog.action === 'approve'
+                  ? 'Please confirm you want to approve this transaction.'
+                  : 'Please confirm you want to reject this transaction. Funds will be refunded to the user.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">User:</span>
+                  <span className="font-medium">{confirmDialog.tx.userName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Type:</span>
+                  <Badge variant="secondary" className={
+                    confirmDialog.tx.type === 'DEPOSIT' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                    confirmDialog.tx.type === 'WITHDRAW' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                    'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                  }>{confirmDialog.tx.type.replace('_', ' ')}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-bold tabular-nums">{formatQty(confirmDialog.tx.amount)} {confirmDialog.tx.asset}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Network:</span>
+                  <span className="font-medium">{confirmDialog.tx.network}</span>
+                </div>
+
+                {confirmDialog.tx.type === 'INTERNAL_TRANSFER' && (
+                  <>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">From (Sender):</span>
+                        <span className="font-medium text-xs">{confirmDialog.tx.userName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">To (Recipient):</span>
+                        <span className="font-mono text-xs">{confirmDialog.tx.toAddress || '—'}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {(confirmDialog.tx.type === 'DEPOSIT' || confirmDialog.tx.type === 'WITHDRAW') && confirmDialog.tx.toAddress && (
+                  <div className="border-t border-border pt-2 mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{confirmDialog.tx.type === 'DEPOSIT' ? 'From:' : 'To:'}</span>
+                      <span className="font-mono text-xs break-all">{confirmDialog.tx.toAddress}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {confirmDialog.action === 'reject' && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded p-2 text-xs text-red-700 dark:text-red-400">
+                  <AlertTriangle className="h-3 w-3 inline mr-1" />
+                  Rejecting will refund {formatQty(confirmDialog.tx.amount)} {confirmDialog.tx.asset} back to the user's wallet (for withdrawals and internal transfers).
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setConfirmDialog(null)} disabled={acting}>Cancel</Button>
+                <Button
+                  className={confirmDialog.action === 'approve' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
+                  onClick={() => act(confirmDialog.tx, confirmDialog.action)}
+                  disabled={acting}
+                >
+                  {acting ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> :
+                    confirmDialog.action === 'approve' ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
+                  {confirmDialog.action === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   )
 }

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast'
 import { RealTimeLineChart } from '@/components/realtime-chart'
 import { DepthChart } from '@/components/depth-chart'
 import { BackButton } from '@/components/back-button'
+import { SignupPrompt } from '@/components/signup-prompt'
 import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
 import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus, TrendingUp, TrendingDown, Wallet, Shield, User } from 'lucide-react'
 
@@ -650,6 +651,22 @@ export function SpotView() {
 
   const change = ticker?.changePercent ?? 0
   const isUp = change >= 0
+
+  if (!user) {
+    return (
+      <SignupPrompt
+        icon={<TrendingUp className="h-10 w-10" />}
+        title="Sign in to Trade"
+        description="Log in or create an account to start spot trading with real-time charts, order books, and limit/market orders. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        features={[
+          { icon: <TrendingUp className="h-4 w-4" />, label: 'Live Trading' },
+          { icon: <Wallet className="h-4 w-4" />, label: 'Wallet' },
+          { icon: <Shield className="h-4 w-4" />, label: 'Secure' },
+        ]}
+        backTo="markets"
+      />
+    )
+  }
 
   return (
     <div className="container mx-auto px-2 sm:px-3 py-2 max-w-[1600px]">

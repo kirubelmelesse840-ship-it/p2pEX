@@ -52,6 +52,9 @@ export async function GET(req: NextRequest) {
       skip: offset,
       select: {
         id: true,
+        userId: true,
+        username: true,
+        avatar: true,
         email: true,
         name: true,
         kycVerified: true,

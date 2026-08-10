@@ -19,6 +19,7 @@ const VIEW_LABELS: Record<View, string> = {
   spot: 'Trade',
   p2p: 'P2P',
   wallet: 'Wallet',
+  admin: 'Admin',
 }
 
 /**

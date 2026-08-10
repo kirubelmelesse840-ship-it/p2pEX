@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/listings/action - moderate a P2P listing
- * Body: { listingId, action }
- *   action: 'pause' | 'resume' | 'cancel' | 'delete'
+ * Body: { listingId, action, ...fields }
+ *   action: 'pause' | 'resume' | 'cancel' | 'delete' | 'edit'
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
@@ -11,13 +11,61 @@ export async function POST(req: NextRequest) {
   const { error, status } = await requireAdmin(req as unknown as Request)
   if (error) return NextResponse.json({ error }, { status })
 
-  const { listingId, action } = await req.json()
+  const body = await req.json()
+  const { listingId, action } = body
   if (!listingId || !action) {
     return NextResponse.json({ error: 'listingId and action required' }, { status: 400 })
   }
 
   const listing = await db.p2PListing.findUnique({ where: { id: listingId } })
   if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+
+  if (action === 'edit') {
+    const {
+      price,
+      minOrder,
+      maxOrder,
+      tradesCount,
+      rating,
+      advertiserName,
+      accountNumber,
+      terms,
+    } = body
+
+    const updateData: any = {}
+    if (typeof price === 'number' && !isNaN(price)) updateData.price = price
+    if (typeof minOrder === 'number' && !isNaN(minOrder)) updateData.minOrder = minOrder
+    if (typeof maxOrder === 'number' && !isNaN(maxOrder)) updateData.maxOrder = maxOrder
+    if (typeof tradesCount === 'number' && !isNaN(tradesCount)) updateData.tradesCount = tradesCount
+    if (typeof rating === 'number' && !isNaN(rating)) updateData.rating = rating
+    if (typeof terms === 'string') updateData.terms = terms
+
+    // Update paymentDetails — set name & account/phone/address for each method
+    const methods: string[] = JSON.parse(listing.paymentMethods)
+    const existingDetails: Record<string, any> = listing.paymentDetails ? JSON.parse(listing.paymentDetails) : {}
+    const newDetails: Record<string, any> = {}
+    for (const m of methods) {
+      const prev = existingDetails[m] || {}
+      newDetails[m] = {
+        ...prev,
+        name: advertiserName || prev.name || '',
+      }
+      if (accountNumber) {
+        // Heuristic: crypto networks use 'address', others use 'phone'/'account'
+        if (['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(m)) {
+          newDetails[m].address = accountNumber
+        } else {
+          newDetails[m].phone = accountNumber
+          newDetails[m].account = accountNumber
+        }
+      }
+    }
+    updateData.paymentDetails = JSON.stringify(newDetails)
+
+    await db.p2PListing.update({ where: { id: listingId }, data: updateData })
+    return NextResponse.json({ ok: true, message: `Listing ${listing.id.slice(-6)} updated` })
+  }
+
 
   if (action === 'pause') {
     await db.p2PListing.update({ where: { id: listingId }, data: { status: 'PAUSED' } })

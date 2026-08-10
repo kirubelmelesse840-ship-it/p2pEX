@@ -14,11 +14,13 @@ export type View = 'home' | 'markets' | 'spot' | 'p2p' | 'wallet' | 'admin'
 
 interface User {
   id: string
+  userId?: string
+  username?: string
   email: string
   name: string
   kycVerified: boolean
   kycLevel: number
-  kycStatus?: string // NONE, PENDING, APPROVED, REJECTED
+  kycStatus?: string
   fiatCurrency: string
   isAdmin?: boolean
   isBanned?: boolean

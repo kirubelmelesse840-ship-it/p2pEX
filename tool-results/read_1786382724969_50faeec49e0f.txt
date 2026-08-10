@@ -1,0 +1,887 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { useAppStore } from '@/lib/store'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+     9→import { Badge } from '@/components/ui/badge'
+    10→import { useToast } from '@/hooks/use-toast'
+    11→import {
+    12→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    13→} from '@/components/ui/dialog'
+    14→import {
+    15→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    16→} from '@/components/ui/select'
+    17→import {
+    18→  Copy, Send, Download, ArrowDownToLine, ArrowUpFromLine, QrCode, Wallet as WalletIcon,
+    19→  CheckCircle2, Clock, XCircle, ExternalLink, ArrowLeftRight, Users, Zap,
+    20→} from 'lucide-react'
+    21→import { formatPrice, formatQty, formatUsd, formatDateTime, shortAddr, copyToClipboard } from '@/lib/utils'
+    22→import { BackButton } from '@/components/back-button'
+    23→
+    24→interface WalletData {
+    25→  asset: string
+    26→  assetName: string
+    27→  balance: number
+    28→  available: number
+    29→  locked: number
+    30→  depositAddress: string
+    31→  usdPrice: number
+    32→  usdValue: number
+    33→}
+    34→
+    35→interface Transaction {
+    36→  id: string
+    37→  asset: string
+    38→  type: string
+    39→  amount: number
+    40→  fee: number
+    41→  network: string
+    42→  fromAddress?: string | null
+    43→  toAddress?: string | null
+    44→  txHash?: string | null
+    45→  status: string
+    46→  confirmations: number
+    47→  requiredConfirmations: number
+    48→  note?: string | null
+    49→  createdAt: string
+    50→}
+    51→
+    52→export function WalletView() {
+    53→  const { user, setView } = useAppStore()
+    54→  const { toast } = useToast()
+    55→  const [wallets, setWallets] = useState<WalletData[]>([])
+    56→  const [totalUsd, setTotalUsd] = useState(0)
+    57→  const [transactions, setTransactions] = useState<Transaction[]>([])
+    58→  const [loading, setLoading] = useState(true)
+    59→  const [sendDialog, setSendDialog] = useState<WalletData | null>(null)
+    60→  const [depositDialog, setDepositDialog] = useState<WalletData | null>(null)
+    61→  const [transferDialog, setTransferDialog] = useState<WalletData | null>(null)
+    62→
+    63→  const load = useCallback(async () => {
+    64→    if (!user) { setWallets([]); setTransactions([]); setLoading(false); return }
+    65→    try {
+    66→      const [walletRes, txRes] = await Promise.all([
+    67→        fetch('/api/wallet'),
+    68→        fetch('/api/wallet/transactions?limit=50'),
+    69→      ])
+    70→      const walletData = await walletRes.json()
+    71→      const txData = await txRes.json()
+    72→      setWallets(walletData.wallets || [])
+    73→      setTotalUsd(walletData.totalUsd || 0)
+    74→      setTransactions(txData.transactions || [])
+    75→    } catch (e) {
+    76→      console.error(e)
+    77→    } finally {
+    78→      setLoading(false)
+    79→    }
+    80→  }, [user])
+    81→
+    82→  useEffect(() => { load() }, [load])
+    83→  useEffect(() => {
+    84→    if (!user) return
+    85→    const t = setInterval(load, 5000)
+    86→    return () => clearInterval(t)
+    87→  }, [user, load])
+    88→
+    89→  if (!user) {
+    90→    return (
+    91→      <div className="container mx-auto px-4 py-16 text-center">
+    92→        <WalletIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+    93→        <h2 className="text-xl font-bold mb-2">Connect to view your wallet</h2>
+    94→        <p className="text-sm text-muted-foreground mb-6">Log in or sign up to access your multi-asset wallet.</p>
+    95→        <Button onClick={() => setView('home')}>Back to Home</Button>
+    96→      </div>
+    97→    )
+    98→  }
+    99→
+   100→  return (
+   101→    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
+   102→      <BackButton to="home" />
+   103→
+   104→      {/* Total balance card */}
+   105→      <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border rounded-xl p-5 mb-4 mt-1">
+   106→        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+   107→          <div>
+   108→            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Estimated Value</p>
+   109→            <p className="text-3xl sm:text-4xl font-bold tabular-nums">{formatUsd(totalUsd)}</p>
+   110→            <p className="text-xs text-muted-foreground mt-1">
+   111→              ≈ {formatQty(totalUsd)} USD across {wallets.filter(w => w.balance > 0).length} assets
+   112→            </p>
+   113→          </div>
+   114→          <div className="flex flex-wrap gap-2">
+   115→            <Button variant="default" onClick={() => wallets[0] && setDepositDialog(wallets[0])}>
+   116→              <ArrowDownToLine className="h-4 w-4 mr-1.5" /> Deposit
+   117→            </Button>
+   118→            <Button variant="outline" onClick={() => wallets[0] && setSendDialog(wallets[0])}>
+   119→              <ArrowUpFromLine className="h-4 w-4 mr-1.5" /> Withdraw
+   120→            </Button>
+   121→            <Button
+   122→              variant="secondary"
+   123→              onClick={() => wallets[0] && setTransferDialog(wallets[0])}
+   124→              className="bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
+   125→            >
+   126→              <ArrowLeftRight className="h-4 w-4 mr-1.5" /> Transfer
+   127→            </Button>
+   128→          </div>
+   129→        </div>
+   130→      </div>
+   131→
+   132→      {/* Wallets table */}
+   133→      <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
+   134→        <div className="px-4 py-3 border-b border-border">
+   135→          <h2 className="font-semibold">Assets</h2>
+   136→        </div>
+   137→        <div className="overflow-x-auto">
+   138→          <table className="w-full text-sm">
+   139→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+   140→              <tr>
+   141→                <th className="px-4 py-2 text-left font-medium">Asset</th>
+   142→                <th className="px-4 py-2 text-right font-medium">Total Balance</th>
+   143→                <th className="px-4 py-2 text-right font-medium hidden sm:table-cell">Available</th>
+   144→                <th className="px-4 py-2 text-right font-medium hidden md:table-cell">Locked</th>
+   145→                <th className="px-4 py-2 text-right font-medium hidden md:table-cell">USD Value</th>
+   146→                <th className="px-4 py-2 text-right font-medium">Action</th>
+   147→              </tr>
+   148→            </thead>
+   149→            <tbody>
+   150→              {loading ? (
+   151→                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading wallets...</td></tr>
+   152→              ) : wallets.length === 0 ? (
+   153→                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No wallets</td></tr>
+   154→              ) : (
+   155→                wallets.filter(w => w.balance > 0 || ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'].includes(w.asset))
+   156→                  .map(w => (
+   157→                  <tr key={w.asset} className="border-t border-border/40 hover:bg-muted/30">
+   158→                    <td className="px-4 py-3">
+   159→                      <div className="flex items-center gap-2">
+   160→                        <AssetIcon asset={w.asset} />
+   161→                        <div>
+   162→                          <div className="font-medium">{w.asset}</div>
+   163→                          <div className="text-xs text-muted-foreground">{w.assetName}</div>
+   164→                        </div>
+   165→                      </div>
+   166→                    </td>
+   167→                    <td className="px-4 py-3 text-right tabular-nums">
+   168→                      <div>{formatQty(w.balance)}</div>
+   169→                      <div className="text-xs text-muted-foreground">{w.asset}</div>
+   170→                    </td>
+   171→                    <td className="px-4 py-3 text-right tabular-nums hidden sm:table-cell">
+   172→                      {formatQty(w.available)}
+   173→                    </td>
+   174→                    <td className="px-4 py-3 text-right tabular-nums hidden md:table-cell">
+   175→                      {w.locked > 0 ? <span className="text-yellow-500">{formatQty(w.locked)}</span> : '0'}
+   176→                    </td>
+   177→                    <td className="px-4 py-3 text-right tabular-nums hidden md:table-cell">
+   178→                      {formatUsd(w.usdValue)}
+   179→                      <div className="text-xs text-muted-foreground">${formatPrice(w.usdPrice)}</div>
+   180→                    </td>
+   181→                    <td className="px-4 py-3 text-right">
+   182→                      <div className="flex gap-1 justify-end">
+   183→                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setDepositDialog(w)}>
+   184→                          <Download className="h-3 w-3" />
+   185→                        </Button>
+   186→                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSendDialog(w)}>
+   187→                          <Send className="h-3 w-3" />
+   188→                        </Button>
+   189→                      </div>
+   190→                    </td>
+   191→                  </tr>
+   192→                ))
+   193→              )}
+   194→            </tbody>
+   195→          </table>
+   196→        </div>
+   197→      </div>
+   198→
+   199→      {/* Transactions - distinguish internal vs external */}
+   200→      <div className="rounded-lg border border-border bg-card overflow-hidden">
+   201→        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+   202→          <h2 className="font-semibold">Recent Transactions</h2>
+   203→          <div className="flex gap-3 text-xs text-muted-foreground">
+   204→            <span className="flex items-center gap-1">
+   205→              <span className="w-2 h-2 rounded-full bg-blue-500" />
+   206→              Internal
+   207→            </span>
+   208→            <span className="flex items-center gap-1">
+   209→              <span className="w-2 h-2 rounded-full bg-green-500" />
+   210→              Deposit
+   211→            </span>
+   212→            <span className="flex items-center gap-1">
+   213→              <span className="w-2 h-2 rounded-full bg-red-500" />
+   214→              Withdraw
+   215→            </span>
+   216→          </div>
+   217→        </div>
+   218→        <div className="overflow-x-auto">
+   219→          <table className="w-full text-sm">
+   220→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+   221→              <tr>
+   222→                <th className="px-4 py-2 text-left font-medium">Type</th>
+   223→                <th className="px-4 py-2 text-left font-medium">Asset</th>
+   224→                <th className="px-4 py-2 text-right font-medium">Amount</th>
+   225→                <th className="px-4 py-2 text-left font-medium hidden sm:table-cell">Network</th>
+   226→                <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Counterparty</th>
+   227→                <th className="px-4 py-2 text-left font-medium">Status</th>
+   228→                <th className="px-4 py-2 text-right font-medium hidden sm:table-cell">Time</th>
+   229→              </tr>
+   230→            </thead>
+   231→            <tbody>
+   232→              {transactions.length === 0 ? (
+   233→                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No transactions yet</td></tr>
+   234→              ) : (
+   235→                transactions.map(t => {
+   236→                  const isInternal = t.type === 'INTERNAL_TRANSFER'
+   237→                  const isIncoming = isInternal
+   238→                    ? !!t.fromAddress  // if fromAddress exists, we received it
+   239→                    : t.type === 'DEPOSIT'
+   240→                  return (
+   241→                    <tr key={t.id} className={`border-t border-border/40 hover:bg-muted/30 ${isInternal ? 'bg-blue-500/5' : ''}`}>
+   242→                      <td className="px-4 py-3">
+   243→                        <div className="flex items-center gap-2">
+   244→                          {isInternal ? (
+   245→                            <ArrowLeftRight className="h-4 w-4 text-blue-500" />
+   246→                          ) : t.type === 'DEPOSIT' ? (
+   247→                            <ArrowDownToLine className="h-4 w-4 text-green-500" />
+   248→                          ) : (
+   249→                            <ArrowUpFromLine className="h-4 w-4 text-red-500" />
+   250→                          )}
+   251→                          <div>
+   252→                            <span className="font-medium">
+   253→                              {isInternal ? 'Internal Transfer' : t.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
+   254→                            </span>
+   255→                            {isInternal && (
+   256→                              <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${
+   257→                                isIncoming ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'
+   258→                              }`}>
+   259→                                {isIncoming ? 'Received' : 'Sent'}
+   260→                              </span>
+   261→                            )}
+   262→                          </div>
+   263→                        </div>
+   264→                      </td>
+   265→                      <td className="px-4 py-3">{t.asset}</td>
+   266→                      <td className="px-4 py-3 text-right tabular-nums">
+   267→                        <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
+   268→                          {isIncoming ? '+' : '-'}{formatQty(t.amount)}
+   269→                        </span>
+   270→                        {t.fee > 0 && (
+   271→                          <div className="text-xs text-muted-foreground">Fee: {formatQty(t.fee)}</div>
+   272→                        )}
+   273→                      </td>
+   274→                      <td className="px-4 py-3 text-xs hidden sm:table-cell">
+   275→                        {isInternal ? (
+   276→                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+   277→                            <Zap className="h-3 w-3" /> P2PEX
+   278→                          </span>
+   279→                        ) : (
+   280→                          <span>{t.network}</span>
+   281→                        )}
+   282→                      </td>
+   283→                      <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell font-mono">
+   284→                        {isInternal ? (
+   285→                          <span className="inline-flex items-center gap-1">
+   286→                            <Users className="h-3 w-3" />
+   287→                            {isIncoming ? shortAddr(t.fromAddress || '') : shortAddr(t.toAddress || '')}
+   288→                          </span>
+   289→                        ) : (
+   290→                          <span>
+   291→                            {t.type === 'DEPOSIT' ? shortAddr(t.fromAddress || '') : shortAddr(t.toAddress || '')}
+   292→                          </span>
+   293→                        )}
+   294→                      </td>
+   295→                      <td className="px-4 py-3">
+   296→                        <StatusBadge status={t.status} />
+   297→                      </td>
+   298→                      <td className="px-4 py-3 text-right text-xs text-muted-foreground hidden sm:table-cell">
+   299→                        {formatDateTime(t.createdAt)}
+   300→                      </td>
+   301→                    </tr>
+   302→                  )
+   303→                })
+   304→              )}
+   305→            </tbody>
+   306→          </table>
+   307→        </div>
+   308→      </div>
+   309→
+   310→      {/* Send dialog */}
+   311→      {sendDialog && (
+   312→        <SendDialog
+   313→          wallet={sendDialog}
+   314→          wallets={wallets}
+   315→          onClose={() => setSendDialog(null)}
+   316→          onSuccess={load}
+   317→        />
+   318→      )}
+   319→
+   320→      {/* Deposit dialog */}
+   321→      {depositDialog && (
+   322→        <DepositDialog
+   323→          wallet={depositDialog}
+   324→          onClose={() => setDepositDialog(null)}
+   325→          onSuccess={load}
+   326→        />
+   327→      )}
+   328→
+   329→      {/* Internal transfer dialog */}
+   330→      {transferDialog && (
+   331→        <TransferDialog
+   332→          wallet={transferDialog}
+   333→          wallets={wallets}
+   334→          onClose={() => setTransferDialog(null)}
+   335→          onSuccess={load}
+   336→        />
+   337→      )}
+   338→    </div>
+   339→  )
+   340→}
+   341→
+   342→function AssetIcon({ asset }: { asset: string }) {
+   343→  const colors: Record<string, string> = {
+   344→    BTC: 'bg-orange-500',
+   345→    ETH: 'bg-blue-500',
+   346→    USDT: 'bg-green-500',
+   347→    USDC: 'bg-blue-400',
+   348→    BNB: 'bg-yellow-500',
+   349→    SOL: 'bg-purple-500',
+   350→    XRP: 'bg-gray-500',
+   351→    ADA: 'bg-blue-600',
+   352→    DOGE: 'bg-yellow-400',
+   353→    AVAX: 'bg-red-500',
+   354→    LINK: 'bg-blue-500',
+   355→    DOT: 'bg-pink-500',
+   356→    MATIC: 'bg-purple-600',
+   357→    LTC: 'bg-gray-400',
+   358→  }
+   359→  return (
+   360→    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-bold ${colors[asset] || 'bg-gray-500'}`}>
+   361→      {asset.slice(0, 3)}
+   362→    </div>
+   363→  )
+   364→}
+   365→
+   366→function StatusBadge({ status }: { status: string }) {
+   367→  const map: Record<string, { color: string; icon: any; label: string }> = {
+   368→    COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: CheckCircle2, label: 'Completed' },
+   369→    PENDING: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending' },
+   370→    FAILED: { color: 'text-red-500 bg-red-500/10', icon: XCircle, label: 'Failed' },
+   371→    REJECTED: { color: 'text-red-500 bg-red-500/10', icon: XCircle, label: 'Rejected' },
+   372→    CONFIRMED: { color: 'text-green-500 bg-green-500/10', icon: CheckCircle2, label: 'Confirmed' },
+   373→  }
+   374→  const config = map[status] || map.PENDING
+   375→  const Icon = config.icon
+   376→  return (
+   377→    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded ${config.color}`}>
+   378→      <Icon className="h-3 w-3" />
+   379→      {config.label}
+   380→    </span>
+   381→  )
+   382→}
+   383→
+   384→function SendDialog({ wallet, wallets, onClose, onSuccess }: {
+   385→  wallet: WalletData
+   386→  wallets: WalletData[]
+   387→  onClose: () => void
+   388→  onSuccess: () => void
+   389→}) {
+   390→  const { toast } = useToast()
+   391→  const [asset, setAsset] = useState(wallet.asset)
+   392→  const [address, setAddress] = useState('')
+   393→  const [network, setNetwork] = useState('')
+   394→  const [amount, setAmount] = useState('')
+   395→  const [loading, setLoading] = useState(false)
+   396→
+   397→  const NETWORKS: Record<string, string[]> = {
+   398→    BTC: ['BTC'],
+   399→    ETH: ['ERC20'],
+   400→    USDT: ['TRC20', 'ERC20', 'BSC'],
+   401→    USDC: ['ERC20'],
+   402→    BNB: ['BSC'],
+   403→    SOL: ['SOL'],
+   404→    XRP: ['XRP'],
+   405→    ADA: ['ADA'],
+   406→    DOGE: ['DOGE'],
+   407→    AVAX: ['AVAX'],
+   408→    LINK: ['ERC20'],
+   409→    DOT: ['DOT'],
+   410→    MATIC: ['ERC20'],
+   411→    LTC: ['LTC'],
+   412→  }
+   413→  const FEES: Record<string, Record<string, number>> = {
+   414→    BTC: { BTC: 0.0001 },
+   415→    ETH: { ERC20: 0.001 },
+   416→    USDT: { TRC20: 1, ERC20: 5, BSC: 0.5 },
+   417→    USDC: { ERC20: 5 },
+   418→    BNB: { BSC: 0.001 },
+   419→    SOL: { SOL: 0.01 },
+   420→    XRP: { XRP: 0.1 },
+   421→    ADA: { ADA: 0.2 },
+   422→    DOGE: { DOGE: 5 },
+   423→    AVAX: { AVAX: 0.01 },
+   424→    LINK: { ERC20: 0.1 },
+   425→    DOT: { DOT: 0.05 },
+   426→    MATIC: { ERC20: 0.5 },
+   427→    LTC: { LTC: 0.0005 },
+   428→  }
+   429→
+   430→  const availableNetworks = NETWORKS[asset] || []
+   431→  const selectedWallet = wallets.find(w => w.asset === asset)
+   432→  const available = selectedWallet?.available ?? 0
+   433→  const fee = FEES[asset]?.[network] ?? 0
+   434→  const amountNum = parseFloat(amount) || 0
+   435→  const total = amountNum + fee
+   436→
+   437→  useEffect(() => {
+   438→    if (availableNetworks.length > 0 && !availableNetworks.includes(network)) {
+   439→      setNetwork(availableNetworks[0])
+   440→    }
+   441→  }, [asset])
+   442→
+   443→  const submit = async () => {
+   444→    if (!address) {
+   445→      toast({ title: 'Enter destination address', variant: 'destructive' })
+   446→      return
+   447→    }
+   448→    if (amountNum <= 0) {
+   449→      toast({ title: 'Enter valid amount', variant: 'destructive' })
+   450→      return
+   451→    }
+   452→    if (total > available) {
+   453→      toast({ title: 'Insufficient balance', description: `Need ${total} ${asset}, have ${available}`, variant: 'destructive' })
+   454→      return
+   455→    }
+   456→    setLoading(true)
+   457→    try {
+   458→      const res = await fetch('/api/wallet/send', {
+   459→        method: 'POST',
+   460→        headers: { 'Content-Type': 'application/json' },
+   461→        body: JSON.stringify({ asset, network, address, amount: amountNum }),
+   462→      })
+   463→      const data = await res.json()
+   464→      if (data.error) throw new Error(data.error)
+   465→      toast({
+   466→        title: 'Withdrawal submitted',
+   467→        description: `${amountNum} ${asset} will be sent to ${shortAddr(address)} via ${network}`,
+   468→      })
+   469→      onSuccess()
+   470→      onClose()
+   471→    } catch (e: any) {
+   472→      toast({ title: 'Withdrawal failed', description: e.message, variant: 'destructive' })
+   473→    } finally {
+   474→      setLoading(false)
+   475→    }
+   476→  }
+   477→
+   478→  return (
+   479→    <Dialog open onOpenChange={onClose}>
+   480→      <DialogContent className="max-w-md">
+   481→        <DialogHeader>
+   482→          <DialogTitle>Withdraw Crypto</DialogTitle>
+   483→          <DialogDescription>Send crypto to an external wallet address</DialogDescription>
+   484→        </DialogHeader>
+   485→        <div className="space-y-3">
+   486→          <div>
+   487→            <label className="text-xs font-medium text-muted-foreground">Asset</label>
+   488→            <Select value={asset} onValueChange={setAsset}>
+   489→              <SelectTrigger><SelectValue /></SelectTrigger>
+   490→              <SelectContent>
+   491→                {wallets.filter(w => w.balance > 0 || ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'].includes(w.asset)).map(w => (
+   492→                  <SelectItem key={w.asset} value={w.asset}>
+   493→                    {w.asset} - {w.assetName} ({formatQty(w.available)})
+   494→                  </SelectItem>
+   495→                ))}
+   496→              </SelectContent>
+   497→            </Select>
+   498→          </div>
+   499→
+   500→          <div>
+   501→            <label className="text-xs font-medium text-muted-foreground">Network</label>
+   502→            <Select value={network} onValueChange={setNetwork}>
+   503→              <SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger>
+   504→              <SelectContent>
+   505→                {availableNetworks.map(n => (
+   506→                  <SelectItem key={n} value={n}>{n}</SelectItem>
+   507→                ))}
+   508→              </SelectContent>
+   509→            </Select>
+   510→            <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+   511→              ⚠ Only send {asset} via {network} network. Using wrong network will result in permanent loss.
+   512→            </p>
+   513→          </div>
+   514→
+   515→          <div>
+   516→            <label className="text-xs font-medium text-muted-foreground">Destination Address</label>
+   517→            <Input
+   518→              value={address}
+   519→              onChange={e => setAddress(e.target.value)}
+   520→              placeholder="Paste wallet address"
+   521→              className="font-mono text-sm"
+   522→            />
+   523→          </div>
+   524→
+   525→          <div>
+   526→            <div className="flex items-center justify-between">
+   527→              <label className="text-xs font-medium text-muted-foreground">Amount</label>
+   528→              <button
+   529→                className="text-xs text-primary hover:underline"
+   530→                onClick={() => setAmount(available.toString())}
+   531→              >
+   532→                Max: {formatQty(available)}
+   533→              </button>
+   534→            </div>
+   535→            <Input
+   536→              type="number"
+   537→              value={amount}
+   538→              onChange={e => setAmount(e.target.value)}
+   539→              placeholder="0.00"
+   540→              className="tabular-nums"
+   541→            />
+   542→          </div>
+   543→
+   544→          <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-xs">
+   545→            <div className="flex justify-between">
+   546→              <span className="text-muted-foreground">Available</span>
+   547→              <span className="tabular-nums">{formatQty(available)} {asset}</span>
+   548→            </div>
+   549→            <div className="flex justify-between">
+   550→              <span className="text-muted-foreground">Network Fee</span>
+   551→              <span className="tabular-nums">{fee} {asset}</span>
+   552→            </div>
+   553→            <div className="flex justify-between font-medium pt-1 border-t border-border">
+   554→              <span>Total</span>
+   555→              <span className="tabular-nums">{formatQty(total)} {asset}</span>
+   556→            </div>
+   557→          </div>
+   558→
+   559→          <Button
+   560→            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
+   561→            onClick={submit}
+   562→            disabled={loading || !address || !amount || !network}
+   563→          >
+   564→            {loading ? 'Processing...' : `Withdraw ${asset}`}
+   565→          </Button>
+   566→        </div>
+   567→      </DialogContent>
+   568→    </Dialog>
+   569→  )
+   570→}
+   571→
+   572→function DepositDialog({ wallet, onClose, onSuccess }: {
+   573→  wallet: WalletData
+   574→  onClose: () => void
+   575→  onSuccess: () => void
+   576→}) {
+   577→  const { toast } = useToast()
+   578→  const [asset, setAsset] = useState(wallet.asset)
+   579→  const [networks, setNetworks] = useState<any[]>([])
+   580→  const [selectedNetwork, setSelectedNetwork] = useState('')
+   581→  const [loading, setLoading] = useState(false)
+   582→  const [copied, setCopied] = useState(false)
+   583→
+   584→  const loadAddress = async (a: string) => {
+   585→    try {
+   586→      const res = await fetch(`/api/wallet/address?asset=${a}`)
+   587→      const data = await res.json()
+   588→      setNetworks(data.networks || [])
+   589→      if (data.networks?.length > 0) {
+   590→        setSelectedNetwork(data.networks[0].network)
+   591→      }
+   592→    } catch {}
+   593→  }
+   594→
+   595→  useEffect(() => { loadAddress(asset) }, [asset])
+   596→  useEffect(() => { setAsset(wallet.asset) }, [wallet])
+   597→
+   598→  const current = networks.find(n => n.network === selectedNetwork)
+   599→  const address = current?.address || wallet.depositAddress
+   600→
+   601→  const copy = async () => {
+   602→    const ok = await copyToClipboard(address)
+   603→    if (ok) {
+   604→      setCopied(true)
+   605→      toast({ title: 'Address copied' })
+   606→      setTimeout(() => setCopied(false), 1500)
+   607→    }
+   608→  }
+   609→
+   610→  // Mock deposit (simulate receiving funds)
+   611→  const simulateDeposit = async () => {
+   612→    setLoading(true)
+   613→    try {
+   614→      const amount = asset === 'USDT' ? 1000 : asset === 'BTC' ? 0.05 : asset === 'ETH' ? 0.5 : 10
+   615→      const res = await fetch('/api/wallet/deposit', {
+   616→        method: 'POST',
+   617→        headers: { 'Content-Type': 'application/json' },
+   618→        body: JSON.stringify({ asset, network: selectedNetwork, amount }),
+   619→      })
+   620→      const data = await res.json()
+   621→      if (data.error) throw new Error(data.error)
+   622→      toast({
+   623→        title: 'Deposit initiated',
+   624→        description: `${amount} ${asset} will be credited after confirmations.`,
+   625→      })
+   626→      onSuccess()
+   627→      onClose()
+   628→    } catch (e: any) {
+   629→      toast({ title: 'Deposit failed', description: e.message, variant: 'destructive' })
+   630→    } finally {
+   631→      setLoading(false)
+   632→    }
+   633→  }
+   634→
+   635→  return (
+   636→    <Dialog open onOpenChange={onClose}>
+   637→      <DialogContent className="max-w-md">
+   638→        <DialogHeader>
+   639→          <DialogTitle>Deposit Crypto</DialogTitle>
+   640→          <DialogDescription>Receive crypto to your P2PEX wallet</DialogDescription>
+   641→        </DialogHeader>
+   642→        <div className="space-y-3">
+   643→          <div>
+   644→            <label className="text-xs font-medium text-muted-foreground">Asset</label>
+   645→            <Select value={asset} onValueChange={setAsset}>
+   646→              <SelectTrigger><SelectValue /></SelectTrigger>
+   647→              <SelectContent>
+   648→                {['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'LINK', 'DOT', 'MATIC', 'LTC'].map(a => (
+   649→                  <SelectItem key={a} value={a}>{a}</SelectItem>
+   650→                ))}
+   651→              </SelectContent>
+   652→            </Select>
+   653→          </div>
+   654→
+   655→          <div>
+   656→            <label className="text-xs font-medium text-muted-foreground">Network</label>
+   657→            <Select value={selectedNetwork} onValueChange={setSelectedNetwork}>
+   658→              <SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger>
+   659→              <SelectContent>
+   660→                {networks.map(n => (
+   661→                  <SelectItem key={n.network} value={n.network}>
+   662→                    {n.network} {n.fee ? `(fee: ${n.fee})` : ''}
+   663→                  </SelectItem>
+   664→                ))}
+   665→              </SelectContent>
+   666→            </Select>
+   667→            {networks.length > 1 && (
+   668→              <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+   669→                ⚠ Make sure to send via {selectedNetwork}. Other networks may not be credited.
+   670→              </p>
+   671→            )}
+   672→          </div>
+   673→
+   674→          {/* QR + Address */}
+   675→          <div className="flex flex-col items-center py-4 bg-muted/30 rounded-lg">
+   676→            <div className="bg-white p-3 rounded-lg mb-3">
+   677→              <QrCode className="h-32 w-32 text-black" />
+   678→            </div>
+   679→            <p className="text-xs text-muted-foreground mb-1">Deposit Address ({selectedNetwork})</p>
+   680→            <p className="text-xs font-mono break-all px-4 text-center max-w-xs">{address}</p>
+   681→            <Button variant="outline" size="sm" className="mt-2" onClick={copy}>
+   682→              {copied ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+   683→              {copied ? 'Copied!' : 'Copy Address'}
+   684→            </Button>
+   685→          </div>
+   686→
+   687→          <div className="text-xs text-muted-foreground bg-yellow-500/10 p-2 rounded">
+   688→            <p className="font-medium text-yellow-600 dark:text-yellow-500 mb-1">⚠ Important</p>
+   689→            <ul className="list-disc list-inside space-y-0.5">
+   690→              <li>Send only {asset} to this address</li>
+   691→              <li>Minimum deposit: {asset === 'BTC' ? '0.0001' : '0.01'} {asset}</li>
+   692→              <li>Confirmations required: {current?.confirmations || 12}</li>
+   693→            </ul>
+   694→          </div>
+   695→
+   696→          {/* Demo deposit button */}
+   697→          <Button
+   698→            variant="default"
+   699→            className="w-full"
+   700→            onClick={simulateDeposit}
+   701→            disabled={loading}
+   702→          >
+   703→            {loading ? 'Processing...' : `Simulate Deposit (Demo)`}
+   704→          </Button>
+   705→          <p className="text-xs text-center text-muted-foreground">
+   706→            In production, deposits are detected automatically from the blockchain.
+   707→          </p>
+   708→        </div>
+   709→      </DialogContent>
+   710→    </Dialog>
+   711→  )
+   712→}
+   713→
+   714→/**
+   715→ * TransferDialog - internal transfer between P2PEX users by email
+   716→ * Instant, fee-free, no blockchain confirmation needed
+   717→ */
+   718→function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
+   719→  wallet: WalletData
+   720→  wallets: WalletData[]
+   721→  onClose: () => void
+   722→  onSuccess: () => void
+   723→}) {
+   724→  const { toast } = useToast()
+   725→  const [asset, setAsset] = useState(wallet.asset)
+   726→  const [recipientEmail, setRecipientEmail] = useState('')
+   727→  const [amount, setAmount] = useState('')
+   728→  const [note, setNote] = useState('')
+   729→  const [loading, setLoading] = useState(false)
+   730→
+   731→  const selectedWallet = wallets.find(w => w.asset === asset)
+   732→  const available = selectedWallet?.available ?? 0
+   733→  const amountNum = parseFloat(amount) || 0
+   734→
+   735→  const submit = async () => {
+   736→    if (!recipientEmail) {
+   737→      toast({ title: 'Enter recipient email', variant: 'destructive' })
+   738→      return
+   739→    }
+   740→    if (amountNum <= 0) {
+   741→      toast({ title: 'Enter valid amount', variant: 'destructive' })
+   742→      return
+   743→    }
+   744→    if (amountNum > available) {
+   745→      toast({ title: 'Insufficient balance', description: `Available: ${available} ${asset}`, variant: 'destructive' })
+   746→      return
+   747→    }
+   748→    setLoading(true)
+   749→    try {
+   750→      const res = await fetch('/api/wallet/transfer', {
+   751→        method: 'POST',
+   752→        headers: { 'Content-Type': 'application/json' },
+   753→        body: JSON.stringify({ asset, amount: amountNum, recipientEmail, note }),
+   754→      })
+   755→      const data = await res.json()
+   756→      if (data.error) throw new Error(data.error)
+   757→      toast({
+   758→        title: 'Transfer successful',
+   759→        description: `${amountNum} ${asset} sent to ${recipientEmail}`,
+   760→      })
+   761→      onSuccess()
+   762→      onClose()
+   763→    } catch (e: any) {
+   764→      toast({ title: 'Transfer failed', description: e.message, variant: 'destructive' })
+   765→    } finally {
+   766→      setLoading(false)
+   767→    }
+   768→  }
+   769→
+   770→  return (
+   771→    <Dialog open onOpenChange={onClose}>
+   772→      <DialogContent className="max-w-md">
+   773→        <DialogHeader>
+   774→          <DialogTitle className="flex items-center gap-2">
+   775→            <ArrowLeftRight className="h-5 w-5 text-blue-500" />
+   776→            Internal Transfer
+   777→          </DialogTitle>
+   778→          <DialogDescription>
+   779→            Send crypto to another P2PEX user instantly — no blockchain fees, no confirmation delays.
+   780→          </DialogDescription>
+   781→        </DialogHeader>
+   782→
+   783→        <div className="space-y-3">
+   784→          {/* Info banner */}
+   785→          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs">
+   786→            <div className="flex items-start gap-2">
+   787→              <Zap className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+   788→              <div className="text-blue-700 dark:text-blue-400">
+   789→                <p className="font-medium mb-0.5">Internal transfers are:</p>
+   790→                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+   791→                  <li>Free — no network fees</li>
+   792→                  <li>Instant — confirmed immediately</li>
+   793→                  <li>Only between P2PEX users (by email)</li>
+   794→                </ul>
+   795→              </div>
+   796→            </div>
+   797→          </div>
+   798→
+   799→          <div>
+   800→            <label className="text-xs font-medium text-muted-foreground">Asset</label>
+   801→            <Select value={asset} onValueChange={setAsset}>
+   802→              <SelectTrigger><SelectValue /></SelectTrigger>
+   803→              <SelectContent>
+   804→                {wallets.filter(w => w.balance > 0 || ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL'].includes(w.asset)).map(w => (
+   805→                  <SelectItem key={w.asset} value={w.asset}>
+   806→                    {w.asset} - {w.assetName} ({formatQty(w.available)})
+   807→                  </SelectItem>
+   808→                ))}
+   809→              </SelectContent>
+   810→            </Select>
+   811→          </div>
+   812→
+   813→          <div>
+   814→            <label className="text-xs font-medium text-muted-foreground">Recipient Email (P2PEX user)</label>
+   815→            <Input
+   816→              type="email"
+   817→              value={recipientEmail}
+   818→              onChange={e => setRecipientEmail(e.target.value)}
+   819→              placeholder="user@example.com"
+   820→              className="mt-1"
+   821→            />
+   822→            <p className="text-xs text-muted-foreground mt-1">
+   823→              The recipient must have a P2PEX account.
+   824→            </p>
+   825→          </div>
+   826→
+   827→          <div>
+   828→            <div className="flex items-center justify-between">
+   829→              <label className="text-xs font-medium text-muted-foreground">Amount</label>
+   830→              <button
+   831→                className="text-xs text-primary hover:underline"
+   832→                onClick={() => setAmount(available.toString())}
+   833→              >
+   834→                Max: {formatQty(available)}
+   835→              </button>
+   836→            </div>
+   837→            <Input
+   838→              type="number"
+   839→              value={amount}
+   840→              onChange={e => setAmount(e.target.value)}
+   841→              placeholder="0.00"
+   842→              className="tabular-nums"
+   843→            />
+   844→          </div>
+   845→
+   846→          <div>
+   847→            <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+   848→            <Textarea
+   849→              value={note}
+   850→              onChange={e => setNote(e.target.value)}
+   851→              placeholder="What's this transfer for?"
+   852→              rows={2}
+   853→              className="text-sm"
+   854→            />
+   855→          </div>
+   856→
+   857→          <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-xs">
+   858→            <div className="flex justify-between">
+   859→              <span className="text-muted-foreground">Available</span>
+   860→              <span className="tabular-nums">{formatQty(available)} {asset}</span>
+   861→            </div>
+   862→            <div className="flex justify-between">
+   863→              <span className="text-muted-foreground">Network Fee</span>
+   864→              <span className="text-green-600 dark:text-green-400 font-medium">FREE</span>
+   865→            </div>
+   866→            <div className="flex justify-between font-medium pt-1 border-t border-border">
+   867→              <span>Recipient receives</span>
+   868→              <span className="tabular-nums">{formatQty(amountNum)} {asset}</span>
+   869→            </div>
+   870→          </div>
+   871→
+   872→          <DialogFooter>
+   873→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+   874→            <Button
+   875→              className="bg-blue-500 hover:bg-blue-600 text-white"
+   876→              onClick={submit}
+   877→              disabled={loading || !recipientEmail || !amount}
+   878→            >
+   879→              {loading ? 'Sending...' : 'Send Transfer'}
+   880→            </Button>
+   881→          </DialogFooter>
+   882→        </div>
+   883→      </DialogContent>
+   884→    </Dialog>
+   885→  )
+   886→}
+   887→

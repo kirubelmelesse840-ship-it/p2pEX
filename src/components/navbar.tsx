@@ -25,9 +25,11 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
+import { SupportChatDialog } from '@/components/support-chat-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
+  Headphones, Copy,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -57,8 +59,28 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [kycOpen, setKycOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [supportUnread, setSupportUnread] = useState(0)
 
   const isAdmin = user?.isAdmin
+
+  // Poll support unread count for non-admin logged-in users
+  useEffect(() => {
+    if (!user || isAdmin) return
+    let active = true
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/support')
+        const data = await res.json()
+        if (active && !data.error && typeof data.unreadCount === 'number') {
+          setSupportUnread(data.unreadCount)
+        }
+      } catch {}
+    }
+    poll()
+    const t = setInterval(poll, 5000)
+    return () => { active = false; clearInterval(t) }
+  }, [user, isAdmin])
 
   const handleLogout = async () => {
     try {
@@ -187,9 +209,45 @@ export function Navbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel>
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-0.5">
                   <span className="font-medium">{user.name}</span>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
+                  {user.userId && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-xs text-muted-foreground">ID:</span>
+                      <span className="text-xs font-mono truncate max-w-[140px]">{user.userId}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigator.clipboard.writeText(user.userId)
+                          toast({ title: 'Copied', description: 'User ID copied to clipboard' })
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  {user.username && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Username:</span>
+                      <span className="text-xs font-medium truncate max-w-[140px]">@{user.username}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigator.clipboard.writeText(user.username)
+                          toast({ title: 'Copied', description: 'Username copied to clipboard' })
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -225,6 +283,20 @@ export function Navbar() {
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSupportOpen(true)
+                  setSupportUnread(0)
+                }}
+              >
+                <Headphones className="mr-2 h-4 w-4" />
+                Support
+                {supportUnread > 0 && (
+                  <Badge className="ml-auto text-[10px] bg-red-500 text-white">
+                    {supportUnread > 99 ? '99+' : supportUnread}
+                  </Badge>
+                )}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -248,6 +320,11 @@ export function Navbar() {
     {/* Settings Dialog */}
     {settingsOpen && (
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    )}
+
+    {/* Support Chat Dialog */}
+    {supportOpen && (
+      <SupportChatDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
     )}
     </>
   )

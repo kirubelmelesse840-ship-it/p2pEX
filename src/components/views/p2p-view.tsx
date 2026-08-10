@@ -18,10 +18,12 @@ import {
   Users, Shield, Check, Clock, X, MessageCircle, Plus, Star,
   ArrowDownToLine, ArrowUpFromLine, AlertCircle, Banknote, CreditCard, BadgeCheck, Smartphone, Upload,
   CheckCircle2, XCircle,
+  RefreshCw, Copy, Wallet, Bitcoin,
 } from 'lucide-react'
 import { formatPrice, formatQty, formatDateTime, formatCompact } from '@/lib/utils'
 import { BackButton } from '@/components/back-button'
 import { compressImageToBase64, formatFileSize } from '@/lib/image-compression'
+import { SignupPrompt } from '@/components/signup-prompt'
 
 interface Listing {
   id: string
@@ -169,6 +171,22 @@ export function P2PView() {
   // Available payment methods for the selected fiat currency
   const availablePaymentMethods = FIAT_PAYMENT_METHODS[filters.fiat] || ['Bank Transfer']
 
+  // Show signup prompt for non-authenticated users
+  if (!user) {
+    return (
+      <SignupPrompt
+        icon={<Users className="h-10 w-10" />}
+        title="Sign in to P2P Marketplace"
+        description="Log in or create an account to buy and sell USDT with Telebirr, CBE Birr, and crypto networks. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        features={[
+          { icon: <Smartphone className="h-5 w-5" />, label: 'Telebirr' },
+          { icon: <CreditCard className="h-5 w-5" />, label: 'CBE Birr' },
+          { icon: <Bitcoin className="h-5 w-5" />, label: 'Crypto' },
+        ]}
+      />
+    )
+  }
+
   return (
     <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
       <BackButton to="home" />
@@ -182,9 +200,14 @@ export function P2PView() {
           <p className="text-sm text-muted-foreground">Trade crypto directly with other users in your local currency</p>
         </div>
         {user && (
-          <Button onClick={() => setCreateOpen(true)} className="hidden sm:flex">
-            <Plus className="h-4 w-4 mr-1.5" /> Post Ad
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { load() }} className="gap-1.5 cursor-pointer hover:bg-primary/10">
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="hidden sm:flex">
+              <Plus className="h-4 w-4 mr-1.5" /> Post Ad
+            </Button>
+          </div>
         )}
       </div>
 
@@ -320,6 +343,10 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
   // Use real trades count and rating from the listing (set by admin)
   const tradesCount = listing.tradesCount || 0
   const rating = listing.rating || 4.9
+  // Use advertiser name from payment details if available
+  const firstMethod = listing.paymentMethods[0]
+  const paymentDetail = listing.paymentDetails?.[firstMethod]
+  const advertiserName = paymentDetail?.name || listing.user.name
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
@@ -327,11 +354,11 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
         {/* Advertiser with verification status */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
-            {listing.user.name.slice(0, 2).toUpperCase()}
+            {advertiserName.slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="font-medium text-sm flex items-center gap-1">
-              {listing.user.name}
+              {advertiserName}
               {hasVerification && (
                 <span
                   className={`inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded ${
@@ -427,12 +454,35 @@ function TradeDialog({ listing, onClose, onSuccess }: {
   const [compressing, setCompressing] = useState(false)
   const [paymentScreenshot, setPaymentScreenshot] = useState<{ data: string; name: string; size: number } | null>(null)
   const fileScreenshotRef = useRef<HTMLInputElement>(null)
+  // Seller payment details (used when user is selling USDT — providing their own payment info to receive fiat)
+  const [sellerPaymentMethod, setSellerPaymentMethod] = useState(listing.paymentMethods[0])
+  const [sellerAccountNumber, setSellerAccountNumber] = useState('')
+  const [sellerAccountName, setSellerAccountName] = useState('')
+
+  // Available fiat payment methods for the listing's currency
+  const sellerPaymentOptions = FIAT_PAYMENT_METHODS[listing.fiatCurrency] || listing.paymentMethods
 
   const amountNum = parseFloat(amount) || 0
   const fiatTotal = amountNum * listing.price
   const minCrypto = listing.minOrder / listing.price
   const maxCrypto = Math.min(listing.available, listing.maxOrder / listing.price)
   const isBuying = listing.side === 'SELL' // SELL listing means buyer is buying
+
+  // Helper to render a payment detail field with a copy button
+  const copyField = (label: string, value: string) => (
+    <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-blue-500/20">
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-muted-foreground block">{label}</span>
+        <span className="font-mono font-bold text-foreground text-sm break-all">{value}</span>
+      </div>
+      <button
+        onClick={() => { navigator.clipboard.writeText(value); toast({ title: 'Copied!', description: label + ' copied' }) }}
+        className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition flex-shrink-0 ml-2"
+      >
+        <Copy className="h-3 w-3" /> Copy
+      </button>
+    </div>
+  )
 
   // Handle screenshot upload with compression
   const handleScreenshotUpload = async (file: File) => {
@@ -483,6 +533,17 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       toast({ title: 'Payment screenshot required', description: 'Upload proof of payment before placing the order', variant: 'destructive' })
       return
     }
+    // Require seller payment details for sell orders (so the buyer knows where to send fiat)
+    if (!isBuying) {
+      if (!sellerAccountNumber.trim()) {
+        toast({ title: 'Account number required', description: 'Enter the account number / phone where you want to receive payment', variant: 'destructive' })
+        return
+      }
+      if (!sellerAccountName.trim()) {
+        toast({ title: 'Account holder name required', description: 'Enter the name on the receiving account', variant: 'destructive' })
+        return
+      }
+    }
     setLoading(true)
     try {
       const res = await fetch('/api/p2p/orders', {
@@ -493,6 +554,13 @@ function TradeDialog({ listing, onClose, onSuccess }: {
           amount: amountNum,
           paymentMethod,
           paymentScreenshot: paymentScreenshot?.data,
+          // Include seller payment details when the user is selling (providing their own receiving account info)
+          ...( !isBuying ? {
+              sellerPaymentMethod,
+              sellerAccountNumber: sellerAccountNumber.trim(),
+              sellerAccountName: sellerAccountName.trim(),
+            } : {}
+          ),
         }),
       })
       const data = await res.json()
@@ -579,57 +647,78 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             </Select>
           </div>
 
-          {/* Payment instructions — show the seller's payment details for the selected method */}
-          {listing.side === 'SELL' && listing.paymentDetails && listing.paymentDetails[paymentMethod] && (
+          {/* Payment instructions — show the counterparty's payment details for the selected method */}
+          {listing.paymentDetails && listing.paymentDetails[paymentMethod] && (
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
               <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                <Smartphone className="h-3 w-3" /> Send Payment To:
+                {isBuying ? <Smartphone className="h-3 w-3" /> : <Wallet className="h-3 w-3" />}
+                {isBuying ? 'Send Payment To:' : 'Receive Payment At:'}
               </p>
               {(() => {
                 const details = listing.paymentDetails[paymentMethod]
                 return (
-                  <div className="space-y-1 text-sm">
-                    {details.phone && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Phone Number:</span>
-                        <span className="font-mono font-bold text-foreground">{details.phone}</span>
-                      </div>
-                    )}
-                    {details.account && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Account Number:</span>
-                        <span className="font-mono font-bold text-foreground">{details.account}</span>
-                      </div>
-                    )}
-                    {details.email && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="font-mono font-bold text-foreground">{details.email}</span>
-                      </div>
-                    )}
-                    {details.iban && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">IBAN:</span>
-                        <span className="font-mono font-bold text-foreground">{details.iban}</span>
-                      </div>
-                    )}
-                    {details.cashtag && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Cashtag:</span>
-                        <span className="font-mono font-bold text-foreground">{details.cashtag}</span>
-                      </div>
-                    )}
-                    {details.name && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Account Name:</span>
-                        <span className="font-bold text-foreground">{details.name}</span>
-                      </div>
-                    )}
+                  <div className="space-y-1.5">
+                    {details.network && copyField('Network', details.network)}
+                    {details.address && copyField('Address', details.address)}
+                    {details.phone && copyField('Phone Number', details.phone)}
+                    {details.account && copyField('Account Number', details.account)}
+                    {details.email && copyField('Email', details.email)}
+                    {details.iban && copyField('IBAN', details.iban)}
+                    {details.cashtag && copyField('Cashtag', details.cashtag)}
+                    {details.name && copyField('Account Name', details.name)}
                   </div>
                 )
               })()}
               <div className="text-xs text-muted-foreground pt-1 border-t border-blue-500/20">
-                Send exactly <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.
+                {isBuying ? (
+                  <>Send exactly <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.</>
+                ) : (
+                  <>The buyer will send <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.</>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Seller payment details form — when user is selling USDT (providing their receiving account) */}
+          {!isBuying && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Wallet className="h-3 w-3" /> Your Payment Details
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Provide the account where you want to receive <strong className="text-green-600 dark:text-green-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong>.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Payment Method</label>
+                  <Select value={sellerPaymentMethod} onValueChange={setSellerPaymentMethod}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {sellerPaymentOptions.map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Account Number / Phone Number</label>
+                  <Input
+                    type="text"
+                    value={sellerAccountNumber}
+                    onChange={e => setSellerAccountNumber(e.target.value)}
+                    placeholder="e.g. 09xxxxxxxx"
+                    className="tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Account Holder Name</label>
+                  <Input
+                    type="text"
+                    value={sellerAccountName}
+                    onChange={e => setSellerAccountName(e.target.value)}
+                    placeholder="Full name on the account"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -697,7 +786,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             <Button
               className={listing.side === 'SELL' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
               onClick={submit}
-              disabled={loading || !amount || (isBuying && !paymentScreenshot)}
+              disabled={loading || !amount || (isBuying ? !paymentScreenshot : !sellerAccountNumber || !sellerAccountName)}
             >
               {loading ? 'Submitting...' : isBuying ? (paymentScreenshot ? 'Submit' : 'Upload Payment Proof') : `Sell ${listing.asset}`}
             </Button>
