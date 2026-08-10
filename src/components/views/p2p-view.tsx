@@ -281,7 +281,7 @@ export function P2PView() {
         ) : (
           <div className="grid gap-2">
             {displayed.map(l => (
-              <ListingCard key={l.id} listing={l} onTrade={() => setTradeDialog(l)} hideAdvertiser={tab === 'sell'} />
+              <ListingCard key={l.id} listing={l} onTrade={() => setTradeDialog(l)} />
             ))}
           </div>
         )
@@ -335,7 +335,7 @@ export function P2PView() {
   )
 }
 
-function ListingCard({ listing, onTrade, hideAdvertiser }: { listing: Listing; onTrade: () => void; hideAdvertiser?: boolean }) {
+function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => void }) {
   const { user } = useAppStore()
   const isMine = user && listing.user.name === user.name
   const hasVerification = listing.user.kycVerified
@@ -351,18 +351,14 @@ function ListingCard({ listing, onTrade, hideAdvertiser }: { listing: Listing; o
   return (
     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
-        {/* Advertiser with verification status — hidden on sell tab when hideAdvertiser is true */}
+        {/* Advertiser with verification status */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
-            {hideAdvertiser ? '?' : advertiserName.slice(0, 2).toUpperCase()}
+            {advertiserName.slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="font-medium text-sm flex items-center gap-1">
-              {hideAdvertiser ? (
-                <span className="text-muted-foreground italic">Buyer</span>
-              ) : (
-                advertiserName
-              )}
+              {advertiserName}
               {hasVerification && (
                 <span
                   className={`inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded ${
@@ -586,7 +582,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {listing.side === 'SELL' ? `Buy ${listing.asset}` : `Sell ${listing.asset}`}
+            {listing.side === 'SELL' ? 'Buy' : 'Sell'} {listing.asset} from {listing.user.name}
           </DialogTitle>
           <DialogDescription>
             {listing.side === 'SELL' ? 'You are buying' : 'You are selling'} {listing.asset} for {listing.fiatCurrency}
@@ -669,7 +665,8 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {details.email && copyField('Email', details.email)}
                     {details.iban && copyField('IBAN', details.iban)}
                     {details.cashtag && copyField('Cashtag', details.cashtag)}
-                    {details.name && copyField('Account Name', details.name)}
+                    {/* Hide Account Name (person name) when user is selling — only network + address are needed */}
+                    {details.name && isBuying && copyField('Account Name', details.name)}
                   </div>
                 )
               })()}
