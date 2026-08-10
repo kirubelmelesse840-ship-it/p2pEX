@@ -188,7 +188,7 @@ export function P2PView() {
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
+    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl w-full">
       <BackButton to="home" />
 
       <div className="flex items-center justify-between mb-4 mt-1">
@@ -281,7 +281,7 @@ export function P2PView() {
         ) : (
           <div className="grid gap-2">
             {displayed.map(l => (
-              <ListingCard key={l.id} listing={l} onTrade={() => setTradeDialog(l)} />
+              <ListingCard key={l.id} listing={l} onTrade={() => setTradeDialog(l)} hideAdvertiser={tab === 'sell'} />
             ))}
           </div>
         )
@@ -335,7 +335,7 @@ export function P2PView() {
   )
 }
 
-function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => void }) {
+function ListingCard({ listing, onTrade, hideAdvertiser }: { listing: Listing; onTrade: () => void; hideAdvertiser?: boolean }) {
   const { user } = useAppStore()
   const isMine = user && listing.user.name === user.name
   const hasVerification = listing.user.kycVerified
@@ -351,14 +351,18 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
   return (
     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
-        {/* Advertiser with verification status */}
+        {/* Advertiser with verification status — hidden on sell tab when hideAdvertiser is true */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
-            {advertiserName.slice(0, 2).toUpperCase()}
+            {hideAdvertiser ? '?' : advertiserName.slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="font-medium text-sm flex items-center gap-1">
-              {advertiserName}
+              {hideAdvertiser ? (
+                <span className="text-muted-foreground italic">Buyer</span>
+              ) : (
+                advertiserName
+              )}
               {hasVerification && (
                 <span
                   className={`inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded ${
@@ -582,7 +586,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {listing.side === 'SELL' ? 'Buy' : 'Sell'} {listing.asset} from {listing.user.name}
+            {listing.side === 'SELL' ? `Buy ${listing.asset}` : `Sell ${listing.asset}`}
           </DialogTitle>
           <DialogDescription>
             {listing.side === 'SELL' ? 'You are buying' : 'You are selling'} {listing.asset} for {listing.fiatCurrency}

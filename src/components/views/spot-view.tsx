@@ -669,7 +669,7 @@ export function SpotView() {
   }
 
   return (
-    <div className="container mx-auto px-2 sm:px-3 py-2 max-w-[1600px]">
+    <div className="container mx-auto px-2 sm:px-3 py-2 max-w-[1600px] w-full">
       {/* Back button */}
       <div className="px-1 py-1">
         <BackButton to="markets" />

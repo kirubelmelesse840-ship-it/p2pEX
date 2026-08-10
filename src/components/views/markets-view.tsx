@@ -221,7 +221,7 @@ export function MarketsView() {
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-7xl w-full">
       <BackButton to="home" />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 mt-1">

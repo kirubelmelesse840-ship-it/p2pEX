@@ -23,7 +23,7 @@ export function HomeView() {
   }, [tickers])
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-6 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 py-6 max-w-7xl w-full">
       {/* Hero section */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border p-6 sm:p-10 mb-6">
         <div className="absolute inset-0 opacity-10 pointer-events-none">

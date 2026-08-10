@@ -76,7 +76,7 @@ export function AdminView() {
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-7xl w-full">
       <BackButton to="home" />
 
       {/* Header */}
@@ -101,33 +101,33 @@ export function AdminView() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
-        <TabsList className="overflow-x-auto h-auto flex-wrap">
-          <TabsTrigger value="dashboard" className="gap-1"><BarChart3 className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
-          <TabsTrigger value="users" className="gap-1">
+        <TabsList className="overflow-x-auto h-auto flex-nowrap w-full justify-start">
+          <TabsTrigger value="dashboard" className="gap-1 whitespace-nowrap shrink-0 flex-none"><BarChart3 className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
+          <TabsTrigger value="users" className="gap-1 whitespace-nowrap shrink-0 flex-none">
             <Users className="h-3.5 w-3.5" /> Users
             {counts.kyc > 0 && (
               <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="user-details" className="gap-1"><Search className="h-3.5 w-3.5" /> User Details</TabsTrigger>
-          <TabsTrigger value="pairs" className="gap-1"><TrendingUp className="h-3.5 w-3.5" /> Pairs</TabsTrigger>
-          <TabsTrigger value="p2p" className="gap-1"><Shield className="h-3.5 w-3.5" /> P2P Moderation</TabsTrigger>
-          <TabsTrigger value="payment-review" className="gap-1">
+          <TabsTrigger value="user-details" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Search className="h-3.5 w-3.5" /> User Details</TabsTrigger>
+          <TabsTrigger value="pairs" className="gap-1 whitespace-nowrap shrink-0 flex-none"><TrendingUp className="h-3.5 w-3.5" /> Pairs</TabsTrigger>
+          <TabsTrigger value="p2p" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Shield className="h-3.5 w-3.5" /> P2P Moderation</TabsTrigger>
+          <TabsTrigger value="payment-review" className="gap-1 whitespace-nowrap shrink-0 flex-none">
             <Clock className="h-3.5 w-3.5" /> Payment Review
             {counts.payments > 0 && (
               <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="dw-approvals" className="gap-1">
+          <TabsTrigger value="dw-approvals" className="gap-1 whitespace-nowrap shrink-0 flex-none">
             <ArrowDownToLine className="h-3.5 w-3.5" /> D/W Approvals
             {counts.dw > 0 && (
               <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="orders" className="gap-1"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-1"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
-          <TabsTrigger value="support" className="gap-1"><Headphones className="h-3.5 w-3.5" /> Support</TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
+          <TabsTrigger value="orders" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-1 whitespace-nowrap shrink-0 flex-none"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
+          <TabsTrigger value="support" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Headphones className="h-3.5 w-3.5" /> Support</TabsTrigger>
+          <TabsTrigger value="settings" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
         </TabsList>
       </Tabs>
 

@@ -110,7 +110,7 @@ export function WalletView() {
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl">
+    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-6xl w-full">
       <div className="flex items-center justify-between">
         <BackButton to="home" />
         <Button variant="outline" size="sm" onClick={() => { load() }} className="gap-1.5 cursor-pointer hover:bg-primary/10">

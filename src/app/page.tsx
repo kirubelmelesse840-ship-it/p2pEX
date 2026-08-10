@@ -45,13 +45,15 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-background">
       <AnnouncementBanner />
       <Navbar />
-      <main className={`flex-1 ${isAdmin ? '' : 'pb-16 md:pb-0'}`}>
-        {effectiveView === 'home' && <HomeView />}
-        {effectiveView === 'markets' && <MarketsView />}
-        {effectiveView === 'spot' && <SpotView />}
-        {effectiveView === 'p2p' && <P2PView />}
-        {effectiveView === 'wallet' && <WalletView />}
-        {effectiveView === 'admin' && <AdminView />}
+      <main className={`flex-1 flex flex-col ${isAdmin ? '' : 'pb-16 md:pb-0'}`}>
+        <div className="flex-1 flex flex-col">
+          {effectiveView === 'home' && <HomeView />}
+          {effectiveView === 'markets' && <MarketsView />}
+          {effectiveView === 'spot' && <SpotView />}
+          {effectiveView === 'p2p' && <P2PView />}
+          {effectiveView === 'wallet' && <WalletView />}
+          {effectiveView === 'admin' && <AdminView />}
+        </div>
       </main>
       <Footer />
       {!isAdmin && <PushNotificationProvider />}
