@@ -1,0 +1,302 @@
+// Cryptocurrency Exchange Platform - Prisma Schema
+// Binance-like exchange with spot trading, P2P marketplace, multi-asset wallet
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS ============
+model User {
+  id            String   @id @default(cuid())
+  userId        String   @unique  // numerical ID like 000001
+  username      String   @unique  // auto-generated like @kirubel8402
+  email         String   @unique
+  name          String
+  passwordHash  String
+  avatar        String?
+  // Security
+  twofaEnabled  Boolean  @default(false)
+  kycVerified   Boolean  @default(false)
+  kycLevel      Int      @default(0) // 0=none, 1=basic, 2=advanced
+  // KYC submission: NONE → PENDING → APPROVED / REJECTED
+  kycStatus     String   @default("NONE") // NONE, PENDING, APPROVED, REJECTED
+  kycFullName        String?
+  kycDateOfBirth     String?
+  kycNationality     String?
+  kycIdType          String?  // Passport, National ID, Driver License
+  kycIdNumber        String?
+  kycAddress         String?
+  kycDocumentFront   String?  // base64 compressed image
+  kycDocumentBack    String?  // base64 compressed image (optional)
+  kycSubmittedAt     DateTime?
+  kycReviewedAt      DateTime?
+  kycRejectionReason String?
+  // Admin
+  isAdmin       Boolean  @default(false)
+  // Default fiat currency preference
+  fiatCurrency  String   @default("USD")
+  // Status
+  isActive      Boolean  @default(true)
+  isBanned      Boolean  @default(false)
+  banReason     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  wallets       Wallet[]
+  orders        Order[]
+  trades        Trade[]        @relation("buyerTrades")
+  sellTrades    Trade[]        @relation("sellerTrades")
+  p2pListings   P2PListing[]
+  p2pOrders     P2POrder[]       @relation("p2pBuyerOrders")
+  p2pSellOrders P2POrder[]       @relation("p2pSellerOrders")
+  transactions  Transaction[]
+  sessions      Session[]
+  supportMessages SupportMessage[]
+  pushSubscriptions PushSubscription[]
+}
+
+// ============ SETTINGS (singleton-style key/value store) ============
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// ============ ADMIN NOTIFICATIONS (messages sent from admin to users) ============
+model AdminNotification {
+  id        String   @id @default(cuid())
+  userId    String?  // null = broadcast to all users
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, success, announcement
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+}
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([userId])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    String
+  message   String
+  type      String   @default("text")
+  imageData String?
+  voiceData String?
+  videoData String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+// ============ WALLETS ============
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset        String   // BTC, ETH, USDT, BNB, SOL, etc.
+  assetName    String   // Bitcoin, Ethereum, Tether, etc.
+  balance      Float    @default(0)
+  available    Float    @default(0) // balance - locked in orders
+  locked       Float    @default(0) // locked in open orders
+  depositAddress String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, asset])
+}
+
+// ============ TRADING PAIRS ============
+model TradingPair {
+  id           String   @id @default(cuid())
+  symbol       String   @unique // BTCUSDT, ETHUSDT, etc.
+  baseAsset    String   // BTC
+  quoteAsset   String   // USDT
+  baseAssetName String
+  quoteAssetName String
+  lastPrice    Float    @default(0)
+  priceChangePercent Float @default(0)
+  high24h      Float    @default(0)
+  low24h       Float    @default(0)
+  volume24h    Float    @default(0)
+  quoteVolume24h Float  @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders       Order[]
+  trades       Trade[]
+  tickerHistory TickerHistory[]
+}
+
+model TickerHistory {
+  id           String   @id @default(cuid())
+  pairId       String
+  pair         TradingPair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  price        Float
+  volume       Float
+  timestamp    DateTime @default(now())
+
+  @@index([pairId, timestamp])
+}
+
+// ============ ORDERS & TRADES ============
+model Order {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pairId       String
+  pair         TradingPair @relation(fields: [pairId], references: [id])
+  symbol       String
+  side         String   // BUY | SELL
+  type         String   // LIMIT | MARKET
+  price        Float
+  quantity     Float
+  filledQty    Float    @default(0)
+  total        Float    // price * quantity
+  status       String   @default("OPEN") // OPEN | PARTIAL | FILLED | CANCELED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  trades       Trade[]  @relation("buyOrderTrades")
+  sellTrades   Trade[]  @relation("sellOrderTrades")
+}
+
+model Trade {
+  id           String   @id @default(cuid())
+  pairId       String
+  pair         TradingPair @relation(fields: [pairId], references: [id])
+  symbol       String
+  price        Float
+  quantity     Float
+  total        Float
+  buyerId      String
+  buyer        User     @relation("buyerTrades", fields: [buyerId], references: [id])
+  sellerId     String
+  seller       User     @relation("sellerTrades", fields: [sellerId], references: [id])
+  buyOrderId   String?
+  buyOrder     Order?   @relation("buyOrderTrades", fields: [buyOrderId], references: [id])
+  sellOrderId  String?
+  sellOrder    Order?   @relation("sellOrderTrades", fields: [sellOrderId], references: [id])
+  makerSide    String?  // BUY | SELL (which order was the maker)
+  isMaker      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([pairId, createdAt])
+}
+
+// ============ P2P MARKETPLACE ============
+model P2PListing {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Asset being traded
+  asset        String   // USDT, BTC, etc.
+  fiatCurrency String   // USD, EUR, CNY, etc.
+  side         String   // BUY | SELL (from the advertiser's perspective)
+  price        Float    // price per unit in fiat
+  amount       Float    // total amount of crypto
+  available    Float    // remaining amount
+  minOrder     Float    @default(10) // min fiat amount
+  maxOrder     Float    @default(10000) // max fiat amount
+  // Payment methods supported (stored as JSON string)
+  paymentMethods String // JSON: ["Bank Transfer", "PayPal", "Wise", "Cash App"]
+  // Payment account details (JSON: { "Telebirr": {phone:"962404391", name:"Kirubel"}, ... })
+  paymentDetails String? // JSON map of payment method -> {phone, name}
+  // Terms
+  terms        String?
+  // Admin-editable display fields
+  tradesCount  Int      @default(0)
+  rating       Float    @default(4.9)
+  // Status
+  status       String   @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | CANCELED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders       P2POrder[]
+
+  @@index([asset, fiatCurrency, side])
+}
+
+model P2POrder {
+  id           String   @id @default(cuid())
+  listingId    String
+  listing      P2PListing @relation(fields: [listingId], references: [id])
+  // Buyer and seller in P2P context
+  buyerId      String   // user who wants to buy crypto
+  buyer        User     @relation("p2pBuyerOrders", fields: [buyerId], references: [id])
+  // For SELL listings, the listing owner is the seller; for BUY listings, the listing owner is the buyer
+  sellerId     String
+  seller       User     @relation("p2pSellerOrders", fields: [sellerId], references: [id])
+  asset        String
+  fiatCurrency String
+  amount       Float    // crypto amount
+  price        Float    // fiat price per unit
+  total        Float    // fiat total
+  paymentMethod String
+  // Payment proof screenshot (base64 compressed image) — required before order is placed
+  paymentScreenshot String? // base64 image of payment confirmation screenshot
+  sellerPaymentMethod String?
+  sellerAccountNumber  String?
+  sellerAccountName    String?
+  // Status flow: PENDING_REVIEW -> PENDING_PAYMENT -> PAID -> RELEASED -> COMPLETED | DISPUTED | CANCELED
+  status       String   @default("PENDING_REVIEW")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+// ============ TRANSACTIONS (Deposit/Withdraw) ============
+model Transaction {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset        String
+  type         String   // DEPOSIT | WITHDRAW | INTERNAL_TRANSFER
+  amount       Float
+  fee          Float    @default(0)
+  // Network / chain info
+  network      String   // BTC, ERC20, TRC20, BSC, etc.
+  fromAddress  String?
+  toAddress    String?
+  txHash       String?
+  status       String   @default("PENDING") // PENDING | CONFIRMED | COMPLETED | FAILED | REJECTED
+  confirmations Int     @default(0)
+  requiredConfirmations Int @default(1)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, asset])
+}
