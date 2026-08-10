@@ -118,16 +118,20 @@ export function P2PView() {
           const prevStatus = prevOrderStatuses[o.id]
           if (prevStatus && prevStatus !== o.status) {
             // Status changed — show notification
-            if (o.status === 'PAID' && o.myRole === 'BUYER') {
-              toast({ title: '✅ Payment Approved!', description: `Your payment for ${o.amount} ${o.asset} has been verified. The seller will release your crypto shortly.` })
-            } else if (o.status === 'PAID' && o.myRole === 'SELLER') {
-              toast({ title: '💰 Payment Verified', description: `The buyer's payment for ${o.amount} ${o.asset} has been verified. You can now release the crypto.` })
+            if (o.status === 'PENDING_REVIEW' && prevStatus !== 'PENDING_REVIEW') {
+              toast({
+                title: '⏳ Admin Checking Both Sides',
+                description: `Your order for ${o.amount} ${o.asset} is now under admin review. The admin is checking both sides — please wait patiently.`,
+                duration: 8000,
+              })
             } else if (o.status === 'CANCELED' && o.myRole === 'BUYER') {
-              toast({ title: '❌ Payment Rejected', description: `Your payment for ${o.amount} ${o.asset} was rejected. The order has been canceled. You can place a new order.`, variant: 'destructive' })
+              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected by the admin. The order has been canceled.`, variant: 'destructive' })
             } else if (o.status === 'CANCELED' && o.myRole === 'SELLER') {
-              toast({ title: '❌ Order Canceled', description: `The order for ${o.amount} ${o.asset} has been canceled.`, variant: 'destructive' })
-            } else if (o.status === 'COMPLETED') {
-              toast({ title: '🎉 Trade Completed!', description: `Your trade of ${o.amount} ${o.asset} has been completed successfully.` })
+              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected by the admin. Your ${o.asset} has been returned to your wallet.`, variant: 'destructive' })
+            } else if (o.status === 'COMPLETED' && o.myRole === 'BUYER') {
+              toast({ title: '🎉 Order Completed!', description: `Your buy order for ${o.amount} ${o.asset} has been approved. The crypto has been credited to your wallet.`, duration: 8000 })
+            } else if (o.status === 'COMPLETED' && o.myRole === 'SELLER') {
+              toast({ title: '🎉 Order Completed!', description: `Your sell order for ${o.amount} ${o.asset} has been approved. The crypto has been transferred to the buyer.`, duration: 8000 })
             }
           }
         }
@@ -566,8 +570,11 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       toast({
-        title: 'Order submitted for review',
-        description: `Payment proof sent to admin. You'll be notified once verified.`,
+        title: '⏳ Order submitted — Admin checking both sides',
+        description: isBuying
+          ? `Your payment proof has been sent to the admin. The admin is checking both sides. Please wait patiently — you'll be notified once your ${listing.asset} is credited.`
+          : `Your sell order has been sent to the admin. The admin is checking both sides. Please wait patiently — you'll be notified once the order is finished.`,
+        duration: 8000,
       })
       onSuccess()
     } catch (e: any) {
@@ -798,7 +805,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 
 function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void }) {
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Under Admin Review' },
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Admin Checking Both Sides' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending Payment' },
     PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Completed' },
@@ -870,7 +877,7 @@ function OrderDialog({ order, onClose, onSuccess }: {
   }
 
   const statusMap: Record<string, { color: string; label: string }> = {
-    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Under Admin Review' },
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Admin Checking Both Sides' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', label: 'Pending Payment' },
     PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', label: 'Completed' },
@@ -927,21 +934,25 @@ function OrderDialog({ order, onClose, onSuccess }: {
           {order.status === 'PENDING_REVIEW' && (
             <div className="space-y-3">
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
-                <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
-                <p className="text-sm font-medium">
-                  {order.myRole === 'BUYER' ? 'Payment under admin review' : 'Order under admin review'}
-                </p>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Clock className="h-8 w-8 text-blue-500 animate-pulse" />
+                </div>
+                <p className="text-sm font-medium">Admin Checking Both Sides</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {order.myRole === 'BUYER'
                     ? `The admin is checking both sides — verifying your payment screenshot and confirming with the seller. Once approved, ${order.amount} ${order.asset} will be credited to your wallet automatically.`
                     : `The admin is checking both sides — verifying the buyer's payment and confirming with you. Once the admin finishes the order, ${order.amount} ${order.asset} will be transferred to the buyer and your balance will decrease.`
                   }
                 </p>
-                <div className="mt-2 pt-2 border-t border-blue-500/20 text-[10px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
+                <div className="mt-2 pt-2 border-t border-blue-500/20 text-[10px] text-muted-foreground space-y-1">
+                  <div className="inline-flex items-center gap-1">
                     <Shield className="h-3 w-3" />
                     Admin verifies payment proof · contacts both parties · approves transfer
-                  </span>
+                  </div>
+                  <div className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    <Clock className="h-3 w-3" />
+                    Please wait patiently — this may take a few minutes
+                  </div>
                 </div>
               </div>
               <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
