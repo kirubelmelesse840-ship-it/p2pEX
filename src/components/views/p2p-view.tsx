@@ -668,30 +668,6 @@ function TradeDialog({ listing, onClose, onSuccess }: {
             />
           </div>
 
-          {/* Payment method */}
-          {/* Payment instructions — show the counterparty's payment details for the first/only method */}
-          {listing.paymentDetails && listing.paymentMethods.length > 0 && (() => {
-            const method = listing.paymentMethods[0]
-            const details = listing.paymentDetails[method]
-            if (!details) return null
-            return (
-              <div className="space-y-1.5">
-                {details.network && copyField('Network', details.network)}
-                {details.address && copyField('Address', details.address)}
-                {details.phone && copyField('Phone Number', details.phone)}
-                {details.account && copyField('Account Number', details.account)}
-                {details.email && copyField('Email', details.email)}
-                {details.iban && copyField('IBAN', details.iban)}
-                {details.cashtag && copyField('Cashtag', details.cashtag)}
-                {/* Copyable amount — for buy: fiat total (ETB); for sell: USDT amount (crypto) */}
-                {isBuying
-                  ? copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))
-                  : copyField(`Amount (${listing.asset})`, formatQty(amountNum))
-                }
-              </div>
-            )
-          })()}
-
           {/* Seller payment details form — when user is selling USDT (providing their receiving account) */}
           {!isBuying && (
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 space-y-2">
