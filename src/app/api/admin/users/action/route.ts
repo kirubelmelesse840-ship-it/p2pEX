@@ -64,6 +64,22 @@ export async function POST(req: NextRequest) {
         kycRejectionReason: null,
       }
       message = `User ${target.email} KYC approved (L${updateData.kycLevel})`
+      // Credit the 10 USDT welcome bonus ONLY when KYC is approved
+      // (only if not already credited — check if a welcome bonus transaction exists)
+      if (!target.kycVerified) {
+        try {
+          const existingBonus = await db.transaction.findFirst({
+            where: { userId: target.id, network: 'WELCOME_BONUS' },
+          })
+          if (!existingBonus) {
+            const { creditWelcomeBonus } = await import('@/lib/welcome-bonus')
+            await creditWelcomeBonus(target.id)
+            message += ' — 10 USDT welcome bonus credited'
+          }
+        } catch (e: any) {
+          console.error('[admin/users/action] welcome bonus failed:', e?.message)
+        }
+      }
       break
     case 'rejectKyc':
       // Admin rejects KYC

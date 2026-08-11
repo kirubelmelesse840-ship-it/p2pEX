@@ -657,7 +657,7 @@ export function SpotView() {
       <SignupPrompt
         icon={<TrendingUp className="h-10 w-10" />}
         title="Sign in to Trade"
-        description="Log in or create an account to start spot trading with real-time charts, order books, and limit/market orders. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        description="Log in or create an account to start spot trading with real-time charts, order books, and limit/market orders. Get verified to receive a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
         features={[
           { icon: <TrendingUp className="h-4 w-4" />, label: 'Live Trading' },
           { icon: <Wallet className="h-4 w-4" />, label: 'Wallet' },

@@ -266,19 +266,6 @@ export function Navbar() {
                   <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">ADMIN</Badge>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => setKycOpen(true)}>
-                <Shield className="mr-2 h-4 w-4" />
-                {user.kycVerified ? `Verified (L${user.kycLevel})` : user.kycStatus === 'PENDING' ? 'KYC Pending Review' : user.kycStatus === 'REJECTED' ? 'KYC Rejected' : 'Verify Account'}
-                {user.kycVerified ? (
-                  <Badge className="ml-auto text-[10px] bg-green-500/15 text-green-600 dark:text-green-400">L{user.kycLevel}</Badge>
-                ) : user.kycStatus === 'PENDING' ? (
-                  <Badge className="ml-auto text-[10px] bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">PENDING</Badge>
-                ) : user.kycStatus === 'REJECTED' ? (
-                  <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">REJECTED</Badge>
-                ) : (
-                  <Badge className="ml-auto text-[10px]" variant="secondary">UNVERIFIED</Badge>
-                )}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings

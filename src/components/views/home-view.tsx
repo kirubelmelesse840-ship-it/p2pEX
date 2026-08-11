@@ -1,18 +1,21 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTickers } from '@/lib/use-market'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { KycDialog } from '@/components/kyc-dialog'
 import {
   Bitcoin, TrendingUp, Users, Wallet, Shield, Zap, Globe, ArrowRight,
-  ArrowUp, ArrowDown, Star, BarChart3,
+  ArrowUp, ArrowDown, Star, BarChart3, CheckCircle2, Clock, AlertCircle, Gift,
 } from 'lucide-react'
 import { formatPrice, formatPercent, formatCompact } from '@/lib/utils'
 
 export function HomeView() {
   const { tickers, connected } = useTickers()
   const { setView, setSymbol, user } = useAppStore()
+  const [kycOpen, setKycOpen] = useState(false)
 
   const topMovers = useMemo(() => {
     const sorted = [...tickers].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
@@ -24,6 +27,60 @@ export function HomeView() {
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 max-w-7xl w-full">
+      {/* KYC Verification Banner — only for logged-in users */}
+      {user && !user.isAdmin && (
+        <section className="mb-6">
+          {user.kycVerified ? (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-500 flex-shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-green-600 dark:text-green-400">Account Verified ✓</p>
+                <p className="text-xs text-muted-foreground">Your account is verified (Level {user.kycLevel}). Welcome bonus has been credited to your wallet.</p>
+              </div>
+              <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">VERIFIED L{user.kycLevel}</Badge>
+            </div>
+          ) : user.kycStatus === 'PENDING' ? (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/20 text-yellow-500 flex-shrink-0">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-yellow-600 dark:text-yellow-400">KYC Under Review ⏳</p>
+                <p className="text-xs text-muted-foreground">Your documents are being reviewed. The 10 USDT welcome bonus will be credited after approval.</p>
+              </div>
+              <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">PENDING</Badge>
+            </div>
+          ) : user.kycStatus === 'REJECTED' ? (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-500 flex-shrink-0">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-red-600 dark:text-red-400">KYC Rejected ⚠</p>
+                <p className="text-xs text-muted-foreground">Your KYC submission was rejected. Please try again with correct documents to get verified and receive the 10 USDT bonus.</p>
+              </div>
+              <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={() => setKycOpen(true)}>
+                <Shield className="h-4 w-4 mr-1.5" /> Retry KYC
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-red-500/10 border-2 border-orange-500/40 rounded-lg p-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/20 text-orange-500 flex-shrink-0">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-orange-600 dark:text-orange-400">Verify Your Account 🔒</p>
+                <p className="text-xs text-muted-foreground">Complete KYC verification to unlock all features and receive a <strong className="text-orange-600 dark:text-orange-400">10 USDT welcome bonus</strong> 🎁</p>
+              </div>
+              <Button className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white" onClick={() => setKycOpen(true)}>
+                <Shield className="h-4 w-4 mr-1.5" /> Verify Now
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
       {/* Hero section */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border p-6 sm:p-10 mb-6">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -145,6 +202,11 @@ export function HomeView() {
           />
         </div>
       </section>
+
+      {/* KYC Dialog */}
+      {kycOpen && (
+        <KycDialog open={kycOpen} onClose={() => setKycOpen(false)} />
+      )}
 
     </div>
   )

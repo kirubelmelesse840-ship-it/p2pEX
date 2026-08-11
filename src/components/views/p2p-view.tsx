@@ -191,7 +191,7 @@ export function P2PView() {
       <SignupPrompt
         icon={<Users className="h-10 w-10" />}
         title="Sign in to P2P Marketplace"
-        description="Log in or create an account to buy and sell USDT with Telebirr, CBE Birr, and crypto networks. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        description="Log in or create an account to buy and sell USDT with Telebirr, CBE Birr, and crypto networks. Get verified to receive a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
         features={[
           { icon: <Smartphone className="h-5 w-5" />, label: 'Telebirr' },
           { icon: <CreditCard className="h-5 w-5" />, label: 'CBE Birr' },

@@ -210,7 +210,7 @@ export function MarketsView() {
       <SignupPrompt
         icon={<BarChart3 className="h-10 w-10" />}
         title="Sign in to View Markets"
-        description="Log in or create an account to view real-time prices, track favorites, and start trading. New users get a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        description="Log in or create an account to view real-time prices, track favorites, and start trading. Get verified to receive a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
         features={[
           { icon: <TrendingUp className="h-4 w-4" />, label: 'Live Prices' },
           { icon: <Star className="h-4 w-4" />, label: 'Favorites' },

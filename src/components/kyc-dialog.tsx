@@ -34,7 +34,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
   const [kycData, setKycData] = useState<any>(null)
   const [form, setForm] = useState({
     fullName: '',
-    dateOfBirth: '',
     nationality: '',
     idType: '',
   })
@@ -55,7 +54,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
       if (d.kycFullName) {
         setForm({
           fullName: d.kycFullName || '',
-          dateOfBirth: d.kycDateOfBirth || '',
           nationality: d.kycNationality || '',
           idType: d.kycIdType || '',
         })
@@ -114,7 +112,7 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
   }
 
   const submit = async () => {
-    if (!form.fullName || !form.dateOfBirth || !form.nationality || !form.idType) {
+    if (!form.fullName || !form.nationality || !form.idType) {
       toast({ title: 'All fields are required', variant: 'destructive' })
       return
     }
@@ -207,7 +205,6 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-lg p-4 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Full Name</span><span className="font-medium">{kycData?.kycFullName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Date of Birth</span><span>{kycData?.kycDateOfBirth}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Nationality</span><span>{kycData?.kycNationality}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">ID Type</span><span>{kycData?.kycIdType}</span></div>
             </div>
@@ -250,25 +247,14 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
-                <Input
-                  type="date"
-                  value={form.dateOfBirth}
-                  onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Nationality / Country</label>
-                <Select value={form.nationality} onValueChange={(v) => setForm(f => ({ ...f, nationality: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select your country" /></SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Nationality / Country</label>
+              <Select value={form.nationality} onValueChange={(v) => setForm(f => ({ ...f, nationality: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select your country" /></SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

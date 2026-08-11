@@ -66,8 +66,9 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Credit welcome bonus (10 USDT)
-    import('@/lib/welcome-bonus').then(m => { m.creditWelcomeBonus(user.id) }).catch(() => {})
+    // Welcome bonus is now credited ONLY when KYC is approved by admin
+    // (see /api/admin/users/action verifyKyc case)
+
     // Notify admin
     import('@/lib/admin-email-notifications').then(m => { m.notifyAdminUserSignup(user.name, user.email, user.userId) }).catch(() => {})
 
