@@ -1,0 +1,1113 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useMemo, useCallback } from 'react'
+     4→import { useMarketSocket, MarketTrade } from '@/lib/use-market'
+     5→import { useAppStore } from '@/lib/store'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Input } from '@/components/ui/input'
+     8→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+     9→import { useToast } from '@/hooks/use-toast'
+    10→import { RealTimeLineChart } from '@/components/realtime-chart'
+    11→import { DepthChart } from '@/components/depth-chart'
+    12→import { BackButton } from '@/components/back-button'
+    13→import { formatPrice, formatQty, formatPercent, formatCompact, formatTime, formatDateTime } from '@/lib/utils'
+    14→import { Star, ArrowUp, ArrowDown, ChevronDown, X, Plus, TrendingUp, TrendingDown, Wallet, Shield, User, Copy } from 'lucide-react'
+    15→
+    16→// Local order book component (live from socket)
+    17→function OrderBook({ symbol }: { symbol: string }) {
+    18→  const { orderBook, ticker } = useMarketSocket(symbol)
+    19→  const [showDepth, setShowDepth] = useState(false)
+    20→
+    21→  const maxBidQty = useMemo(() => Math.max(...orderBook.bids.map(b => b[1]), 0), [orderBook.bids])
+    22→  const maxAskQty = useMemo(() => Math.max(...orderBook.asks.map(a => a[1]), 0), [orderBook.asks])
+    23→  const maxQty = Math.max(maxBidQty, maxAskQty, 1)
+    24→
+    25→  const isUp = (ticker?.changePercent ?? 0) >= 0
+    26→
+    27→  return (
+    28→    <div className="flex flex-col h-full">
+    29→      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+    30→        <span className="text-xs font-medium">Order Book</span>
+    31→        <Button
+    32→          variant="ghost"
+    33→          size="sm"
+    34→          className="h-6 text-xs px-2"
+    35→          onClick={() => setShowDepth(!showDepth)}
+    36→        >
+    37→          {showDepth ? 'List' : 'Depth'}
+    38→        </Button>
+    39→      </div>
+    40→
+    41→      {showDepth ? (
+    42→        <div className="p-2">
+    43→          <DepthChart
+    44→            bids={orderBook.bids}
+    45→            asks={orderBook.asks}
+    46→            lastPrice={ticker?.lastPrice}
+    47→            height={280}
+    48→          />
+    49→        </div>
+    50→      ) : (
+    51→        <div className="flex-1 flex flex-col text-xs overflow-hidden">
+    52→          {/* Header */}
+    53→          <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-muted-foreground border-b border-border">
+    54→            <span className="text-left">Price</span>
+    55→            <span className="text-right">Amount</span>
+    56→            <span className="text-right">Total</span>
+    57→          </div>
+    58→
+    59→          {/* Asks (reversed: highest at top, lowest at bottom near spread) */}
+    60→          <div className="flex-1 overflow-y-auto min-h-0 max-h-[180px]">
+    61→            {[...orderBook.asks].slice(0, 12).reverse().map(([price, qty], i) => (
+    62→              <div
+    63→                key={`a-${i}`}
+    64→                className="grid grid-cols-3 gap-2 px-3 py-0.5 tabular-nums relative hover:bg-muted/30"
+    65→              >
+    66→                <div
+    67→                  className="absolute right-0 top-0 bottom-0 bg-red-500/10"
+    68→                  style={{ width: `${(qty / maxQty) * 100}%` }}
+    69→                />
+    70→                <span className="text-red-500 relative z-10">{formatPrice(price)}</span>
+    71→                <span className="text-right relative z-10">{formatQty(qty)}</span>
+    72→                <span className="text-right text-muted-foreground relative z-10">{formatQty(price * qty)}</span>
+    73→              </div>
+    74→            ))}
+    75→          </div>
+    76→
+    77→          {/* Spread / Last price */}
+    78→          <div className="border-y border-border px-3 py-2 bg-muted/30">
+    79→            <div className="flex items-center justify-between">
+    80→              <span className={`text-base font-bold ${isUp ? 'text-green-500' : 'text-red-500'}`}>
+    81→                {formatPrice(ticker?.lastPrice ?? 0)}
+    82→              </span>
+    83→              <span className="text-xs text-muted-foreground">
+    84→                {isUp ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />}
+    85→                {formatPercent(ticker?.changePercent ?? 0)}
+    86→              </span>
+    87→            </div>
+    88→          </div>
+    89→
+    90→          {/* Bids */}
+    91→          <div className="flex-1 overflow-y-auto min-h-0 max-h-[180px]">
+    92→            {orderBook.bids.slice(0, 12).map(([price, qty], i) => (
+    93→              <div
+    94→                key={`b-${i}`}
+    95→                className="grid grid-cols-3 gap-2 px-3 py-0.5 tabular-nums relative hover:bg-muted/30"
+    96→              >
+    97→                <div
+    98→                  className="absolute right-0 top-0 bottom-0 bg-green-500/10"
+    99→                  style={{ width: `${(qty / maxQty) * 100}%` }}
+   100→                />
+   101→                <span className="text-green-500 relative z-10">{formatPrice(price)}</span>
+   102→                <span className="text-right relative z-10">{formatQty(qty)}</span>
+   103→                <span className="text-right text-muted-foreground relative z-10">{formatQty(price * qty)}</span>
+   104→              </div>
+   105→            ))}
+   106→          </div>
+   107→        </div>
+   108→      )}
+   109→    </div>
+   110→  )
+   111→}
+   112→
+   113→// Recent trades feed
+   114→function RecentTrades({ symbol }: { symbol: string }) {
+   115→  const { trades } = useMarketSocket(symbol)
+   116→
+   117→  return (
+   118→    <div className="flex flex-col h-full">
+   119→      <div className="px-3 py-2 border-b border-border">
+   120→        <span className="text-xs font-medium">Recent Trades</span>
+   121→      </div>
+   122→      <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
+   123→        <span className="text-left">Price</span>
+   124→        <span className="text-right">Amount</span>
+   125→        <span className="text-right">Time</span>
+   126→      </div>
+   127→      <div className="flex-1 overflow-y-auto max-h-[420px]">
+   128→        {trades.length === 0 ? (
+   129→          <div className="px-3 py-8 text-center text-xs text-muted-foreground">No trades yet</div>
+   130→        ) : (
+   131→          trades.map((t: MarketTrade, i: number) => (
+   132→            <div key={`${t.id}-${i}`} className="grid grid-cols-3 gap-2 px-3 py-0.5 text-xs tabular-nums hover:bg-muted/30">
+   133→              <span className={t.isBuyerMaker ? 'text-red-500' : 'text-green-500'}>
+   134→                {formatPrice(t.price)}
+   135→              </span>
+   136→              <span className="text-right">{formatQty(t.qty)}</span>
+   137→              <span className="text-right text-muted-foreground">{formatTime(t.time)}</span>
+   138→            </div>
+   139→          ))
+   140→        )}
+   141→      </div>
+   142→    </div>
+   143→  )
+   144→}
+   145→
+   146→// Trading panel - place orders
+   147→function TradePanel({ symbol }: { symbol: string }) {
+   148→  const { ticker } = useMarketSocket(symbol)
+   149→  const { user } = useAppStore()
+   150→  const { toast } = useToast()
+   151→  const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
+   152→  const [orderType, setOrderType] = useState<'LIMIT' | 'MARKET'>('LIMIT')
+   153→  const [price, setPrice] = useState('')
+   154→  const [qty, setQty] = useState('')
+   155→  const [pct, setPct] = useState<number>(0)
+   156→  const [loading, setLoading] = useState(false)
+   157→
+   158→  // Wallets for current pair
+   159→  const [balances, setBalances] = useState<{ base: number; quote: number } | null>(null)
+   160→  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+   161→  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+   162→
+   163→  const loadBalances = useCallback(async () => {
+   164→    if (!user) return
+   165→    try {
+   166→      const res = await fetch('/api/wallet')
+   167→      const data = await res.json()
+   168→      if (data.wallets) {
+   169→        const baseWallet = data.wallets.find((w: any) => w.asset === base)
+   170→        const quoteWallet = data.wallets.find((w: any) => w.asset === quote)
+   171→        setBalances({
+   172→          base: baseWallet?.available ?? 0,
+   173→          quote: quoteWallet?.available ?? 0,
+   174→        })
+   175→      }
+   176→    } catch {}
+   177→  }, [user, base, quote])
+   178→
+   179→  useEffect(() => {
+   180→    loadBalances()
+   181→    const t = setInterval(loadBalances, 5000)
+   182→    return () => clearInterval(t)
+   183→  }, [loadBalances])
+   184→
+   185→  // Update price when ticker changes (only if user hasn't manually edited)
+   186→  const [userEditedPrice, setUserEditedPrice] = useState(false)
+   187→  useEffect(() => {
+   188→    if (!userEditedPrice && ticker && orderType === 'LIMIT') {
+   189→      setPrice(formatPrice(ticker.lastPrice, { maxDigits: 6 }))
+   190→    }
+   191→  }, [ticker?.lastPrice, orderType, userEditedPrice])
+   192→
+   193→  // Reset price edit flag when switching symbol
+   194→  useEffect(() => {
+   195→    setUserEditedPrice(false)
+   196→    setQty('')
+   197→    setPct(0)
+   198→  }, [symbol])
+   199→
+   200→  const lastPrice = ticker?.lastPrice ?? 0
+   201→  const currentPrice = parseFloat(price) || lastPrice
+   202→  const currentQty = parseFloat(qty) || 0
+   203→  const total = currentPrice * currentQty
+   204→
+   205→  // Apply percentage
+   206→  const applyPct = (p: number) => {
+   207→    setPct(p)
+   208→    if (!balances) return
+   209→    if (side === 'BUY') {
+   210→      const spendable = balances.quote
+   211→      const spend = (spendable * p) / 100
+   212→      const newQty = currentPrice > 0 ? spend / currentPrice : 0
+   213→      setQty(newQty > 0 ? newQty.toFixed(6) : '')
+   214→    } else {
+   215→      const newQty = (balances.base * p) / 100
+   216→      setQty(newQty > 0 ? newQty.toFixed(6) : '')
+   217→    }
+   218→  }
+   219→
+   220→  const submit = async () => {
+   221→    if (!user) {
+   222→      toast({ title: 'Please log in to trade', variant: 'destructive' })
+   223→      return
+   224→    }
+   225→    if (orderType === 'LIMIT' && (!price || parseFloat(price) <= 0)) {
+   226→      toast({ title: 'Enter a valid price', variant: 'destructive' })
+   227→      return
+   228→    }
+   229→    if (!qty || parseFloat(qty) <= 0) {
+   230→      toast({ title: 'Enter a valid quantity', variant: 'destructive' })
+   231→      return
+   232→    }
+   233→    setLoading(true)
+   234→    try {
+   235→      const res = await fetch('/api/trade/order', {
+   236→        method: 'POST',
+   237→        headers: { 'Content-Type': 'application/json' },
+   238→        body: JSON.stringify({
+   239→          symbol,
+   240→          side,
+   241→          type: orderType,
+   242→          price: orderType === 'LIMIT' ? parseFloat(price) : currentPrice,
+   243→          quantity: parseFloat(qty),
+   244→        }),
+   245→      })
+   246→      const data = await res.json()
+   247→      if (data.error) throw new Error(data.error)
+   248→
+   249→      toast({
+   250→        title: 'Order placed',
+   251→        description: `${side} ${formatQty(parseFloat(qty))} ${base} @ ${orderType === 'MARKET' ? 'market' : formatPrice(parseFloat(price))}`,
+   252→      })
+   253→      setQty('')
+   254→      setPct(0)
+   255→      loadBalances()
+   256→    } catch (e: any) {
+   257→      toast({ title: 'Order failed', description: e.message, variant: 'destructive' })
+   258→    } finally {
+   259→      setLoading(false)
+   260→    }
+   261→  }
+   262→
+   263→  if (!user) {
+   264→    return (
+   265→      <div className="p-6 text-center">
+   266→        <p className="text-sm text-muted-foreground mb-3">Log in to start trading</p>
+   267→        <Button variant="default" disabled>Place Order</Button>
+   268→      </div>
+   269→    )
+   270→  }
+   271→
+   272→  return (
+   273→    <div className="flex flex-col">
+   274→      {/* Buy/Sell tabs */}
+   275→      <div className="grid grid-cols-2 gap-1 p-2">
+   276→        <Button
+   277→          variant={side === 'BUY' ? 'default' : 'outline'}
+   278→          className={side === 'BUY' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+   279→          onClick={() => setSide('BUY')}
+   280→        >
+   281→          Buy {base}
+   282→        </Button>
+   283→        <Button
+   284→          variant={side === 'SELL' ? 'default' : 'outline'}
+   285→          className={side === 'SELL' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
+   286→          onClick={() => setSide('SELL')}
+   287→        >
+   288→          Sell {base}
+   289→        </Button>
+   290→      </div>
+   291→
+   292→      <div className="px-3 pb-2 flex gap-1">
+   293→        <Button
+   294→          variant={orderType === 'LIMIT' ? 'secondary' : 'ghost'}
+   295→          size="sm"
+   296→          className="text-xs flex-1"
+   297→          onClick={() => setOrderType('LIMIT')}
+   298→        >
+   299→          Limit
+   300→        </Button>
+   301→        <Button
+   302→          variant={orderType === 'MARKET' ? 'secondary' : 'ghost'}
+   303→          size="sm"
+   304→          className="text-xs flex-1"
+   305→          onClick={() => setOrderType('MARKET')}
+   306→        >
+   307→          Market
+   308→        </Button>
+   309→      </div>
+   310→
+   311→      <div className="px-3 pb-3 space-y-2">
+   312→        {/* Available balance */}
+   313→        <div className="flex justify-between text-xs">
+   314→          <span className="text-muted-foreground">Available</span>
+   315→          <span className="tabular-nums">
+   316→            {side === 'BUY'
+   317→              ? `${formatQty(balances?.quote ?? 0)} ${quote}`
+   318→              : `${formatQty(balances?.base ?? 0)} ${base}`}
+   319→          </span>
+   320→        </div>
+   321→
+   322→        {/* Price input (only for LIMIT) */}
+   323→        {orderType === 'LIMIT' && (
+   324→          <div>
+   325→            <label className="text-xs text-muted-foreground">Price ({quote})</label>
+   326→            <div className="relative">
+   327→              <Input
+   328→                type="number"
+   329→                value={price}
+   330→                onChange={e => { setPrice(e.target.value); setUserEditedPrice(true) }}
+   331→                placeholder="0.00"
+   332→                className="pr-12 tabular-nums"
+   333→              />
+   334→              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{quote}</span>
+   335→            </div>
+   336→          </div>
+   337→        )}
+   338→
+   339→        {/* Quantity */}
+   340→        <div>
+   341→          <label className="text-xs text-muted-foreground">Amount ({base})</label>
+   342→          <div className="relative">
+   343→            <Input
+   344→              type="number"
+   345→              value={qty}
+   346→              onChange={e => { setQty(e.target.value); setPct(0) }}
+   347→              placeholder="0.00"
+   348→              className="pr-12 tabular-nums"
+   349→            />
+   350→            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{base}</span>
+   351→          </div>
+   352→        </div>
+   353→
+   354→        {/* Percentage slider */}
+   355→        <div className="grid grid-cols-4 gap-1">
+   356→          {[25, 50, 75, 100].map(p => (
+   357→            <Button
+   358→              key={p}
+   359→              variant={pct === p ? 'default' : 'outline'}
+   360→              size="sm"
+   361→              className="text-xs h-7"
+   362→              onClick={() => applyPct(p)}
+   363→            >
+   364→              {p}%
+   365→            </Button>
+   366→          ))}
+   367→        </div>
+   368→
+   369→        {/* Total */}
+   370→        <div>
+   371→          <label className="text-xs text-muted-foreground">Total ({quote})</label>
+   372→          <Input
+   373→            type="text"
+   374→            value={formatQty(total)}
+   375→            readOnly
+   376→            className="tabular-nums bg-muted/30"
+   377→          />
+   378→        </div>
+   379→
+   380→        {/* Submit */}
+   381→        <Button
+   382→          className={`w-full mt-2 ${
+   383→            side === 'BUY'
+   384→              ? 'bg-green-500 hover:bg-green-600 text-white'
+   385→              : 'bg-red-500 hover:bg-red-600 text-white'
+   386→          }`}
+   387→          onClick={submit}
+   388→          disabled={loading}
+   389→        >
+   390→          {loading ? 'Placing...' : `${side} ${base}`}
+   391→        </Button>
+   392→      </div>
+   393→    </div>
+   394→  )
+   395→}
+   396→
+   397→// User's open orders
+   398→function OpenOrders({ user }: { user: any }) {
+   399→  const { toast } = useToast()
+   400→  const [orders, setOrders] = useState<any[]>([])
+   401→  const [loading, setLoading] = useState(true)
+   402→
+   403→  const load = useCallback(async () => {
+   404→    if (!user) { setOrders([]); setLoading(false); return }
+   405→    try {
+   406→      const res = await fetch('/api/trade/order?status=OPEN')
+   407→      const data = await res.json()
+   408→      setOrders(data.orders || [])
+   409→    } catch {
+   410→      setOrders([])
+   411→    } finally {
+   412→      setLoading(false)
+   413→    }
+   414→  }, [user])
+   415→
+   416→  useEffect(() => {
+   417→    load()
+   418→    const t = setInterval(load, 5000)
+   419→    return () => clearInterval(t)
+   420→  }, [load])
+   421→
+   422→  const cancel = async (orderId: string) => {
+   423→    try {
+   424→      await fetch('/api/trade/cancel', {
+   425→        method: 'POST',
+   426→        headers: { 'Content-Type': 'application/json' },
+   427→        body: JSON.stringify({ orderId }),
+   428→      })
+   429→      toast({ title: 'Order canceled' })
+   430→      load()
+   431→    } catch (e: any) {
+   432→      toast({ title: 'Cancel failed', description: e.message, variant: 'destructive' })
+   433→    }
+   434→  }
+   435→
+   436→  if (!user) return null
+   437→
+   438→  return (
+   439→    <div className="rounded-lg border border-border bg-card overflow-hidden">
+   440→      <div className="px-3 py-2 border-b border-border">
+   441→        <span className="text-xs font-medium">Open Orders ({orders.length})</span>
+   442→      </div>
+   443→      <div className="overflow-x-auto">
+   444→        <table className="w-full text-xs">
+   445→          <thead className="bg-muted/30 text-muted-foreground">
+   446→            <tr>
+   447→              <th className="px-3 py-2 text-left font-medium">Pair</th>
+   448→              <th className="px-3 py-2 text-left font-medium">Type</th>
+   449→              <th className="px-3 py-2 text-right font-medium">Price</th>
+   450→              <th className="px-3 py-2 text-right font-medium">Amount</th>
+   451→              <th className="px-3 py-2 text-right font-medium">Filled</th>
+   452→              <th className="px-3 py-2 text-right font-medium">Action</th>
+   453→            </tr>
+   454→          </thead>
+   455→          <tbody>
+   456→            {loading ? (
+   457→              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Loading...</td></tr>
+   458→            ) : orders.length === 0 ? (
+   459→              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No open orders</td></tr>
+   460→            ) : (
+   461→              orders.map(o => (
+   462→                <tr key={o.id} className="border-t border-border/40">
+   463→                  <td className="px-3 py-2">
+   464→                    <span className={o.side === 'BUY' ? 'text-green-500' : 'text-red-500'}>
+   465→                      {o.side === 'BUY' ? 'Buy' : 'Sell'}
+   466→                    </span>{' '}
+   467→                    {o.symbol}
+   468→                  </td>
+   469→                  <td className="px-3 py-2 text-muted-foreground">{o.type}</td>
+   470→                  <td className="px-3 py-2 text-right tabular-nums">{formatPrice(o.price)}</td>
+   471→                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(o.quantity)}</td>
+   472→                  <td className="px-3 py-2 text-right tabular-nums">{((o.filledQty / o.quantity) * 100).toFixed(1)}%</td>
+   473→                  <td className="px-3 py-2 text-right">
+   474→                    <Button
+   475→                      variant="ghost"
+   476→                      size="sm"
+   477→                      className="h-6 text-xs text-red-500"
+   478→                      onClick={() => cancel(o.id)}
+   479→                    >
+   480→                      <X className="h-3 w-3" /> Cancel
+   481→                    </Button>
+   482→                  </td>
+   483→                </tr>
+   484→              ))
+   485→            )}
+   486→          </tbody>
+   487→        </table>
+   488→      </div>
+   489→    </div>
+   490→  )
+   491→}
+   492→
+   493→// Trade history
+   494→function TradeHistory({ user }: { user: any }) {
+   495→  const [trades, setTrades] = useState<any[]>([])
+   496→  const [loading, setLoading] = useState(true)
+   497→
+   498→  const load = useCallback(async () => {
+   499→    if (!user) { setTrades([]); setLoading(false); return }
+   500→    try {
+   501→      const res = await fetch('/api/trade/trades?limit=20')
+   502→      const data = await res.json()
+   503→      setTrades(data.trades || [])
+   504→    } catch {
+   505→      setTrades([])
+   506→    } finally {
+   507→      setLoading(false)
+   508→    }
+   509→  }, [user])
+   510→
+   511→  useEffect(() => {
+   512→    load()
+   513→  }, [load])
+   514→
+   515→  if (!user) return null
+   516→
+   517→  return (
+   518→    <div className="rounded-lg border border-border bg-card overflow-hidden">
+   519→      <div className="px-3 py-2 border-b border-border">
+   520→        <span className="text-xs font-medium">Recent Trades</span>
+   521→      </div>
+   522→      <div className="overflow-x-auto">
+   523→        <table className="w-full text-xs">
+   524→          <thead className="bg-muted/30 text-muted-foreground">
+   525→            <tr>
+   526→              <th className="px-3 py-2 text-left font-medium">Pair</th>
+   527→              <th className="px-3 py-2 text-left font-medium">Side</th>
+   528→              <th className="px-3 py-2 text-right font-medium">Price</th>
+   529→              <th className="px-3 py-2 text-right font-medium">Amount</th>
+   530→              <th className="px-3 py-2 text-right font-medium">Total</th>
+   531→              <th className="px-3 py-2 text-right font-medium hidden sm:table-cell">Time</th>
+   532→            </tr>
+   533→          </thead>
+   534→          <tbody>
+   535→            {loading ? (
+   536→              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Loading...</td></tr>
+   537→            ) : trades.length === 0 ? (
+   538→              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No trades yet</td></tr>
+   539→            ) : (
+   540→              trades.map(t => (
+   541→                <tr key={t.id} className="border-t border-border/40">
+   542→                  <td className="px-3 py-2">{t.symbol}</td>
+   543→                  <td className="px-3 py-2">
+   544→                    <span className={t.side === 'BUY' ? 'text-green-500' : 'text-red-500'}>
+   545→                      {t.side}
+   546→                    </span>
+   547→                  </td>
+   548→                  <td className="px-3 py-2 text-right tabular-nums">{formatPrice(t.price)}</td>
+   549→                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(t.quantity)}</td>
+   550→                  <td className="px-3 py-2 text-right tabular-nums">{formatQty(t.total)}</td>
+   551→                  <td className="px-3 py-2 text-right text-muted-foreground hidden sm:table-cell">
+   552→                    {formatDateTime(t.createdAt)}
+   553→                  </td>
+   554→                </tr>
+   555→              ))
+   556→            )}
+   557→          </tbody>
+   558→        </table>
+   559→      </div>
+   560→    </div>
+   561→  )
+   562→}
+   563→
+   564→// Symbol selector dropdown
+   565→function SymbolSelector({ symbol }: { symbol: string }) {
+   566→  const { tickers } = useMarketSocket(symbol)
+   567→  const { setSymbol, favorites, toggleFavorite } = useAppStore()
+   568→  const [open, setOpen] = useState(false)
+   569→  const [search, setSearch] = useState('')
+   570→
+   571→  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+   572→  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+   573→
+   574→  const filtered = tickers.filter(t =>
+   575→    t.symbol.toLowerCase().includes(search.toLowerCase()) ||
+   576→    t.baseName.toLowerCase().includes(search.toLowerCase())
+   577→  )
+   578→
+   579→  return (
+   580→    <div className="relative">
+   581→      <Button
+   582→        variant="outline"
+   583→        size="sm"
+   584→        className="gap-2"
+   585→        onClick={() => setOpen(!open)}
+   586→      >
+   587→        <span className="font-bold">{base}/{quote}</span>
+   588→        <ChevronDown className="h-3.5 w-3.5" />
+   589→      </Button>
+   590→
+   591→      {open && (
+   592→        <>
+   593→          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+   594→          <div className="absolute top-full mt-1 left-0 z-20 w-80 bg-card border border-border rounded-lg shadow-xl">
+   595→            <div className="p-2 border-b border-border">
+   596→              <Input
+   597→                placeholder="Search..."
+   598→                value={search}
+   599→                onChange={e => setSearch(e.target.value)}
+   600→                className="h-8 text-sm"
+   601→                autoFocus
+   602→              />
+   603→            </div>
+   604→            <div className="max-h-96 overflow-y-auto">
+   605→              {filtered.map(t => {
+   606→                const isFav = favorites.includes(t.symbol)
+   607→                return (
+   608→                  <div
+   609→                    key={t.symbol}
+   610→                    className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 cursor-pointer text-sm"
+   611→                    onClick={() => { setSymbol(t.symbol); setOpen(false) }}
+   612→                  >
+   613→                    <div className="flex items-center gap-2">
+   614→                      <button
+   615→                        onClick={(e) => { e.stopPropagation(); toggleFavorite(t.symbol) }}
+   616→                        className="text-muted-foreground hover:text-yellow-500"
+   617→                      >
+   618→                        <Star className={`h-3 w-3 ${isFav ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+   619→                      </button>
+   620→                      <div>
+   621→                        <div className="font-medium">{t.base}/{t.quote}</div>
+   622→                        <div className="text-xs text-muted-foreground">{t.baseName}</div>
+   623→                      </div>
+   624→                    </div>
+   625→                    <div className="text-right">
+   626→                      <div className="tabular-nums">{formatPrice(t.lastPrice)}</div>
+   627→                      <div className={`text-xs ${t.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+   628→                        {formatPercent(t.changePercent)}
+   629→                      </div>
+   630→                    </div>
+   631→                  </div>
+   632→                )
+   633→              })}
+   634→            </div>
+   635→          </div>
+   636→        </>
+   637→      )}
+   638→    </div>
+   639→  )
+   640→}
+   641→
+   642→export function SpotView() {
+   643→  const { symbol, user, favorites, toggleFavorite } = useAppStore()
+   644→  const { ticker, klines } = useMarketSocket(symbol)
+   645→  const [bottomTab, setBottomTab] = useState<'orders' | 'history'>('orders')
+   646→
+   647→  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+   648→  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+   649→  const isFav = favorites.includes(symbol)
+   650→
+   651→  const change = ticker?.changePercent ?? 0
+   652→  const isUp = change >= 0
+   653→
+   654→  return (
+   655→    <div className="container mx-auto px-2 sm:px-3 py-2 max-w-[1600px]">
+   656→      {/* Back button */}
+   657→      <div className="px-1 py-1">
+   658→        <BackButton to="markets" />
+   659→      </div>
+   660→
+   661→      {/* Pair header */}
+   662→      <div className="flex flex-wrap items-center gap-3 mb-2 p-2 bg-card rounded-lg border border-border">
+   663→        <SymbolSelector symbol={symbol} />
+   664→        <button onClick={() => toggleFavorite(symbol)} className="text-muted-foreground hover:text-yellow-500">
+   665→          <Star className={`h-4 w-4 ${isFav ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+   666→        </button>
+   667→
+   668→        <div className="flex flex-col">
+   669→          <span className="text-xs text-muted-foreground">Last Price</span>
+   670→          <span className={`text-lg font-bold tabular-nums ${isUp ? 'text-green-500' : 'text-red-500'}`}>
+   671→            {formatPrice(ticker?.lastPrice ?? 0)}
+   672→          </span>
+   673→        </div>
+   674→
+   675→        <div className="flex flex-col">
+   676→          <span className="text-xs text-muted-foreground">24h Change</span>
+   677→          <span className={`text-sm font-medium tabular-nums ${isUp ? 'text-green-500' : 'text-red-500'}`}>
+   678→            {formatPercent(change)}
+   679→          </span>
+   680→        </div>
+   681→
+   682→        <div className="flex flex-col hidden sm:flex">
+   683→          <span className="text-xs text-muted-foreground">24h High</span>
+   684→          <span className="text-sm tabular-nums">{formatPrice(ticker?.high24h ?? 0)}</span>
+   685→        </div>
+   686→
+   687→        <div className="flex flex-col hidden sm:flex">
+   688→          <span className="text-xs text-muted-foreground">24h Low</span>
+   689→          <span className="text-sm tabular-nums">{formatPrice(ticker?.low24h ?? 0)}</span>
+   690→        </div>
+   691→
+   692→        <div className="flex flex-col hidden md:flex">
+   693→          <span className="text-xs text-muted-foreground">24h Volume ({base})</span>
+   694→          <span className="text-sm tabular-nums">{formatCompact(ticker?.volume24h ?? 0)}</span>
+   695→        </div>
+   696→
+   697→        <div className="flex flex-col hidden md:flex">
+   698→          <span className="text-xs text-muted-foreground">24h Volume ({quote})</span>
+   699→          <span className="text-sm tabular-nums">{formatCompact(ticker?.quoteVolume24h ?? 0)}</span>
+   700→        </div>
+   701→      </div>
+   702→
+   703→      {/* Main grid: user profile (left) + chart + order book + trade panel */}
+   704→      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px_320px] gap-2 mb-2">
+   705→        {/* User Profile — left side */}
+   706→        <div className="hidden lg:block">
+   707→          <UserProfilePanel symbol={symbol} user={user} />
+   708→        </div>
+   709→        {/* Chart */}
+   710→        <div className="bg-card rounded-lg border border-border overflow-hidden">
+   711→          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+   712→            <div className="flex items-center gap-2">
+   713→              <span className="text-xs font-medium">Live Price Chart</span>
+   714→              <span className="text-xs text-muted-foreground">Real-time · 1m</span>
+   715→            </div>
+   716→            <div className="flex items-center gap-1">
+   717→              {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf, i) => (
+   718→                <Button
+   719→                  key={tf}
+   720→                  variant={i === 0 ? 'secondary' : 'ghost'}
+   721→                  size="sm"
+   722→                  className="h-6 px-2 text-xs"
+   723→                >
+   724→                  {tf}
+   725→                </Button>
+   726→              ))}
+   727→            </div>
+   728→          </div>
+   729→          <RealTimeLineChart klines={klines} height={400} baseAsset={base} quoteAsset={quote} />
+   730→        </div>
+   731→
+   732→        {/* Order book */}
+   733→        <div className="bg-card rounded-lg border border-border overflow-hidden hidden lg:block">
+   734→          <OrderBook symbol={symbol} />
+   735→        </div>
+   736→
+   737→        {/* Trade panel */}
+   738→        <div className="bg-card rounded-lg border border-border overflow-hidden">
+   739→          <TradePanel symbol={symbol} />
+   740→        </div>
+   741→      </div>
+   742→
+   743→      {/* Mobile order book */}
+   744→      <div className="lg:hidden bg-card rounded-lg border border-border overflow-hidden mb-2">
+   745→        <OrderBook symbol={symbol} />
+   746→      </div>
+   747→
+   748→      {/* Recent trades + bottom panel */}
+   749→      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-2">
+   750→        <div>
+   751→          <Tabs value={bottomTab} onValueChange={(v) => setBottomTab(v as any)}>
+   752→            <TabsList className="mb-2">
+   753→              <TabsTrigger value="orders">Open Orders</TabsTrigger>
+   754→              <TabsTrigger value="history">Trade History</TabsTrigger>
+   755→            </TabsList>
+   756→            <TabsContent value="orders">
+   757→              <OpenOrders user={user} />
+   758→            </TabsContent>
+   759→            <TabsContent value="history">
+   760→              <TradeHistory user={user} />
+   761→            </TabsContent>
+   762→          </Tabs>
+   763→        </div>
+   764→
+   765→        <div className="bg-card rounded-lg border border-border overflow-hidden">
+   766→          <RecentTrades symbol={symbol} />
+   767→        </div>
+   768→      </div>
+   769→
+   770→      {/* Profit/Loss Panel — right side */}
+   771→      <ProfitLossPanel symbol={symbol} user={user} />
+   772→    </div>
+   773→  )
+   774→}
+   775→
+   776→// =================== USER PROFILE PANEL (left side) ===================
+   777→function UserProfilePanel({ symbol, user }: { symbol: string; user: any }) {
+   778→  const { toast } = useToast()
+   779→  const [wallets, setWallets] = useState<any[]>([])
+   780→  const [totalUsd, setTotalUsd] = useState(0)
+   781→
+   782→  const load = useCallback(async () => {
+   783→    if (!user) return
+   784→    try {
+   785→      const res = await fetch('/api/wallet')
+   786→      const data = await res.json()
+   787→      setWallets(data.wallets || [])
+   788→      setTotalUsd(data.totalUsd || 0)
+   789→    } catch {}
+   790→  }, [user])
+   791→
+   792→  useEffect(() => {
+   793→    load()
+   794→    const t = setInterval(load, 10000)
+   795→    return () => clearInterval(t)
+   796→  }, [load])
+   797→
+   798→  if (!user) {
+   799→    return (
+   800→      <div className="bg-card rounded-lg border border-border p-4 text-center">
+   801→        <User className="h-8 w-8 mx-auto text-muted-foreground mb-2 opacity-30" />
+   802→        <p className="text-xs text-muted-foreground">Log in to view your profile</p>
+   803→      </div>
+   804→    )
+   805→  }
+   806→
+   807→  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+   808→  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+   809→
+   810→  const baseWallet = wallets.find(w => w.asset === base)
+   811→  const quoteWallet = wallets.find(w => w.asset === quote)
+   812→
+   813→  return (
+   814→    <div className="bg-card rounded-lg border border-border overflow-hidden sticky top-16">
+   815→      {/* Profile header */}
+   816→      <div className="p-4 border-b border-border">
+   817→        <div className="flex items-center gap-3">
+   818→          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-lg flex-shrink-0">
+   819→            {user.name?.slice(0, 2).toUpperCase() || 'U'}
+   820→          </div>
+   821→          <div className="flex-1 min-w-0">
+   822→            <div className="font-medium text-sm truncate">{user.name}</div>
+   823→            <div className="text-xs text-muted-foreground truncate">@{user.username || user.email.split('@')[0]}</div>
+   824→          </div>
+   825→        </div>
+   826→
+   827→        {/* User ID and Username with copy buttons */}
+   828→        <div className="mt-3 space-y-1.5">
+   829→          {user.userId && (
+   830→            <div className="flex items-center gap-1">
+   831→              <span className="text-xs text-muted-foreground font-semibold">ID:</span>
+   832→              <span className="text-xs font-mono font-bold flex-1 truncate">{user.userId}</span>
+   833→              <button
+   834→                onClick={() => { navigator.clipboard.writeText(user.userId); toast({ title: 'Copied!', description: 'ID copied' }) }}
+   835→                className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition flex-shrink-0"
+   836→              >
+   837→                <Copy className="h-2.5 w-2.5" /> Copy
+   838→              </button>
+   839→            </div>
+   840→          )}
+   841→          {user.username && (
+   842→            <div className="flex items-center gap-1">
+   843→              <span className="text-xs text-muted-foreground font-semibold">Username:</span>
+   844→              <span className="text-xs font-medium flex-1 truncate">@{user.username}</span>
+   845→              <button
+   846→                onClick={() => { navigator.clipboard.writeText('@' + user.username); toast({ title: 'Copied!', description: 'Username copied' }) }}
+   847→                className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition flex-shrink-0"
+   848→              >
+   849→                <Copy className="h-2.5 w-2.5" /> Copy
+   850→              </button>
+   851→            </div>
+   852→          )}
+   853→        </div>
+   854→
+   855→        {/* KYC badge */}
+   856→        <div className="mt-2">
+   857→          {user.kycVerified ? (
+   858→            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-500/15 text-green-600 dark:text-green-400">
+   859→              <Shield className="h-3 w-3" /> Verified L{user.kycLevel}
+   860→            </span>
+   861→          ) : (
+   862→            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+   863→              <Shield className="h-3 w-3" /> Unverified
+   864→            </span>
+   865→          )}
+   866→        </div>
+   867→      </div>
+   868→
+   869→      {/* Total balance */}
+   870→      <div className="p-3 border-b border-border">
+   871→        <p className="text-xs text-muted-foreground">Total Balance</p>
+   872→        <p className="text-lg font-bold tabular-nums">${formatPrice(totalUsd)}</p>
+   873→      </div>
+   874→
+   875→      {/* Current pair balances */}
+   876→      <div className="p-3 border-b border-border space-y-2">
+   877→        <p className="text-xs font-medium text-muted-foreground">{base}/{quote} Balances</p>
+   878→
+   879→        {/* Base asset */}
+   880→        {baseWallet && (
+   881→          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+   882→            <div className="flex items-center gap-2">
+   883→              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
+   884→                {base.slice(0, 3)}
+   885→              </div>
+   886→              <div>
+   887→                <div className="text-xs font-medium">{base}</div>
+   888→                <div className="text-[10px] text-muted-foreground">Available</div>
+   889→              </div>
+   890→            </div>
+   891→            <div className="text-right">
+   892→              <div className="text-xs font-bold tabular-nums">{formatQty(baseWallet.available)}</div>
+   893→              {baseWallet.locked > 0 && (
+   894→                <div className="text-[10px] text-yellow-500 tabular-nums">🔒 {formatQty(baseWallet.locked)}</div>
+   895→              )}
+   896→            </div>
+   897→          </div>
+   898→        )}
+   899→
+   900→        {/* Quote asset */}
+   901→        {quoteWallet && (
+   902→          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+   903→            <div className="flex items-center gap-2">
+   904→              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500/20 text-green-600 dark:text-green-400 text-[10px] font-bold">
+   905→                {quote.slice(0, 3)}
+   906→              </div>
+   907→              <div>
+   908→                <div className="text-xs font-medium">{quote}</div>
+   909→                <div className="text-[10px] text-muted-foreground">Available</div>
+   910→              </div>
+   911→            </div>
+   912→            <div className="text-right">
+   913→              <div className="text-xs font-bold tabular-nums">{formatQty(quoteWallet.available)}</div>
+   914→              {quoteWallet.locked > 0 && (
+   915→                <div className="text-[10px] text-yellow-500 tabular-nums">🔒 {formatQty(quoteWallet.locked)}</div>
+   916→              )}
+   917→            </div>
+   918→          </div>
+   919→        )}
+   920→      </div>
+   921→
+   922→      {/* Quick stats */}
+   923→      <div className="p-3 space-y-2">
+   924→        <div className="flex justify-between text-xs">
+   925→          <span className="text-muted-foreground">Active Wallets</span>
+   926→          <span className="font-medium tabular-nums">{wallets.filter(w => w.balance > 0).length}</span>
+   927→        </div>
+   928→        <div className="flex justify-between text-xs">
+   929→          <span className="text-muted-foreground">Total Wallets</span>
+   930→          <span className="font-medium tabular-nums">{wallets.length}</span>
+   931→        </div>
+   932→        <div className="flex justify-between text-xs">
+   933→          <span className="text-muted-foreground">Member Since</span>
+   934→          <span className="font-medium">{new Date(user.id?.slice(-8) ? Date.now() : Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+   935→        </div>
+   936→      </div>
+   937→    </div>
+   938→  )
+   939→}
+   940→
+   941→// =================== PROFIT/LOSS PANEL ===================
+   942→function ProfitLossPanel({ symbol, user }: { symbol: string; user: any }) {
+   943→  const [trades, setTrades] = useState<any[]>([])
+   944→  const [loading, setLoading] = useState(true)
+   945→
+   946→  const load = useCallback(async () => {
+   947→    if (!user) { setTrades([]); setLoading(false); return }
+   948→    try {
+   949→      const res = await fetch(`/api/trade/trades?symbol=${symbol}&limit=50`)
+   950→      const data = await res.json()
+   951→      setTrades(data.trades || [])
+   952→    } catch {
+   953→      setTrades([])
+   954→    } finally {
+   955→      setLoading(false)
+   956→    }
+   957→  }, [user, symbol])
+   958→
+   959→  useEffect(() => {
+   960→    load()
+   961→    const t = setInterval(load, 10000)
+   962→    return () => clearInterval(t)
+   963→  }, [load])
+   964→
+   965→  const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
+   966→  const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
+   967→
+   968→  // Calculate PnL from trade history
+   969→  // For BUY trades: profit = (currentPrice - buyPrice) * quantity
+   970→  // For SELL trades: profit = (sellPrice - avgBuyPrice) * quantity
+   971→  const prices: Record<string, number> = {
+   972→    BTC: 67500, ETH: 3450, BNB: 585, SOL: 165, XRP: 0.62, ADA: 0.45,
+   973→    DOGE: 0.16, AVAX: 38, LINK: 18.5, DOT: 7.2, MATIC: 0.72, LTC: 85,
+   974→    USDT: 1, USDC: 1,
+   975→  }
+   976→  const currentPrice = prices[base] || 0
+   977→
+   978→  // Calculate total PnL
+   979→  let totalBuyCost = 0
+   980→  let totalBuyQty = 0
+   981→  let totalSellRevenue = 0
+   982→  let totalSellQty = 0
+   983→  let realizedPnL = 0
+   984→
+   985→  // First pass: calculate average buy price
+   986→  const buyTrades = trades.filter(t => t.side === 'BUY')
+   987→  const sellTrades = trades.filter(t => t.side === 'SELL')
+   988→
+   989→  for (const t of buyTrades) {
+   990→    totalBuyCost += t.price * t.quantity
+   991→    totalBuyQty += t.quantity
+   992→  }
+   993→  const avgBuyPrice = totalBuyQty > 0 ? totalBuyCost / totalBuyQty : 0
+   994→
+   995→  for (const t of sellTrades) {
+   996→    totalSellRevenue += t.price * t.quantity
+   997→    totalSellQty += t.quantity
+   998→    // Realized PnL = (sell price - avg buy price) * sell qty
+   999→    realizedPnL += (t.price - avgBuyPrice) * t.quantity
+  1000→  }
+  1001→
+  1002→  // Unrealized PnL = (current price - avg buy price) * remaining qty
+  1003→  const remainingQty = totalBuyQty - totalSellQty
+  1004→  const unrealizedPnL = remainingQty > 0 ? (currentPrice - avgBuyPrice) * remainingQty : 0
+  1005→
+  1006→  // Total PnL = realized + unrealized
+  1007→  const totalPnL = realizedPnL + unrealizedPnL
+  1008→  const pnlPercent = totalBuyCost > 0 ? (totalPnL / totalBuyCost) * 100 : 0
+  1009→
+  1010→  const isProfit = totalPnL >= 0
+  1011→
+  1012→  if (!user) return null
+  1013→
+  1014→  return (
+  1015→    <div className="mt-2 bg-card rounded-lg border border-border overflow-hidden">
+  1016→      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+  1017→        <h3 className="text-sm font-semibold flex items-center gap-2">
+  1018→          <Wallet className="h-4 w-4" />
+  1019→          Profit & Loss
+  1020→        </h3>
+  1021→        <span className="text-xs text-muted-foreground">{base}/{quote}</span>
+  1022→      </div>
+  1023→
+  1024→      {loading ? (
+  1025→        <div className="p-6 text-center text-xs text-muted-foreground">Loading PnL...</div>
+  1026→      ) : trades.length === 0 ? (
+  1027→        <div className="p-6 text-center">
+  1028→          <TrendingUp className="h-8 w-8 mx-auto text-muted-foreground mb-2 opacity-30" />
+  1029→          <p className="text-xs text-muted-foreground">No trades yet for {base}/{quote}</p>
+  1030→          <p className="text-xs text-muted-foreground mt-1">Your profit/loss will appear here after you trade.</p>
+  1031→        </div>
+  1032→      ) : (
+  1033→        <div className="p-4 space-y-4">
+  1034→          {/* Total PnL — big number */}
+  1035→          <div className={`rounded-lg p-4 text-center ${isProfit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+  1036→            <p className="text-xs text-muted-foreground mb-1">Total PnL</p>
+  1037→            <p className={`text-3xl font-bold tabular-nums ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+  1038→              {isProfit ? '+' : ''}{formatPrice(totalPnL)} {quote}
+  1039→            </p>
+  1040→            <p className={`text-sm font-medium mt-1 ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+  1041→              {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
+  1042→            </p>
+  1043→          </div>
+  1044→
+  1045→          {/* Breakdown */}
+  1046→          <div className="space-y-2">
+  1047→            {/* Realized PnL */}
+  1048→            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+  1049→              <div className="flex items-center gap-2">
+  1050→                {realizedPnL >= 0 ? (
+  1051→                  <TrendingUp className="h-4 w-4 text-green-500" />
+  1052→                ) : (
+  1053→                  <TrendingDown className="h-4 w-4 text-red-500" />
+  1054→                )}
+  1055→                <div>
+  1056→                  <span className="text-xs font-medium">Realized PnL</span>
+  1057→                  <p className="text-[10px] text-muted-foreground">From closed trades</p>
+  1058→                </div>
+  1059→              </div>
+  1060→              <span className={`text-sm font-bold tabular-nums ${realizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+  1061→                {realizedPnL >= 0 ? '+' : ''}{formatPrice(realizedPnL)} {quote}
+  1062→              </span>
+  1063→            </div>
+  1064→
+  1065→            {/* Unrealized PnL */}
+  1066→            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+  1067→              <div className="flex items-center gap-2">
+  1068→                {unrealizedPnL >= 0 ? (
+  1069→                  <TrendingUp className="h-4 w-4 text-green-500" />
+  1070→                ) : (
+  1071→                  <TrendingDown className="h-4 w-4 text-red-500" />
+  1072→                )}
+  1073→                <div>
+  1074→                  <span className="text-xs font-medium">Unrealized PnL</span>
+  1075→                  <p className="text-[10px] text-muted-foreground">Open position ({formatQty(remainingQty)} {base})</p>
+  1076→                </div>
+  1077→              </div>
+  1078→              <span className={`text-sm font-bold tabular-nums ${unrealizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+  1079→                {unrealizedPnL >= 0 ? '+' : ''}{formatPrice(unrealizedPnL)} {quote}
+  1080→              </span>
+  1081→            </div>
+  1082→          </div>
+  1083→
+  1084→          {/* Trade stats */}
+  1085→          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+  1086→            <div className="text-center p-2 bg-muted/20 rounded-lg">
+  1087→              <p className="text-[10px] text-muted-foreground">Total Bought</p>
+  1088→              <p className="text-sm font-medium tabular-nums">{formatQty(totalBuyQty)} {base}</p>
+  1089→              <p className="text-[10px] text-muted-foreground">{formatPrice(avgBuyPrice)} {quote} avg</p>
+  1090→            </div>
+  1091→            <div className="text-center p-2 bg-muted/20 rounded-lg">
+  1092→              <p className="text-[10px] text-muted-foreground">Total Sold</p>
+  1093→              <p className="text-sm font-medium tabular-nums">{formatQty(totalSellQty)} {base}</p>
+  1094→              <p className="text-[10px] text-muted-foreground">{trades.length} trades</p>
+  1095→            </div>
+  1096→          </div>
+  1097→
+  1098→          {/* Current position */}
+  1099→          {remainingQty > 0 && (
+  1100→            <div className="flex items-center justify-between p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+  1101→              <span className="text-xs text-muted-foreground">Current Position:</span>
+  1102→              <div className="text-right">
+  1103→                <span className="text-sm font-bold tabular-nums">{formatQty(remainingQty)} {base}</span>
+  1104→                <p className="text-[10px] text-muted-foreground">≈ {formatPrice(remainingQty * currentPrice)} {quote}</p>
+  1105→              </div>
+  1106→            </div>
+  1107→          )}
+  1108→        </div>
+  1109→      )}
+  1110→    </div>
+  1111→  )
+  1112→}
+  1113→
