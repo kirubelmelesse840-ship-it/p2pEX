@@ -599,7 +599,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {listing.side === 'SELL' ? 'Buy' : 'Sell'} {listing.asset} from {listing.user.name}
+            {listing.side === 'SELL' ? `Buy ${listing.asset} from ${listing.user.name}` : `Sell ${listing.asset} for ${listing.user.name}`}
           </DialogTitle>
           <DialogDescription>
             {listing.side === 'SELL' ? 'You are buying' : 'You are selling'} {listing.asset} for {listing.fiatCurrency}
@@ -727,8 +727,11 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {details.email && copyField('Email', details.email)}
                     {details.iban && copyField('IBAN', details.iban)}
                     {details.cashtag && copyField('Cashtag', details.cashtag)}
-                    {/* Total amount — copyable (just the number, not the currency) */}
-                    {copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))}
+                    {/* Copyable amount — for buy: fiat total (ETB); for sell: USDT amount (crypto) */}
+                    {isBuying
+                      ? copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))
+                      : copyField(`Amount (${listing.asset})`, formatQty(amountNum))
+                    }
                   </div>
                 )
               })()}
@@ -861,6 +864,8 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 }
 
 function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void }) {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
     PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Pending Seller Confirmation' },
     PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Payment Confirmed — Awaiting Admin' },
@@ -872,6 +877,32 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
   }
   const cfg = statusMap[order.status] || statusMap.PENDING_PAYMENT
   const Icon = cfg.icon
+
+  // Show "Payment Received" button when seller needs to confirm payment
+  const showPaymentButton = order.status === 'PENDING_REVIEW' && order.myRole === 'SELLER'
+
+  const quickConfirm = async (e: React.MouseEvent) => {
+    e.stopPropagation() // Don't open the dialog
+    setLoading(true)
+    try {
+      const res = await fetch('/api/p2p/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, action: 'payment_received' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      toast({
+        title: '✅ Payment Confirmed',
+        description: `Admin has been notified. Your ${order.asset} will be released after admin approval.`,
+        duration: 8000,
+      })
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div
@@ -900,6 +931,23 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
           </span>
         </div>
       </div>
+
+      {/* Quick action button for sellers — visible directly in the order card */}
+      {showPaymentButton && (
+        <div className="mt-2 pt-2 border-t border-border/40">
+          <Button
+            className="w-full bg-green-500 hover:bg-green-600 text-white"
+            onClick={quickConfirm}
+            disabled={loading}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1.5" />
+            {loading ? 'Confirming...' : 'Payment Received — Notify Admin'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center mt-1">
+            Tap to confirm you received the payment · or tap the order for details
+          </p>
+        </div>
+      )}
     </div>
   )
 }
