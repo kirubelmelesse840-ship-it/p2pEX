@@ -26,8 +26,11 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
+    const body = await req.json()
     const { listingId, amount, paymentMethod, paymentScreenshot,
-            sellerPaymentMethod, sellerAccountNumber, sellerAccountName } = await req.json()
+            sellerPaymentMethod, sellerAccountNumber, sellerAccountName } = body
+    console.log('[p2p/orders POST] Received:', { listingId, amount, paymentMethod, hasScreenshot: !!paymentScreenshot, sellerPaymentMethod, hasSellerAccount: !!sellerAccountNumber })
+
     if (!listingId || !amount || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -63,9 +66,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Only ${listing.available} ${listing.asset} available` }, { status: 400 })
     }
 
-    const methods = JSON.parse(listing.paymentMethods)
+    // Parse payment methods and validate
+    let methods: string[] = []
+    try {
+      methods = typeof listing.paymentMethods === 'string'
+        ? JSON.parse(listing.paymentMethods)
+        : listing.paymentMethods
+    } catch {
+      methods = []
+    }
     if (!methods.includes(paymentMethod)) {
-      return NextResponse.json({ error: 'Payment method not supported' }, { status: 400 })
+      return NextResponse.json({ error: `Payment method "${paymentMethod}" not supported. Available: ${methods.join(', ')}` }, { status: 400 })
     }
 
     // Determine buyer / seller
@@ -77,8 +88,13 @@ export async function POST(req: NextRequest) {
     const sellerWallet = await db.wallet.findUnique({
       where: { userId_asset: { userId: sellerId, asset: listing.asset } },
     })
-    if (!sellerWallet || sellerWallet.available < amount) {
-      return NextResponse.json({ error: `Insufficient ${listing.asset} balance for the seller` }, { status: 400 })
+    if (!sellerWallet) {
+      console.error('[p2p/orders POST] Seller wallet not found:', { sellerId, asset: listing.asset })
+      return NextResponse.json({ error: `Seller doesn't have a ${listing.asset} wallet yet. Please contact support.` }, { status: 400 })
+    }
+    if (sellerWallet.available < amount) {
+      console.error('[p2p/orders POST] Insufficient balance:', { available: sellerWallet.available, requested: amount })
+      return NextResponse.json({ error: `Seller has insufficient ${listing.asset} balance (available: ${sellerWallet.available}, needed: ${amount})` }, { status: 400 })
     }
     await db.wallet.update({
       where: { id: sellerWallet.id },

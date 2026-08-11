@@ -482,6 +482,17 @@ function TradeDialog({ listing, onClose, onSuccess }: {
   const maxCrypto = Math.min(listing.available, listing.maxOrder / listing.price)
   const isBuying = listing.side === 'SELL' // SELL listing means buyer is buying
 
+  // Get the merchant name from paymentDetails (the name field of the first payment method)
+  // Falls back to listing.user.name if not found
+  const merchantName = (() => {
+    try {
+      const firstMethod = listing.paymentMethods[0]
+      const details = listing.paymentDetails?.[firstMethod]
+      if (details?.name) return details.name
+    } catch {}
+    return listing.user.name
+  })()
+
   // Helper to render a payment detail field with a copy button
   const copyField = (label: string, value: string) => (
     <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-blue-500/20">
@@ -599,7 +610,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {listing.side === 'SELL' ? `Buy ${listing.asset} from ${listing.user.name}` : `Sell ${listing.asset} for ${listing.user.name}`}
+            {listing.side === 'SELL' ? `Buy ${listing.asset} from ${merchantName}` : `Sell ${listing.asset} for ${merchantName}`}
           </DialogTitle>
           <DialogDescription>
             {listing.side === 'SELL' ? 'You are buying' : 'You are selling'} {listing.asset} for {listing.fiatCurrency}
@@ -759,14 +770,6 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                   )}
                 </button>
               )}
-            </div>
-          )}
-
-          {/* Terms */}
-          {listing.terms && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs">
-              <p className="font-medium text-yellow-700 dark:text-yellow-500 mb-0.5">Seller's Terms:</p>
-              <p className="text-muted-foreground">{listing.terms}</p>
             </div>
           )}
 
