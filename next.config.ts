@@ -1,19 +1,15 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "standalone",
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Allow large request bodies for support messages with images/voice/video
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
     },
   },
-  // Increase body size limit for API routes
   async headers() {
     return [
       {
@@ -28,4 +24,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
