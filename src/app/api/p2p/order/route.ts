@@ -1,10 +1,17 @@
 /**
  * POST /api/p2p/order - update P2P order status
  * Body: { orderId, action }
- *   action: 'mark_paid'      -> PAID (buyer marks fiat sent)
- *           'release'        -> RELEASED then COMPLETED (seller releases crypto)
- *           'cancel'         -> CANCELED
- *           'dispute'        -> DISPUTED
+ *   action: 'mark_paid'          -> PAID (buyer marks fiat sent)
+ *           'payment_received'   -> PAYMENT_RECEIVED (seller confirms fiat received, notifies admin)
+ *           'release'            -> RELEASED then COMPLETED (seller releases crypto)
+ *           'cancel'             -> CANCELED
+ *           'dispute'            -> DISPUTED
+ *
+ * Sell flow (user selling USDT):
+ *   1. Order created → PENDING_REVIEW (seller's USDT is locked)
+ *   2. Seller clicks "Payment Received" → PAYMENT_RECEIVED (admin is notified)
+ *   3. Admin approves → COMPLETED (USDT debited from seller, credited to buyer)
+ *   4. Admin rejects → CANCELED (USDT returned to seller)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
@@ -40,6 +47,60 @@ export async function POST(req: NextRequest) {
         data: { status: 'PAID' },
       })
       return NextResponse.json({ ok: true, status: 'PAID' })
+    }
+
+    if (action === 'payment_received') {
+      // Seller confirms they received the fiat payment → notifies admin
+      if (!isSeller) return NextResponse.json({ error: 'Only seller can confirm payment received' }, { status: 403 })
+      if (order.status !== 'PENDING_REVIEW') {
+        return NextResponse.json({ error: 'Order must be in PENDING_REVIEW state' }, { status: 400 })
+      }
+      await db.p2POrder.update({
+        where: { id: orderId },
+        data: { status: 'PAYMENT_RECEIVED' },
+      })
+
+      // Notify admin
+      try {
+        await db.adminNotification.create({
+          data: {
+            userId: order.buyerId,
+            title: '✅ Payment Received — Seller Confirmed',
+            message: `The seller confirmed receiving payment for order #${orderId.slice(-8)}. ${order.amount} ${order.asset} is ready to be released. Please review and approve.`,
+            type: 'info',
+            isRead: false,
+          },
+        })
+      } catch {}
+
+      // Notify buyer
+      try {
+        await db.adminNotification.create({
+          data: {
+            userId: order.buyerId,
+            title: '✅ Seller Confirmed Payment',
+            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. The admin is now reviewing and will release your crypto shortly.`,
+            type: 'success',
+            isRead: false,
+          },
+        })
+      } catch {}
+
+      // Send push notification to admin (best-effort)
+      try {
+        const { sendPushToUser } = await import('@/lib/push')
+        const admin = await db.user.findFirst({ where: { isAdmin: true } })
+        if (admin) {
+          sendPushToUser(admin.id, {
+            title: '✅ Payment Received — Seller Confirmed',
+            body: `Order #${orderId.slice(-8)}: Seller confirmed receiving payment. Review and approve to release ${order.amount} ${order.asset}.`,
+            url: '/',
+            tag: `p2p-payment-${orderId}`,
+          }).catch(() => {})
+        }
+      } catch {}
+
+      return NextResponse.json({ ok: true, status: 'PAYMENT_RECEIVED' })
     }
 
     if (action === 'release') {

@@ -1775,6 +1775,7 @@ function PaymentReviewTab() {
           <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="PENDING_REVIEW">⏳ Pending Review</SelectItem>
+            <SelectItem value="PAYMENT_RECEIVED">✅ Payment Received</SelectItem>
             <SelectItem value="CANCELED">❌ Rejected/Canceled</SelectItem>
             <SelectItem value="COMPLETED">✓ Completed</SelectItem>
           </SelectContent>
@@ -1806,6 +1807,7 @@ function PaymentReviewTab() {
                   <div className="flex items-center gap-2 mb-2">
                     <Badge variant="secondary" className={
                       o.status === 'PENDING_REVIEW' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                      o.status === 'PAYMENT_RECEIVED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
                       o.status === 'PAID' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
                       o.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
                       'bg-blue-500/15 text-blue-600 dark:text-blue-400'
@@ -1852,7 +1854,7 @@ function PaymentReviewTab() {
                       No screenshot
                     </div>
                   )}
-                  {o.status === 'PENDING_REVIEW' && (
+                  {(o.status === 'PENDING_REVIEW' || o.status === 'PAYMENT_RECEIVED') && (
                     <div className="flex gap-1">
                       <Button
                         size="sm"
@@ -1860,7 +1862,7 @@ function PaymentReviewTab() {
                         onClick={() => act(o.id, 'approve')}
                       >
                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                        {o.sellerPaymentMethod ? 'Finish' : 'Approve'}
+                        {o.status === 'PAYMENT_RECEIVED' ? 'Approve & Release' : (o.sellerPaymentMethod ? 'Finish' : 'Approve')}
                       </Button>
                       <Button
                         size="sm"

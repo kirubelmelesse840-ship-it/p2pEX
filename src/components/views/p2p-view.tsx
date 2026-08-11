@@ -120,8 +120,18 @@ export function P2PView() {
             // Status changed — show notification
             if (o.status === 'PENDING_REVIEW' && prevStatus !== 'PENDING_REVIEW') {
               toast({
-                title: '⏳ Admin Checking Both Sides',
-                description: `Your order for ${o.amount} ${o.asset} is now under admin review. The admin is checking both sides — please wait patiently.`,
+                title: '⏳ Order Under Review',
+                description: o.myRole === 'SELLER'
+                  ? `New order for ${o.amount} ${o.asset}. Verify you received the payment, then click "Payment Received".`
+                  : `Your order for ${o.amount} ${o.asset} is pending. The seller needs to confirm payment received.`,
+                duration: 8000,
+              })
+            } else if (o.status === 'PAYMENT_RECEIVED') {
+              toast({
+                title: '✅ Payment Confirmed by Seller',
+                description: o.myRole === 'BUYER'
+                  ? `The seller confirmed receiving your payment for ${o.amount} ${o.asset}. Admin is reviewing — please wait patiently.`
+                  : `You confirmed payment for ${o.amount} ${o.asset}. Admin is reviewing — your ${o.asset} will be debited after approval.`,
                 duration: 8000,
               })
             } else if (o.status === 'CANCELED' && o.myRole === 'BUYER') {
@@ -131,7 +141,7 @@ export function P2PView() {
             } else if (o.status === 'COMPLETED' && o.myRole === 'BUYER') {
               toast({ title: '🎉 Order Completed!', description: `Your buy order for ${o.amount} ${o.asset} has been approved. The crypto has been credited to your wallet.`, duration: 8000 })
             } else if (o.status === 'COMPLETED' && o.myRole === 'SELLER') {
-              toast({ title: '🎉 Order Completed!', description: `Your sell order for ${o.amount} ${o.asset} has been approved. The crypto has been transferred to the buyer.`, duration: 8000 })
+              toast({ title: '🎉 Order Completed!', description: `Your sell order for ${o.amount} ${o.asset} has been approved. The crypto has been debited from your wallet and sent to the buyer.`, duration: 8000 })
             }
           }
         }
@@ -597,6 +607,51 @@ function TradeDialog({ listing, onClose, onSuccess }: {
         </DialogHeader>
 
         <div className="space-y-3">
+          {/* Prominent warning — transaction not complete until all parties + admin confirm */}
+          {!isBuying && (
+            <div className="bg-orange-500/10 border-2 border-orange-500/40 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-bold text-orange-600 dark:text-orange-400 mb-1">
+                    ⚠ Transaction Not Complete Until All Parties Confirm
+                  </p>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>1. Buyer sends fiat payment to your account</li>
+                    <li>2. You click "Payment Received" once you receive the funds</li>
+                    <li>3. Admin reviews and approves the transaction</li>
+                    <li>4. Only then will {listing.asset} be debited from your wallet</li>
+                  </ul>
+                  <p className="mt-1.5 font-medium text-orange-600 dark:text-orange-400">
+                    Your {listing.asset} will NOT be released without admin approval.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isBuying && (
+            <div className="bg-blue-500/10 border-2 border-blue-500/40 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Shield className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-bold text-blue-600 dark:text-blue-400 mb-1">
+                    🔒 Protected Transaction
+                  </p>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>1. Send payment and upload screenshot</li>
+                    <li>2. Seller confirms they received your payment</li>
+                    <li>3. Admin reviews and approves</li>
+                    <li>4. {listing.asset} is released to your wallet automatically</li>
+                  </ul>
+                  <p className="mt-1.5 font-medium text-blue-600 dark:text-blue-400">
+                    Your {listing.asset} will only be released after admin approval.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Price info */}
           <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
             <div className="flex justify-between">
@@ -807,7 +862,8 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 
 function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void }) {
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Admin Checking Both Sides' },
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Pending Seller Confirmation' },
+    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Payment Confirmed — Awaiting Admin' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending Payment' },
     PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Completed' },
@@ -879,7 +935,8 @@ function OrderDialog({ order, onClose, onSuccess }: {
   }
 
   const statusMap: Record<string, { color: string; label: string }> = {
-    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Admin Checking Both Sides' },
+    PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Pending Seller Confirmation' },
+    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', label: 'Payment Confirmed — Awaiting Admin' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', label: 'Pending Payment' },
     PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Awaiting Admin Approval' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', label: 'Completed' },
@@ -933,24 +990,59 @@ function OrderDialog({ order, onClose, onSuccess }: {
           </div>
 
           {/* Action buttons based on role + status */}
-          {order.status === 'PENDING_REVIEW' && (
+          {order.status === 'PENDING_REVIEW' && order.myRole === 'SELLER' && (
+            <div className="space-y-3">
+              {/* Prominent warning */}
+              <div className="bg-orange-500/10 border-2 border-orange-500/40 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <p className="font-bold text-orange-600 dark:text-orange-400 mb-1">
+                      ⚠ Transaction Not Complete
+                    </p>
+                    <p className="text-muted-foreground">
+                      The buyer claims to have sent the payment. Verify that you received the funds in your account before clicking "Payment Received".
+                    </p>
+                    <p className="mt-1.5 font-medium text-orange-600 dark:text-orange-400">
+                      Your {order.asset} will NOT be released until the admin approves.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Received button */}
+              <Button
+                className="w-full bg-green-500 hover:bg-green-600 text-white"
+                onClick={() => action('payment_received')}
+                disabled={loading}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                Payment Received — Notify Admin
+              </Button>
+
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+                <p className="text-xs text-muted-foreground">
+                  After you click "Payment Received", the admin will review and approve the transaction. Only then will {order.amount} {order.asset} be debited from your wallet.
+                </p>
+              </div>
+
+              <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
+                Cancel Order
+              </Button>
+            </div>
+          )}
+
+          {order.status === 'PENDING_REVIEW' && order.myRole === 'BUYER' && (
             <div className="space-y-3">
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Clock className="h-8 w-8 text-blue-500 animate-pulse" />
                 </div>
-                <p className="text-sm font-medium">Admin Checking Both Sides</p>
+                <p className="text-sm font-medium">Waiting for Seller Confirmation</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {order.myRole === 'BUYER'
-                    ? `The admin is checking both sides — verifying your payment screenshot and confirming with the seller. Once approved, ${order.amount} ${order.asset} will be credited to your wallet automatically.`
-                    : `The admin is checking both sides — verifying the buyer's payment and confirming with you. Once the admin finishes the order, ${order.amount} ${order.asset} will be transferred to the buyer and your balance will decrease.`
-                  }
+                  Your payment screenshot has been sent. The seller needs to confirm they received your payment. Once confirmed, the admin will review and release {order.amount} {order.asset} to your wallet.
                 </p>
                 <div className="mt-2 pt-2 border-t border-blue-500/20 text-[10px] text-muted-foreground space-y-1">
-                  <div className="inline-flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    Admin verifies payment proof · contacts both parties · approves transfer
-                  </div>
                   <div className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
                     <Clock className="h-3 w-3" />
                     Please wait patiently — this may take a few minutes
@@ -960,6 +1052,29 @@ function OrderDialog({ order, onClose, onSuccess }: {
               <Button variant="outline" className="w-full" onClick={() => action('cancel')} disabled={loading}>
                 Cancel Order
               </Button>
+            </div>
+          )}
+
+          {order.status === 'PAYMENT_RECEIVED' && (
+            <div className="space-y-3">
+              <div className="bg-green-500/10 border-2 border-green-500/40 rounded-lg p-3 text-center">
+                <CheckCircle2 className="h-8 w-8 mx-auto text-green-500 mb-2" />
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  Payment Confirmed — Awaiting Admin Approval
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {order.myRole === 'SELLER'
+                    ? `You confirmed receiving the payment. The admin is now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be debited from your wallet and sent to the buyer.`
+                    : `The seller confirmed receiving your payment. The admin is now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be credited to your wallet.`
+                  }
+                </p>
+                <div className="mt-2 pt-2 border-t border-green-500/20 text-[10px] text-muted-foreground">
+                  <div className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    <Clock className="h-3 w-3" />
+                    Please wait patiently for admin approval
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
