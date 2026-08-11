@@ -1,6 +1,6 @@
 /**
  * POST /api/kyc/submit - submit KYC verification request
- * Body: { fullName, dateOfBirth, nationality, idType, idNumber, address }
+ * Body: { fullName, nationality, idType, documentFront, documentBack }
  *
  * Sets kycStatus to PENDING. Admin must approve via /api/admin/users/action.
  */
@@ -14,10 +14,10 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
     const body = await req.json()
-    const { fullName, dateOfBirth, nationality, idType, documentFront, documentBack } = body
+    const { fullName, nationality, idType, documentFront, documentBack } = body
 
-    // Validate required fields (ID Number and Residential Address removed)
-    if (!fullName || !dateOfBirth || !nationality || !idType) {
+    // Validate required fields (Date of Birth removed)
+    if (!fullName || !nationality || !idType) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
     if (!documentFront) {
@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
       data: {
         kycStatus: 'PENDING',
         kycFullName: fullName,
-        kycDateOfBirth: dateOfBirth,
         kycNationality: nationality,
         kycIdType: idType,
         kycDocumentFront: documentFront,

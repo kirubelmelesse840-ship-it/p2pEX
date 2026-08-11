@@ -607,45 +607,17 @@ function TradeDialog({ listing, onClose, onSuccess }: {
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Prominent warning — transaction not complete until all parties + admin confirm */}
+          {/* Prominent warning — transaction not complete until admin confirms */}
           {!isBuying && (
             <div className="bg-orange-500/10 border-2 border-orange-500/40 rounded-lg p-3">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
                   <p className="font-bold text-orange-600 dark:text-orange-400 mb-1">
-                    ⚠ Transaction Not Complete Until All Parties Confirm
+                    ⚠ Transaction Not Complete Until Admin Approves
                   </p>
-                  <ul className="space-y-0.5 text-muted-foreground">
-                    <li>1. Buyer sends fiat payment to your account</li>
-                    <li>2. You click "Payment Received" once you receive the funds</li>
-                    <li>3. Admin reviews and approves the transaction</li>
-                    <li>4. Only then will {listing.asset} be debited from your wallet</li>
-                  </ul>
-                  <p className="mt-1.5 font-medium text-orange-600 dark:text-orange-400">
-                    Your {listing.asset} will NOT be released without admin approval.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isBuying && (
-            <div className="bg-blue-500/10 border-2 border-blue-500/40 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Shield className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-bold text-blue-600 dark:text-blue-400 mb-1">
-                    🔒 Protected Transaction
-                  </p>
-                  <ul className="space-y-0.5 text-muted-foreground">
-                    <li>1. Send payment and upload screenshot</li>
-                    <li>2. Seller confirms they received your payment</li>
-                    <li>3. Admin reviews and approves</li>
-                    <li>4. {listing.asset} is released to your wallet automatically</li>
-                  </ul>
-                  <p className="mt-1.5 font-medium text-blue-600 dark:text-blue-400">
-                    Your {listing.asset} will only be released after admin approval.
+                  <p className="text-muted-foreground">
+                    After the buyer pays, click "Payment Received". The admin will then review and approve. Your {listing.asset} will <strong className="text-orange-600 dark:text-orange-400">only</strong> be debited after admin approval.
                   </p>
                 </div>
               </div>
@@ -697,53 +669,28 @@ function TradeDialog({ listing, onClose, onSuccess }: {
           </div>
 
           {/* Payment method */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Payment Method</label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {listing.paymentMethods.map(m => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Payment instructions — show the counterparty's payment details for the selected method */}
-          {listing.paymentDetails && listing.paymentDetails[paymentMethod] && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                {isBuying ? <Smartphone className="h-3 w-3" /> : <Wallet className="h-3 w-3" />}
-                {isBuying ? 'Send Payment To:' : 'Receive Payment At:'}
-              </p>
-              {(() => {
-                const details = listing.paymentDetails[paymentMethod]
-                return (
-                  <div className="space-y-1.5">
-                    {details.network && copyField('Network', details.network)}
-                    {details.address && copyField('Address', details.address)}
-                    {details.phone && copyField('Phone Number', details.phone)}
-                    {details.account && copyField('Account Number', details.account)}
-                    {details.email && copyField('Email', details.email)}
-                    {details.iban && copyField('IBAN', details.iban)}
-                    {details.cashtag && copyField('Cashtag', details.cashtag)}
-                    {/* Copyable amount — for buy: fiat total (ETB); for sell: USDT amount (crypto) */}
-                    {isBuying
-                      ? copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))
-                      : copyField(`Amount (${listing.asset})`, formatQty(amountNum))
-                    }
-                  </div>
-                )
-              })()}
-              <div className="text-xs text-muted-foreground pt-1 border-t border-blue-500/20">
-                {isBuying ? (
-                  <>Send exactly the amount shown above via {paymentMethod}.</>
-                ) : (
-                  <>The buyer will send the amount shown above via {paymentMethod} to your details.</>
-                )}
+          {/* Payment instructions — show the counterparty's payment details for the first/only method */}
+          {listing.paymentDetails && listing.paymentMethods.length > 0 && (() => {
+            const method = listing.paymentMethods[0]
+            const details = listing.paymentDetails[method]
+            if (!details) return null
+            return (
+              <div className="space-y-1.5">
+                {details.network && copyField('Network', details.network)}
+                {details.address && copyField('Address', details.address)}
+                {details.phone && copyField('Phone Number', details.phone)}
+                {details.account && copyField('Account Number', details.account)}
+                {details.email && copyField('Email', details.email)}
+                {details.iban && copyField('IBAN', details.iban)}
+                {details.cashtag && copyField('Cashtag', details.cashtag)}
+                {/* Copyable amount — for buy: fiat total (ETB); for sell: USDT amount (crypto) */}
+                {isBuying
+                  ? copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))
+                  : copyField(`Amount (${listing.asset})`, formatQty(amountNum))
+                }
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Seller payment details form — when user is selling USDT (providing their receiving account) */}
           {!isBuying && (

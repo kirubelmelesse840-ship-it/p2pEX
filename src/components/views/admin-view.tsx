@@ -612,7 +612,7 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
       })
       const d = await res.json()
       if (d.error) throw new Error(d.error)
-      toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1)` })
+      toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1). ${d.message?.includes('bonus') ? '10 USDT welcome bonus credited!' : ''}` })
       onClose()
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' })

@@ -204,13 +204,23 @@ export function Navbar() {
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden sm:inline text-sm font-medium">{user.name}</span>
+                {user.kycVerified && (
+                  <Shield className="h-4 w-4 text-green-500" />
+                )}
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">{user.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{user.name}</span>
+                    {user.kycVerified && (
+                      <Badge className="bg-green-500/15 text-green-600 dark:text-green-400 text-[10px] px-1 py-0">
+                        <Shield className="h-3 w-3 mr-0.5" /> L{user.kycLevel}
+                      </Badge>
+                    )}
+                  </div>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                   {user.userId && (
                     <div className="flex items-center gap-1 mt-1">
