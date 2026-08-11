@@ -727,8 +727,8 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {details.email && copyField('Email', details.email)}
                     {details.iban && copyField('IBAN', details.iban)}
                     {details.cashtag && copyField('Cashtag', details.cashtag)}
-                    {/* Amount to send — copyable */}
-                    {copyField('Amount to Send', `${formatPrice(fiatTotal)} ${listing.fiatCurrency}`)}
+                    {/* Total amount — copyable (just the number, not the currency) */}
+                    {copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))}
                   </div>
                 )
               })()}
