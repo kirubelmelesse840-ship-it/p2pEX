@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
   if (action === 'approve' || action === 'finish') {
-    if (order.status !== 'PENDING_REVIEW' && order.status !== 'PAYMENT_RECEIVED') {
+        if (order.status !== 'PENDING_REVIEW' && order.status !== 'PAYMENT_RECEIVED') {
       return NextResponse.json({ error: 'Order is not pending review or payment received' }, { status: 400 })
     }
 
