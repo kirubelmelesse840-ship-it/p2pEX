@@ -672,14 +672,16 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {details.email && copyField('Email', details.email)}
                     {details.iban && copyField('IBAN', details.iban)}
                     {details.cashtag && copyField('Cashtag', details.cashtag)}
+                    {/* Amount to send — copyable */}
+                    {copyField('Amount to Send', `${formatPrice(fiatTotal)} ${listing.fiatCurrency}`)}
                   </div>
                 )
               })()}
               <div className="text-xs text-muted-foreground pt-1 border-t border-blue-500/20">
                 {isBuying ? (
-                  <>Send exactly <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.</>
+                  <>Send exactly the amount shown above via {paymentMethod}.</>
                 ) : (
-                  <>The buyer will send <strong className="text-blue-600 dark:text-blue-400">{formatPrice(fiatTotal)} {listing.fiatCurrency}</strong> via {paymentMethod} to the details above.</>
+                  <>The buyer will send the amount shown above via {paymentMethod} to your details.</>
                 )}
               </div>
             </div>
