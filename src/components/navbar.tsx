@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast'
 import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { SupportChatDialog } from '@/components/support-chat-dialog'
-import { InstallAppButton } from '@/components/install-app-button'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
@@ -307,7 +306,6 @@ export function Navbar() {
         ) : (
           <div className="flex items-center gap-2">
             <AuthButtons />
-            <InstallAppButton />
           </div>
         )}
       </div>
