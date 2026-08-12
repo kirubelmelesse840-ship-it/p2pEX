@@ -170,7 +170,22 @@ export function WalletView() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && wallets.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8">
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-3 animate-pulse">
+                        <div className="h-8 w-8 rounded-full bg-muted" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 w-16 bg-muted rounded" />
+                          <div className="h-2 w-24 bg-muted rounded" />
+                        </div>
+                        <div className="h-3 w-20 bg-muted rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </td></tr>
+              ) : loading ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading wallets...</td></tr>
               ) : wallets.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No wallets</td></tr>

@@ -520,7 +520,28 @@ function AuthButtons() {
               <Button
                 variant="outline"
                 className="w-full gap-2"
-                onClick={() => setShowGoogle(true)}
+                onClick={async () => {
+                  // Try to use native Google Identity Services (Google One Tap)
+                  if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+                    try {
+                      (window as any).google.accounts.id.initialize({
+                        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                        callback: async (response: any) => {
+                          // Decode the JWT token
+                          const token = response.credential
+                          if (!token) return
+                          // Parse the JWT payload
+                          const payload = JSON.parse(atob(token.split('.')[1]))
+                          googleLogin(payload.email, payload.name)
+                        },
+                      })
+                      ;(window as any).google.accounts.id.prompt()
+                      return
+                    } catch {}
+                  }
+                  // Fall back to the custom Google dialog
+                  setShowGoogle(true)
+                }}
                 disabled={loading}
               >
                 <GoogleIcon className="h-4 w-4" />

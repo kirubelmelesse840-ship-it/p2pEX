@@ -71,6 +71,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="P2PEX" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="P2PEX" />
+        {/* Google Identity Services for native Google sign-in */}
+        <script async defer src="https://accounts.google.com/gsi/client" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}

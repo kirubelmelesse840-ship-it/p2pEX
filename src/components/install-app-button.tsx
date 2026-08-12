@@ -53,26 +53,60 @@ export function InstallAppButton() {
   }, [toast])
 
   const handleInstall = async () => {
-    if (!deferredPrompt) {
-      toast({
-        title: 'Installation not available',
-        description: 'Use your browser menu → "Add to Home Screen" to install the app.',
-      })
+    // If the browser supports beforeinstallprompt, use it (Chrome Android, Edge)
+    if (deferredPrompt) {
+      await deferredPrompt.prompt()
+      const choice = await deferredPrompt.userChoice
+      if (choice.outcome === 'accepted') {
+        toast({
+          title: 'Installing... 📲',
+          description: 'P2PEX is being added to your home screen.',
+        })
+      }
+      setDeferredPrompt(null)
+      setShowBanner(false)
+      setShowDialog(false)
       return
     }
 
-    await deferredPrompt.prompt()
-    const choice = await deferredPrompt.userChoice
+    // Detect platform and show appropriate instructions
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent)
+    const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent)
+    const isEdge = /Edg/i.test(navigator.userAgent)
 
-    if (choice.outcome === 'accepted') {
+    if (isIOS && isSafari) {
       toast({
-        title: 'Installing... 📲',
-        description: 'P2PEX is being added to your home screen.',
+        title: 'Install on iPhone/iPad 📱',
+        description: 'Tap the Share button (square with arrow) at the bottom → scroll down → tap "Add to Home Screen" → tap "Add".',
+        duration: 10000,
+      })
+    } else if (isAndroid && isChrome) {
+      toast({
+        title: 'Install on Android 📱',
+        description: 'Tap the 3-dot menu (⋮) at the top right → tap "Add to Home screen" → tap "Add".',
+        duration: 10000,
+      })
+    } else if (isAndroid && isEdge) {
+      toast({
+        title: 'Install on Edge Android 📱',
+        description: 'Tap the 3-dot menu → tap "Add to phone" → tap "Install".',
+        duration: 10000,
+      })
+    } else if (isChrome || isEdge) {
+      toast({
+        title: 'Install on Desktop 💻',
+        description: 'Look for the install icon (⊕) in the address bar, or click the 3-dot menu → "Install P2PEX".',
+        duration: 10000,
+      })
+    } else {
+      toast({
+        title: 'Install P2PEX 📲',
+        description: 'Open your browser menu and look for "Add to Home Screen" or "Install app".',
+        duration: 10000,
       })
     }
-
-    setDeferredPrompt(null)
-    setShowBanner(false)
     setShowDialog(false)
   }
 

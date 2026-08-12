@@ -280,8 +280,24 @@ export function P2PView() {
 
       {/* Listings grid */}
       {tab === 'buy' || tab === 'sell' ? (
-        loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading listings...</div>
+        loading && displayed.length === 0 ? (
+          <div className="grid gap-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-card border border-border rounded-lg p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-24 bg-muted rounded" />
+                    <div className="h-2 w-32 bg-muted rounded" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-16 bg-muted rounded" />
+                    <div className="h-2 w-12 bg-muted rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : displayed.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
