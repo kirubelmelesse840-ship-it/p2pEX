@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast'
 import { KycDialog } from '@/components/kyc-dialog'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { SupportChatDialog } from '@/components/support-chat-dialog'
+import { InstallAppButton } from '@/components/install-app-button'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
@@ -195,6 +196,7 @@ export function Navbar() {
 
         {/* User menu */}
         {user ? (
+          <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 px-2 gap-1.5">
@@ -301,6 +303,8 @@ export function Navbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <InstallAppButton />
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <AuthButtons />
