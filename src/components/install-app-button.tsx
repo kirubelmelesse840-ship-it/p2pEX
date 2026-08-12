@@ -41,16 +41,14 @@ export function InstallAppButton() {
     else if (!isIOS && !isAndroid) setPlatform('desktop')
     else setPlatform('other')
 
-    // Listen for the beforeinstallprompt event
+    // Listen for the beforeinstallprompt event — capture it immediately
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show the install banner after 2 seconds
-      setTimeout(() => {
-        if (!sessionStorage.getItem('p2pex-install-dismissed')) {
-          setShowBanner(true)
-        }
-      }, 2000)
+      // Show the install banner immediately when the prompt is available
+      if (!sessionStorage.getItem('p2pex-install-dismissed')) {
+        setShowBanner(true)
+      }
     }
 
     window.addEventListener('beforeinstallprompt', handler)
@@ -65,7 +63,10 @@ export function InstallAppButton() {
       })
     })
 
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('appinstalled', () => {})
+    }
   }, [toast])
 
   const handleInstall = async () => {

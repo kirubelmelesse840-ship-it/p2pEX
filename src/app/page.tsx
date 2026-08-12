@@ -22,6 +22,10 @@ export default function Home() {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('dark', theme === 'dark')
     }
+    // Register service worker IMMEDIATELY (required for PWA install prompt)
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+    }
     // Try to restore session
     fetch('/api/auth', { credentials: 'include' })
       .then(r => r.json())
