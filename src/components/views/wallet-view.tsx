@@ -94,7 +94,7 @@ export function WalletView() {
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!user) return
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 4000)
     return () => clearInterval(t)
   }, [user, load])
 

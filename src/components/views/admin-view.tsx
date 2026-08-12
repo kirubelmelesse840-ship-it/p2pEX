@@ -166,7 +166,7 @@ function DashboardTab() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => {
-    const t = setInterval(load, 10000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2405,7 +2405,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 10000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -3109,14 +3109,14 @@ function SupportTab() {
   // Polling
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 5000)
+    const t1 = setInterval(loadConversations, 3000)
     return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 5000)
+      const t2 = setInterval(loadMessages, 3000)
       return () => clearInterval(t2)
     } else {
       setMessages([])

@@ -162,7 +162,7 @@ export function P2PView() {
   useEffect(() => {
     if (!user) return
     // Poll every 5 seconds for faster status updates
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 4000)
     return () => clearInterval(t)
   }, [user, load])
 
@@ -714,6 +714,15 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                           {details.iban && copyField('IBAN', details.iban)}
                           {details.cashtag && copyField('Cashtag', details.cashtag)}
                           {copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))}
+                          {/* Account holder name — visible but NOT copyable */}
+                          {details.name && (
+                            <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-blue-500/10">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs text-muted-foreground block">Account Holder Name</span>
+                                <span className="font-bold text-foreground text-sm">{details.name}</span>
+                              </div>
+                            </div>
+                          )}
                         </>
                       )
                     })()}

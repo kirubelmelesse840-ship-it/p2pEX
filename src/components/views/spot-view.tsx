@@ -179,7 +179,7 @@ function TradePanel({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     loadBalances()
-    const t = setInterval(loadBalances, 15000)
+    const t = setInterval(loadBalances, 5000)
     return () => clearInterval(t)
   }, [loadBalances])
 
@@ -416,7 +416,7 @@ function OpenOrders({ user }: { user: any }) {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
