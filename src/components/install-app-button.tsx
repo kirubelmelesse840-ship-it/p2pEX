@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Download, X, Smartphone, Bell } from 'lucide-react'
+import { Download, X, Smartphone, Bell, Share } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -16,6 +16,7 @@ export function InstallAppButton() {
   const [showDialog, setShowDialog] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
   const [showBanner, setShowBanner] = useState(false)
+  const [platform, setPlatform] = useState<'android-chrome' | 'ios-safari' | 'android-edge' | 'desktop' | 'other'>('other')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -25,16 +26,31 @@ export function InstallAppButton() {
       return
     }
 
+    // Detect platform
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isAndroid = /Android/i.test(ua)
+    const isChrome = /Chrome/i.test(ua) && !/Edg/i.test(ua) && !/OPR/i.test(ua)
+    const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua) && !/CriOS/i.test(ua)
+    const isEdge = /Edg/i.test(ua)
+    const isCriOS = /CriOS/i.test(ua) // Chrome on iOS
+
+    if (isIOS && (isSafari || isCriOS)) setPlatform('ios-safari')
+    else if (isAndroid && isChrome) setPlatform('android-chrome')
+    else if (isAndroid && isEdge) setPlatform('android-edge')
+    else if (!isIOS && !isAndroid) setPlatform('desktop')
+    else setPlatform('other')
+
     // Listen for the beforeinstallprompt event
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show the install banner after 3 seconds
+      // Show the install banner after 2 seconds
       setTimeout(() => {
         if (!sessionStorage.getItem('p2pex-install-dismissed')) {
           setShowBanner(true)
         }
-      }, 3000)
+      }, 2000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
@@ -53,61 +69,26 @@ export function InstallAppButton() {
   }, [toast])
 
   const handleInstall = async () => {
-    // If the browser supports beforeinstallprompt, use it (Chrome Android, Edge)
+    // If the browser supports beforeinstallprompt, use it immediately
     if (deferredPrompt) {
-      await deferredPrompt.prompt()
-      const choice = await deferredPrompt.userChoice
-      if (choice.outcome === 'accepted') {
-        toast({
-          title: 'Installing... 📲',
-          description: 'P2PEX is being added to your home screen.',
-        })
-      }
+      try {
+        await deferredPrompt.prompt()
+        const choice = await deferredPrompt.userChoice
+        if (choice.outcome === 'accepted') {
+          toast({
+            title: 'Installing... 📲',
+            description: 'P2PEX is being added to your home screen.',
+          })
+        }
+      } catch {}
       setDeferredPrompt(null)
       setShowBanner(false)
       setShowDialog(false)
       return
     }
 
-    // Detect platform and show appropriate instructions
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    const isAndroid = /Android/i.test(navigator.userAgent)
-    const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent)
-    const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent)
-    const isEdge = /Edg/i.test(navigator.userAgent)
-
-    if (isIOS && isSafari) {
-      toast({
-        title: 'Install on iPhone/iPad 📱',
-        description: 'Tap the Share button (square with arrow) at the bottom → scroll down → tap "Add to Home Screen" → tap "Add".',
-        duration: 10000,
-      })
-    } else if (isAndroid && isChrome) {
-      toast({
-        title: 'Install on Android 📱',
-        description: 'Tap the 3-dot menu (⋮) at the top right → tap "Add to Home screen" → tap "Add".',
-        duration: 10000,
-      })
-    } else if (isAndroid && isEdge) {
-      toast({
-        title: 'Install on Edge Android 📱',
-        description: 'Tap the 3-dot menu → tap "Add to phone" → tap "Install".',
-        duration: 10000,
-      })
-    } else if (isChrome || isEdge) {
-      toast({
-        title: 'Install on Desktop 💻',
-        description: 'Look for the install icon (⊕) in the address bar, or click the 3-dot menu → "Install P2PEX".',
-        duration: 10000,
-      })
-    } else {
-      toast({
-        title: 'Install P2PEX 📲',
-        description: 'Open your browser menu and look for "Add to Home Screen" or "Install app".',
-        duration: 10000,
-      })
-    }
-    setShowDialog(false)
+    // No beforeinstallprompt — show platform-specific instructions
+    setShowDialog(true)
   }
 
   const dismissBanner = () => {
@@ -116,6 +97,51 @@ export function InstallAppButton() {
   }
 
   if (isInstalled) return null
+
+  const platformInstructions = {
+    'android-chrome': {
+      title: 'Install on Android (Chrome)',
+      steps: [
+        'Tap the 3-dot menu (⋮) at the top right',
+        'Tap "Add to Home screen"',
+        'Tap "Add" to confirm',
+      ],
+    },
+    'android-edge': {
+      title: 'Install on Android (Edge)',
+      steps: [
+        'Tap the 3-dot menu at the bottom right',
+        'Tap "Add to phone"',
+        'Tap "Install"',
+      ],
+    },
+    'ios-safari': {
+      title: 'Install on iPhone/iPad',
+      steps: [
+        'Tap the Share button (square with up arrow) at the bottom',
+        'Scroll down and tap "Add to Home Screen"',
+        'Tap "Add" to confirm',
+      ],
+    },
+    'desktop': {
+      title: 'Install on Desktop',
+      steps: [
+        'Look for the install icon (⊕) in the address bar',
+        'Click it and select "Install"',
+        'Or click the 3-dot menu → "Install P2PEX"',
+      ],
+    },
+    'other': {
+      title: 'Install P2PEX',
+      steps: [
+        'Open your browser menu',
+        'Look for "Add to Home Screen" or "Install app"',
+        'Follow the prompts to install',
+      ],
+    },
+  }
+
+  const instructions = platformInstructions[platform]
 
   return (
     <>
@@ -154,23 +180,23 @@ export function InstallAppButton() {
         variant="default"
         size="sm"
         className="gap-1.5 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold"
-        onClick={() => setShowDialog(true)}
+        onClick={handleInstall}
       >
         <Download className="h-4 w-4" />
         <span className="hidden sm:inline">Install App</span>
         <span className="sm:hidden">App</span>
       </Button>
 
-      {/* Install dialog */}
+      {/* Install dialog — shows platform-specific instructions */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
-              Install P2PEX App
+              {instructions.title}
             </DialogTitle>
             <DialogDescription>
-              Get the full app experience on your device
+              Follow these steps to install P2PEX on your device
             </DialogDescription>
           </DialogHeader>
 
@@ -185,39 +211,52 @@ export function InstallAppButton() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Download className="h-4 w-4 text-green-500" />
-                <span>Install on your home screen for quick access</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Bell className="h-4 w-4 text-green-500" />
-                <span>Get push notifications for trades and messages</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Smartphone className="h-4 w-4 text-green-500" />
-                <span>Works in fullscreen — feels like a native app</span>
-              </div>
+            {/* Platform-specific instructions */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                How to install:
+              </p>
+              <ol className="space-y-2">
+                {instructions.steps.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="text-muted-foreground">{step}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
 
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs text-blue-700 dark:text-blue-400">
-              <p className="font-medium mb-1">How to install:</p>
-              <ul className="space-y-0.5 text-muted-foreground">
-                <li>• Click "Install" below (Chrome/Edge on Android)</li>
-                <li>• Or use browser menu → "Add to Home Screen" (iPhone/Safari)</li>
-                <li>• Or browser menu → "Install app" (Chrome desktop)</li>
-              </ul>
-            </div>
+            {/* For iOS — show Share icon hint */}
+            {platform === 'ios-safari' && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs">
+                <p className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 font-medium">
+                  <Share className="h-4 w-4" />
+                  Look for the Share button at the bottom of Safari
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
-              onClick={handleInstall}
-            >
-              <Download className="h-4 w-4 mr-1.5" /> Install Now
-            </Button>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>Close</Button>
+            {deferredPrompt && (
+              <Button
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white"
+                onClick={async () => {
+                  try {
+                    await deferredPrompt.prompt()
+                    await deferredPrompt.userChoice
+                  } catch {}
+                  setDeferredPrompt(null)
+                  setShowDialog(false)
+                  setShowBanner(false)
+                }}
+              >
+                <Download className="h-4 w-4 mr-1.5" /> Install Now
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

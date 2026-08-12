@@ -93,7 +93,7 @@ export function P2PView() {
   const { toast } = useToast()
   const [listings, setListings] = useState<Listing[]>([])
   const [orders, setOrders] = useState<P2POrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<'buy' | 'sell' | 'orders' | 'create'>('buy')
   const [filters, setFilters] = useState({ asset: 'USDT', fiat: 'ETB', paymentMethod: 'ALL' })
   const [tradeDialog, setTradeDialog] = useState<Listing | null>(null)

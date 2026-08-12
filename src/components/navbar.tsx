@@ -521,16 +521,15 @@ function AuthButtons() {
                 variant="outline"
                 className="w-full gap-2"
                 onClick={async () => {
-                  // Try to use native Google Identity Services (Google One Tap)
-                  if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+                  // Try native Google Identity Services first (if client ID is configured)
+                  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+                  if (googleClientId && typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
                     try {
-                      (window as any).google.accounts.id.initialize({
-                        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                      ;(window as any).google.accounts.id.initialize({
+                        client_id: googleClientId,
                         callback: async (response: any) => {
-                          // Decode the JWT token
                           const token = response.credential
                           if (!token) return
-                          // Parse the JWT payload
                           const payload = JSON.parse(atob(token.split('.')[1]))
                           googleLogin(payload.email, payload.name)
                         },
@@ -539,7 +538,7 @@ function AuthButtons() {
                       return
                     } catch {}
                   }
-                  // Fall back to the custom Google dialog
+                  // Fall back to the custom Google dialog (which shows device Google accounts)
                   setShowGoogle(true)
                 }}
                 disabled={loading}

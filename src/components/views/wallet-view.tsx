@@ -67,7 +67,7 @@ export function WalletView() {
   const [wallets, setWallets] = useState<WalletData[]>([])
   const [totalUsd, setTotalUsd] = useState(0)
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [sendDialog, setSendDialog] = useState<WalletData | null>(null)
   const [depositDialog, setDepositDialog] = useState<WalletData | null>(null)
   const [transferDialog, setTransferDialog] = useState<WalletData | null>(null)
