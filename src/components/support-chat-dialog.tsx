@@ -24,7 +24,7 @@ export function SupportChatDialog({ open, onClose }: Props) {
   const fImg = useRef<HTMLInputElement>(null)
   const fVid = useRef<HTMLInputElement>(null)
   const load = useCallback(async () => { if (!user) return; try { const r = await fetch('/api/support?markRead=true'); const d = await r.json(); if (!d.error) setMessages(d.messages || []) } catch {} }, [user])
-  useEffect(() => { if (open && user) { load(); const t = setInterval(load, 2000); return () => clearInterval(t) } }, [open, user, load])
+  useEffect(() => { if (open && user) { load(); const t = setInterval(load, 5000); return () => clearInterval(t) } }, [open, user, load])
   useEffect(() => { if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight }, [messages])
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); if (stream.current) stream.current.getTracks().forEach(t => t.stop()); if (audio.current) audio.current.pause() }, [])
   const send = async (type: string, data?: any) => {

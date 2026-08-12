@@ -85,45 +85,46 @@ export function InstallAppButton() {
 
   return (
     <>
-      {/* Floating banner */}
+      {/* Floating banner — large and prominent */}
       {showBanner && (
-        <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-card border-2 border-yellow-500/40 rounded-lg p-3 shadow-xl">
+        <div className="fixed bottom-20 md:bottom-4 left-2 right-2 md:left-auto md:right-4 md:max-w-md z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-4 shadow-2xl">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white flex-shrink-0">
-                <Smartphone className="h-5 w-5" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white flex-shrink-0">
+                <Smartphone className="h-6 w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">Install P2PEX App 📲</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Add to your home screen for a faster, app-like experience. Works offline!
+                <p className="font-bold text-white text-base">📲 Install P2PEX App</p>
+                <p className="text-xs text-white/90 mt-0.5">
+                  Get the app on your phone — faster access, works offline, push notifications!
                 </p>
-                <div className="flex gap-2 mt-2">
-                  <Button size="sm" className="h-7 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white" onClick={handleInstall}>
-                    <Download className="h-3 w-3 mr-1" /> Install
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" className="h-9 text-sm bg-white text-orange-600 hover:bg-white/90 font-semibold" onClick={handleInstall}>
+                    <Download className="h-4 w-4 mr-1.5" /> Install Now
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={dismissBanner}>
+                  <Button size="sm" variant="ghost" className="h-9 text-sm text-white hover:bg-white/20" onClick={dismissBanner}>
                     Not now
                   </Button>
                 </div>
               </div>
-              <button onClick={dismissBanner} className="text-muted-foreground hover:text-foreground flex-shrink-0">
-                <X className="h-4 w-4" />
+              <button onClick={dismissBanner} className="text-white/70 hover:text-white flex-shrink-0">
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Install button (for navbar or menu) */}
+      {/* Install button (for navbar) — prominent with gradient */}
       <Button
-        variant="ghost"
+        variant="default"
         size="sm"
-        className="gap-1.5 text-xs"
+        className="gap-1.5 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold"
         onClick={() => setShowDialog(true)}
       >
         <Download className="h-4 w-4" />
         <span className="hidden sm:inline">Install App</span>
+        <span className="sm:hidden">App</span>
       </Button>
 
       {/* Install dialog */}

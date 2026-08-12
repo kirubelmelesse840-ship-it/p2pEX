@@ -79,7 +79,7 @@ export function Navbar() {
       } catch {}
     }
     poll()
-    const t = setInterval(poll, 5000)
+    const t = setInterval(poll, 10000)
     return () => { active = false; clearInterval(t) }
   }, [user, isAdmin])
 

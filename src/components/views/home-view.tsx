@@ -27,21 +27,10 @@ export function HomeView() {
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 max-w-7xl w-full">
-      {/* KYC Verification Banner — only for logged-in users */}
-      {user && !user.isAdmin && (
+      {/* KYC Verification Banner — only for logged-in, unverified non-admin users */}
+      {user && !user.isAdmin && !user.kycVerified && (
         <section className="mb-6">
-          {user.kycVerified ? (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-500 flex-shrink-0">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-green-600 dark:text-green-400">Account Verified ✓</p>
-                <p className="text-xs text-muted-foreground">Your account is verified (Level {user.kycLevel}). Welcome bonus has been credited to your wallet.</p>
-              </div>
-              <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">VERIFIED L{user.kycLevel}</Badge>
-            </div>
-          ) : user.kycStatus === 'PENDING' ? (
+          {user.kycStatus === 'PENDING' ? (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/20 text-yellow-500 flex-shrink-0">
                 <Clock className="h-6 w-6" />

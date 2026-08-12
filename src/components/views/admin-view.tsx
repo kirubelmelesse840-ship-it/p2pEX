@@ -3109,14 +3109,14 @@ function SupportTab() {
   // Polling
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 3000)
+    const t1 = setInterval(loadConversations, 5000)
     return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 2500)
+      const t2 = setInterval(loadMessages, 5000)
       return () => clearInterval(t2)
     } else {
       setMessages([])

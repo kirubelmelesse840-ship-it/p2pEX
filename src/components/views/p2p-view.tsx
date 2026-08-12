@@ -63,7 +63,7 @@ interface P2POrder {
 
 const PAYMENT_METHODS = [
   // Ethiopian payment methods
-  'Telebirr', 'CBE Birr', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank',
+  'Telebirr', 'CBE', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank',
   'Abay Bank', 'Coopbank', 'Bank Transfer (ETB)',
   // Global payment methods
   'Bank Transfer', 'Wise', 'PayPal', 'Cash App', 'SEPA', 'Alipay',
@@ -72,7 +72,7 @@ const PAYMENT_METHODS = [
 
 // Map fiat currency to commonly-used payment methods (for filtering UI)
 const FIAT_PAYMENT_METHODS: Record<string, string[]> = {
-  ETB: ['Telebirr', 'CBE Birr', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank', 'Abay Bank', 'Coopbank', 'Bank Transfer (ETB)'],
+  ETB: ['Telebirr', 'CBE', 'Awash Bank', 'Dashen Bank', 'Hibret Bank', 'Wegagen Bank', 'Abay Bank', 'Coopbank', 'Bank Transfer (ETB)'],
   USD: ['Bank Transfer', 'Wise', 'PayPal', 'Cash App', 'Zelle', 'Venmo'],
   EUR: ['SEPA', 'Wise', 'PayPal', 'Bank Transfer'],
   GBP: ['Bank Transfer', 'Wise', 'PayPal'],
@@ -162,7 +162,7 @@ export function P2PView() {
   useEffect(() => {
     if (!user) return
     // Poll every 5 seconds for faster status updates
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 15000)
     return () => clearInterval(t)
   }, [user, load])
 
@@ -191,10 +191,10 @@ export function P2PView() {
       <SignupPrompt
         icon={<Users className="h-10 w-10" />}
         title="Sign in to P2P Marketplace"
-        description="Log in or create an account to buy and sell USDT with Telebirr, CBE Birr, and crypto networks. Get verified to receive a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
+        description="Log in or create an account to buy and sell USDT with Telebirr, CBE, and crypto networks. Get verified to receive a <strong class='text-primary'>10 USDT welcome bonus</strong>!"
         features={[
           { icon: <Smartphone className="h-5 w-5" />, label: 'Telebirr' },
-          { icon: <CreditCard className="h-5 w-5" />, label: 'CBE Birr' },
+          { icon: <CreditCard className="h-5 w-5" />, label: 'CBE' },
           { icon: <Bitcoin className="h-5 w-5" />, label: 'Crypto' },
         ]}
       />
@@ -678,6 +678,53 @@ function TradeDialog({ listing, onClose, onSuccess }: {
               className="tabular-nums bg-muted/30"
             />
           </div>
+
+          {/* Payment method + payment details — ONLY for buy interface (user buying USDT) */}
+          {isBuying && (
+            <>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Payment Method</label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {listing.paymentMethods.map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment instructions — show the seller's payment details for the selected method */}
+              {listing.paymentDetails && listing.paymentDetails[paymentMethod] && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Smartphone className="h-3 w-3" />
+                    Send Payment To:
+                  </p>
+                  <div className="space-y-1.5">
+                    {(() => {
+                      const details = listing.paymentDetails[paymentMethod]
+                      return (
+                        <>
+                          {details.network && copyField('Network', details.network)}
+                          {details.address && copyField('Address', details.address)}
+                          {details.phone && copyField('Phone Number', details.phone)}
+                          {details.account && copyField('Account Number', details.account)}
+                          {details.email && copyField('Email', details.email)}
+                          {details.iban && copyField('IBAN', details.iban)}
+                          {details.cashtag && copyField('Cashtag', details.cashtag)}
+                          {copyField(`Total (${listing.fiatCurrency})`, formatPrice(fiatTotal))}
+                        </>
+                      )
+                    })()}
+                  </div>
+                  <div className="text-xs text-muted-foreground pt-1 border-t border-blue-500/20">
+                    Send exactly the amount shown above via {paymentMethod}.
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Seller payment details form — when user is selling USDT (providing their receiving account) */}
           {!isBuying && (
