@@ -22,7 +22,12 @@ export default function Home() {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('dark', theme === 'dark')
     }
-    // Register service worker IMMEDIATELY (required for PWA install prompt)
+    // Prevent browser's native install prompt from showing (we handle installs manually)
+    if (typeof window !== 'undefined') {
+      const preventInstall = (e: Event) => { e.preventDefault() }
+      window.addEventListener('beforeinstallprompt', preventInstall)
+    }
+    // Register service worker for push notifications (only if logged in)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
     }
