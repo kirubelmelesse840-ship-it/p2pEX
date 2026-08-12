@@ -520,26 +520,24 @@ function AuthButtons() {
               <Button
                 variant="outline"
                 className="w-full gap-2"
-                onClick={async () => {
-                  // Try native Google Identity Services first (if client ID is configured)
-                  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-                  if (googleClientId && typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-                    try {
-                      ;(window as any).google.accounts.id.initialize({
-                        client_id: googleClientId,
-                        callback: async (response: any) => {
-                          const token = response.credential
-                          if (!token) return
-                          const payload = JSON.parse(atob(token.split('.')[1]))
-                          googleLogin(payload.email, payload.name)
-                        },
-                      })
-                      ;(window as any).google.accounts.id.prompt()
-                      return
-                    } catch {}
+                onClick={() => {
+                  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+                  if (clientId) {
+                    // Redirect to Google's native account picker (shows device Google accounts)
+                    const redirectUri = `${window.location.origin}/api/auth/google/callback`
+                    const params = new URLSearchParams({
+                      client_id: clientId,
+                      redirect_uri: redirectUri,
+                      response_type: 'code',
+                      scope: 'openid email profile',
+                      prompt: 'select_account', // Forces the account picker to show
+                      access_type: 'offline',
+                    })
+                    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+                  } else {
+                    // Fall back to the custom Google dialog
+                    setShowGoogle(true)
                   }
-                  // Fall back to the custom Google dialog (which shows device Google accounts)
-                  setShowGoogle(true)
                 }}
                 disabled={loading}
               >
