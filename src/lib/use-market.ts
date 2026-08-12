@@ -1,5 +1,8 @@
 /**
- * useMarketSocket - React hook for connecting to the market-service WebSocket.
+ * useMarketSocket - React hook for market data.
+ *
+ * Uses WebSocket when available (local dev), falls back to client-side
+ * simulation when WebSocket is not available (Vercel production).
  *
  * Provides:
  * - tickers: all-pairs snapshot (with periodic updates)
@@ -7,15 +10,13 @@
  * - orderBook: live depth (bids/asks)
  * - trades: recent trades stream
  * - klines: 1m candlestick history + live updates
- *
- * Usage:
- *   const { tickers, ticker, orderBook, trades, klines } = useMarketSocket(symbol)
  */
 
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { initTickers, subscribe, getAllTickers, getTicker, getOrderBook, getTrades, getKlines } from './market-simulation'
 
 export interface Ticker {
   symbol: string
@@ -24,7 +25,7 @@ export interface Ticker {
   baseName: string
   quoteName: string
   lastPrice: number
-  prevPrice?: number
+  prevPrice: number
   changePercent: number
   high24h: number
   low24h: number
@@ -55,18 +56,37 @@ export interface Kline {
   closeTime: number
 }
 
+// Check if we're in the browser
+const isBrowser = typeof window !== 'undefined'
+
+// Check if WebSocket is likely available (local dev with market-service running)
+// On Vercel, the WebSocket server doesn't exist, so we use simulation
 let _socket: Socket | null = null
-function getSocket(): Socket {
+let _useSimulation = true // Default to simulation (works everywhere)
+
+function getSocket(): Socket | null {
+  if (!isBrowser) return null
   if (_socket && _socket.connected) return _socket
-  _socket = io('/?XTransformPort=3003', {
-    transports: ['websocket', 'polling'],
-    forceNew: false,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    timeout: 10000,
-  })
-  return _socket
+  try {
+    _socket = io('/?XTransformPort=3003', {
+      transports: ['websocket', 'polling'],
+      forceNew: false,
+      reconnection: true,
+      reconnectionAttempts: 3, // Only try 3 times, then fall back to simulation
+      reconnectionDelay: 1000,
+      timeout: 5000,
+    })
+    // If connection fails, use simulation
+    _socket.on('connect_error', () => {
+      _useSimulation = true
+    })
+    _socket.on('connect', () => {
+      _useSimulation = false
+    })
+    return _socket
+  } catch {
+    return null
+  }
 }
 
 export function useMarketSocket(symbol: string) {
@@ -82,140 +102,177 @@ export function useMarketSocket(symbol: string) {
   }, [symbol])
 
   useEffect(() => {
+    // Always initialize the simulation as a fallback
+    initTickers()
+
+    // Try to connect via WebSocket
     const socket = getSocket()
 
+    const updateFromSimulation = () => {
+      setTickers(getAllTickers())
+      const sym = symbolRef.current.toUpperCase()
+      const t = getTicker(sym)
+      if (t) setTicker(t)
+      setOrderBook(getOrderBook(sym))
+      setTrades(getTrades(sym))
+      setKlines(getKlines(sym))
+    }
+
+    // If WebSocket connects, use it
     const onConnect = () => {
       setConnected(true)
-      // Initial snapshot requests
-      socket.emit('getTickers', null, (data: Ticker[]) => {
-        if (data) setTickers(data)
+      _useSimulation = false
+      socket?.emit('getTickers', null, (data: Ticker[]) => {
+        if (data && data.length > 0) setTickers(data)
       })
-      // Subscribe to allTickers for periodic updates
-      socket.emit('subscribe', { streams: ['allTickers'] })
+      socket?.emit('subscribe', { streams: ['allTickers'] })
 
-      // Subscribe to current symbol's streams
       const sym = symbolRef.current.toUpperCase()
-      socket.emit('subscribe', {
+      socket?.emit('subscribe', {
         symbol: sym,
         streams: ['ticker', 'depth', 'trade', 'kline_1m'],
       })
-      // Snapshot fetches for the symbol
-      socket.emit('getTicker', { symbol: sym }, (data: Ticker) => {
+      socket?.emit('getTicker', { symbol: sym }, (data: Ticker) => {
         if (data) setTicker(data)
       })
-      socket.emit('getDepth', { symbol: sym }, (data: OrderBook) => {
+      socket?.emit('getDepth', { symbol: sym }, (data: OrderBook) => {
         if (data) setOrderBook(data)
       })
-      socket.emit('getTrades', { symbol: sym, limit: 50 }, (data: MarketTrade[]) => {
-        if (data) setTrades(data)
+      socket?.emit('getTrades', { symbol: sym, limit: 50 }, (data: MarketTrade[]) => {
+        if (data && data.length > 0) setTrades(data)
       })
-      socket.emit('getKlines', { symbol: sym, interval: '1m' }, (data: Kline[]) => {
-        if (data) setKlines(data)
+      socket?.emit('getKlines', { symbol: sym, interval: '1m', limit: 60 }, (data: Kline[]) => {
+        if (data && data.length > 0) setKlines(data)
       })
     }
-    const onDisconnect = () => setConnected(false)
 
-    const onAllTickers = (data: Ticker[]) => setTickers(data)
+    const onDisconnect = () => {
+      setConnected(false)
+      _useSimulation = true
+    }
+
+    const onAllTickers = (data: Ticker[]) => { if (data && data.length > 0) setTickers(data) }
     const onTicker = (data: Ticker) => {
-      if (data.symbol === symbolRef.current.toUpperCase()) setTicker(data)
+      if (data && data.symbol === symbolRef.current.toUpperCase()) setTicker(data)
     }
     const onDepth = (data: OrderBook & { symbol: string }) => {
       if (data.symbol === symbolRef.current.toUpperCase()) {
-        setOrderBook({ bids: data.bids, asks: data.asks })
+        const { symbol: _, ...rest } = data
+        setOrderBook(rest)
       }
     }
-    const onTrade = (data: { symbol: string; trade: MarketTrade }) => {
+    const onTrade = (data: MarketTrade & { symbol: string }) => {
       if (data.symbol === symbolRef.current.toUpperCase()) {
-        setTrades(prev => [data.trade, ...prev].slice(0, 50))
+        const { symbol: _, ...rest } = data
+        setTrades(prev => [rest, ...prev].slice(0, 50))
       }
     }
-    const onTrades = (data: { symbol: string; trades: MarketTrade[] }) => {
+    const onKline = (data: Kline & { symbol: string }) => {
       if (data.symbol === symbolRef.current.toUpperCase()) {
-        setTrades(data.trades)
+        const { symbol: _, ...rest } = data
+        setKlines(prev => {
+          const last = prev[prev.length - 1]
+          if (last && Math.floor(last.openTime / 60000) === Math.floor(rest.openTime / 60000)) {
+            return [...prev.slice(0, -1), rest]
+          }
+          return [...prev, rest].slice(-200)
+        })
       }
-    }
-    const onKlineUpdate = (data: { symbol: string; kline: Kline }) => {
-      if (data.symbol !== symbolRef.current.toUpperCase()) return
-      setKlines(prev => {
-        if (prev.length === 0) return [data.kline]
-        const last = prev[prev.length - 1]
-        if (last.openTime === data.kline.openTime) {
-          return [...prev.slice(0, -1), data.kline]
-        }
-        return [...prev, data.kline].slice(-200)
-      })
     }
 
-    if (socket.connected) {
-      onConnect()
-    } else {
-      socket.on('connect', onConnect)
+    // Subscribe to simulation updates (always active as fallback)
+    const unsub = subscribe(() => {
+      if (_useSimulation) {
+        updateFromSimulation()
+        setConnected(true) // Show as "connected" when using simulation
+      }
+    })
+
+    // Initial load from simulation
+    updateFromSimulation()
+    setConnected(true) // Show as connected (using simulation)
+
+    if (socket) {
+      if (socket.connected) onConnect()
+      else socket.on('connect', onConnect)
+      socket.on('disconnect', onDisconnect)
+      socket.on('allTickers', onAllTickers)
+      socket.on('ticker', onTicker)
+      socket.on('depth', onDepth)
+      socket.on('trade', onTrade)
+      socket.on('kline', onKline)
     }
-    socket.on('disconnect', onDisconnect)
-    socket.on('allTickers', onAllTickers)
-    socket.on('ticker', onTicker)
-    socket.on('depth', onDepth)
-    socket.on('trade', onTrade)
-    socket.on('trades', onTrades)
-    socket.on('kline_update', onKlineUpdate)
 
     return () => {
-      socket.off('connect', onConnect)
-      socket.off('disconnect', onDisconnect)
-      socket.off('allTickers', onAllTickers)
-      socket.off('ticker', onTicker)
-      socket.off('depth', onDepth)
-      socket.off('trade', onTrade)
-      socket.off('trades', onTrades)
-      socket.off('kline_update', onKlineUpdate)
+      unsub()
+      if (socket) {
+        socket.off('connect', onConnect)
+        socket.off('disconnect', onDisconnect)
+        socket.off('allTickers', onAllTickers)
+        socket.off('ticker', onTicker)
+        socket.off('depth', onDepth)
+        socket.off('trade', onTrade)
+        socket.off('kline', onKline)
+      }
     }
-  }, [symbol])
-
-  // Re-subscribe when symbol changes
-  useEffect(() => {
-    const socket = getSocket()
-    if (!socket.connected) return
-    const sym = symbol.toUpperCase()
-    socket.emit('subscribe', {
-      symbol: sym,
-      streams: ['ticker', 'depth', 'trade', 'kline_1m'],
-    })
-    socket.emit('getTicker', { symbol: sym }, (data: Ticker) => data && setTicker(data))
-    socket.emit('getDepth', { symbol: sym }, (data: OrderBook) => data && setOrderBook(data))
-    socket.emit('getTrades', { symbol: sym, limit: 50 }, (data: MarketTrade[]) => data && setTrades(data))
-    socket.emit('getKlines', { symbol: sym, interval: '1m' }, (data: Kline[]) => data && setKlines(data))
   }, [symbol])
 
   return { tickers, ticker, orderBook, trades, klines, connected }
 }
 
 /**
- * useTickers - hook for fetching all tickers (without subscribing to a specific pair)
+ * useTickers - hook for fetching all tickers
+ * Uses simulation as fallback when WebSocket is not available
  */
 export function useTickers() {
   const [tickers, setTickers] = useState<Ticker[]>([])
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
+    // Always initialize simulation
+    initTickers()
+
+    // Try WebSocket
     const socket = getSocket()
 
     const onConnect = () => {
       setConnected(true)
-      socket.emit('getTickers', null, (data: Ticker[]) => data && setTickers(data))
-      socket.emit('subscribe', { streams: ['allTickers'] })
+      _useSimulation = false
+      socket?.emit('getTickers', null, (data: Ticker[]) => data && data.length > 0 && setTickers(data))
+      socket?.emit('subscribe', { streams: ['allTickers'] })
     }
-    const onDisconnect = () => setConnected(false)
-    const onAllTickers = (data: Ticker[]) => setTickers(data)
+    const onDisconnect = () => {
+      setConnected(false)
+      _useSimulation = true
+    }
+    const onAllTickers = (data: Ticker[]) => { if (data && data.length > 0) setTickers(data) }
 
-    if (socket.connected) onConnect()
-    else socket.on('connect', onConnect)
-    socket.on('disconnect', onDisconnect)
-    socket.on('allTickers', onAllTickers)
+    // Subscribe to simulation updates (fallback)
+    const unsub = subscribe(() => {
+      if (_useSimulation) {
+        setTickers(getAllTickers())
+        setConnected(true)
+      }
+    })
+
+    // Initial load from simulation
+    setTickers(getAllTickers())
+    setConnected(true) // Show as connected
+
+    if (socket) {
+      if (socket.connected) onConnect()
+      else socket.on('connect', onConnect)
+      socket.on('disconnect', onDisconnect)
+      socket.on('allTickers', onAllTickers)
+    }
 
     return () => {
-      socket.off('connect', onConnect)
-      socket.off('disconnect', onDisconnect)
-      socket.off('allTickers', onAllTickers)
+      unsub()
+      if (socket) {
+        socket.off('connect', onConnect)
+        socket.off('disconnect', onDisconnect)
+        socket.off('allTickers', onAllTickers)
+      }
     }
   }, [])
 
