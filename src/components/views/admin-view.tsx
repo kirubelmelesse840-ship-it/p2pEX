@@ -150,6 +150,7 @@ export function AdminView() {
 function DashboardTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -157,8 +158,10 @@ function DashboardTab() {
       const d = await res.json()
       if (d.error) throw new Error(d.error)
       setData(d)
-    } catch (e) {
-      console.error(e)
+      setError(null)
+    } catch (e: any) {
+      console.error('[admin dashboard]', e)
+      setError(e.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
@@ -166,13 +169,28 @@ function DashboardTab() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => {
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 30000) // 30 seconds
     return () => clearInterval(t)
   }, [load])
 
-  if (loading || !data) {
+  if (loading && !data) {
     return <div className="text-center py-12 text-muted-foreground">Loading dashboard...</div>
   }
+
+  if (error && !data) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-3" />
+        <p className="text-sm text-muted-foreground mb-2">Failed to load dashboard</p>
+        <p className="text-xs text-muted-foreground mb-4">{error}</p>
+        <Button onClick={load} size="sm">
+          <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+        </Button>
+      </div>
+    )
+  }
+
+  if (!data) return null
 
   const s = data.stats
 

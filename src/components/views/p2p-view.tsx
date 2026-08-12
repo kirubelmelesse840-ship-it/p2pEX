@@ -93,7 +93,7 @@ export function P2PView() {
   const { toast } = useToast()
   const [listings, setListings] = useState<Listing[]>([])
   const [orders, setOrders] = useState<P2POrder[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'buy' | 'sell' | 'orders' | 'create'>('buy')
   const [filters, setFilters] = useState({ asset: 'USDT', fiat: 'ETB', paymentMethod: 'ALL' })
   const [tradeDialog, setTradeDialog] = useState<Listing | null>(null)
@@ -218,9 +218,11 @@ export function P2PView() {
             <Button variant="outline" size="sm" onClick={() => { load() }} className="gap-1.5 cursor-pointer hover:bg-primary/10">
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
-            <Button onClick={() => setCreateOpen(true)} className="hidden sm:flex">
-              <Plus className="h-4 w-4 mr-1.5" /> Post Ad
-            </Button>
+            {user.isAdmin && (
+              <Button onClick={() => setCreateOpen(true)} className="hidden sm:flex">
+                <Plus className="h-4 w-4 mr-1.5" /> Post Ad
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -302,7 +304,7 @@ export function P2PView() {
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No {tab === 'buy' ? 'sellers' : 'buyers'} available for {filters.asset}/{filters.fiat}</p>
-            {user && (
+            {user?.isAdmin && (
               <Button className="mt-4" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-1.5" /> Post the first ad
               </Button>
