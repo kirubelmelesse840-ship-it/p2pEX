@@ -303,11 +303,11 @@ export function Navbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <InstallAppButton />
           </div>
         ) : (
           <div className="flex items-center gap-2">
             <AuthButtons />
+            <InstallAppButton />
           </div>
         )}
       </div>

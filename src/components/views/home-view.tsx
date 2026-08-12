@@ -113,23 +113,25 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Download App banner — prominent */}
-      <section className="mb-6">
-        <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 rounded-2xl p-4 sm:p-6 shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white/20 text-white flex-shrink-0">
-              <Smartphone className="h-8 w-8 sm:h-10 sm:w-10" />
+      {/* Download App banner — prominent, only for non-logged-in users */}
+      {!user && (
+        <section className="mb-6">
+          <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 rounded-2xl p-4 sm:p-6 shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white/20 text-white flex-shrink-0">
+                <Smartphone className="h-8 w-8 sm:h-10 sm:w-10" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-bold text-white">Get the P2PEX App 📲</h3>
+                <p className="text-xs sm:text-sm text-white/90 mt-0.5">
+                  Install on your phone for faster access, offline mode & push notifications!
+                </p>
+              </div>
+              <InstallAppButton />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg sm:text-xl font-bold text-white">Get the P2PEX App 📲</h3>
-              <p className="text-xs sm:text-sm text-white/90 mt-0.5">
-                Install on your phone for faster access, offline mode & push notifications!
-              </p>
-            </div>
-            <InstallAppButton />
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Features */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
