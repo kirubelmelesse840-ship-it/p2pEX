@@ -644,6 +644,7 @@ export function SpotView() {
   const { symbol, user, favorites, toggleFavorite } = useAppStore()
   const { ticker, klines } = useMarketSocket(symbol)
   const [bottomTab, setBottomTab] = useState<'orders' | 'history'>('orders')
+  const [timeframe, setTimeframe] = useState<string>('1m')
 
   const base = symbol.replace(/(USDT|USDC|BTC|ETH|BNB)$/, '')
   const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
@@ -728,15 +729,16 @@ export function SpotView() {
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">Live Price Chart</span>
-              <span className="text-xs text-muted-foreground">Real-time · 1m</span>
+              <span className="text-xs text-muted-foreground">Real-time · {timeframe}</span>
             </div>
-            <div className="flex items-center gap-1">
-              {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf, i) => (
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf) => (
                 <Button
                   key={tf}
-                  variant={i === 0 ? 'secondary' : 'ghost'}
+                  variant={timeframe === tf ? 'secondary' : 'ghost'}
                   size="sm"
-                  className="h-6 px-2 text-xs"
+                  className="h-8 px-3 text-xs min-w-[36px] flex-shrink-0"
+                  onClick={() => setTimeframe(tf)}
                 >
                   {tf}
                 </Button>
