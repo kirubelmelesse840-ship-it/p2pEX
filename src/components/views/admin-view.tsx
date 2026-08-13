@@ -131,17 +131,39 @@ export function AdminView() {
         </TabsList>
       </Tabs>
 
-      {tab === 'dashboard' && <DashboardTab />}
-      {tab === 'users' && <UsersTab />}
-      {tab === 'user-details' && <UserDetailsTab />}
-      {tab === 'pairs' && <PairsTab />}
-      {tab === 'p2p' && <P2PTab />}
-      {tab === 'payment-review' && <PaymentReviewTab />}
-      {tab === 'dw-approvals' && <DepositWithdrawApprovalsTab />}
-      {tab === 'orders' && <OrdersTab />}
-      {tab === 'transactions' && <TransactionsTab />}
-      {tab === 'support' && <SupportTab />}
-      {tab === 'settings' && <SettingsTab />}
+      <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}>
+        <DashboardTab />
+      </div>
+      <div style={{ display: tab === 'users' ? 'block' : 'none' }}>
+        <UsersTab />
+      </div>
+      <div style={{ display: tab === 'user-details' ? 'block' : 'none' }}>
+        <UserDetailsTab />
+      </div>
+      <div style={{ display: tab === 'pairs' ? 'block' : 'none' }}>
+        <PairsTab />
+      </div>
+      <div style={{ display: tab === 'p2p' ? 'block' : 'none' }}>
+        <P2PTab />
+      </div>
+      <div style={{ display: tab === 'payment-review' ? 'block' : 'none' }}>
+        <PaymentReviewTab />
+      </div>
+      <div style={{ display: tab === 'dw-approvals' ? 'block' : 'none' }}>
+        <DepositWithdrawApprovalsTab />
+      </div>
+      <div style={{ display: tab === 'orders' ? 'block' : 'none' }}>
+        <OrdersTab />
+      </div>
+      <div style={{ display: tab === 'transactions' ? 'block' : 'none' }}>
+        <TransactionsTab />
+      </div>
+      <div style={{ display: tab === 'support' ? 'block' : 'none' }}>
+        <SupportTab />
+      </div>
+      <div style={{ display: tab === 'settings' ? 'block' : 'none' }}>
+        <SettingsTab />
+      </div>
     </div>
   )
 }

@@ -449,7 +449,7 @@ function SendDialog({ wallet, wallets, onClose, onSuccess }: {
   const [address, setAddress] = useState('')
   const [network, setNetwork] = useState(WITHDRAW_NETWORKS[0].network)
   const [amount, setAmount] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const selectedWallet = wallets.find(w => w.asset === asset)
   const available = selectedWallet?.available ?? 0
@@ -612,7 +612,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
   const [asset] = useState('USDT')
   const [selectedNetwork, setSelectedNetwork] = useState(DEPOSIT_NETWORKS[0].network)
   const [amount, setAmount] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const current = DEPOSIT_NETWORKS.find(n => n.network === selectedNetwork) || DEPOSIT_NETWORKS[0]
@@ -756,7 +756,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const selectedWallet = wallets.find(w => w.asset === asset)
   const available = selectedWallet?.available ?? 0
