@@ -58,7 +58,7 @@ export function AdminView() {
       } catch {}
     }
     loadCounts()
-    const t = setInterval(loadCounts, 10000)
+    const t = setInterval(loadCounts, 30000)
     return () => clearInterval(t)
   }, [])
 
@@ -154,11 +154,18 @@ function DashboardTab() {
 
   const load = useCallback(async () => {
     try {
+      // Show cached data immediately (instant load)
+      const cached = sessionStorage.getItem('admin-stats')
+      if (cached && !data) {
+        try { setData(JSON.parse(cached)) } catch {}
+      }
+
       const res = await fetch('/api/admin/stats')
       const d = await res.json()
       if (d.error) throw new Error(d.error)
       setData(d)
       setError(null)
+      sessionStorage.setItem('admin-stats', JSON.stringify(d))
     } catch (e: any) {
       console.error('[admin dashboard]', e)
       setError(e.message || 'Failed to load dashboard')
@@ -2423,7 +2430,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 15000)
     return () => clearInterval(t)
   }, [load])
 
@@ -3127,14 +3134,14 @@ function SupportTab() {
   // Polling
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 3000)
+    const t1 = setInterval(loadConversations, 5000)
     return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 3000)
+      const t2 = setInterval(loadMessages, 5000)
       return () => clearInterval(t2)
     } else {
       setMessages([])

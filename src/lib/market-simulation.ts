@@ -20,7 +20,7 @@ function initTickers() {
     klinesMap[symbol] = generateKlines(price, 60)
     tradesMap[symbol] = generateTrades(price, 30)
   }
-  intervalId = setInterval(updateAll, 2000)
+  intervalId = setInterval(updateAll, 3000)
 }
 function generateOrderBook(price: number): OrderBook { const bids: [number, number][] = []; const asks: [number, number][] = []; for (let i = 0; i < 15; i++) { bids.push([parseFloat((price * (1 - (i + 1) * 0.0003)).toFixed(6)), parseFloat((Math.random() * 5 + 0.1).toFixed(4))]); asks.push([parseFloat((price * (1 + (i + 1) * 0.0003)).toFixed(6)), parseFloat((Math.random() * 5 + 0.1).toFixed(4))]) } return { bids, asks } }
 function generateKlines(currentPrice: number, count: number): Kline[] { const klines: Kline[] = []; const now = Date.now(); let price = currentPrice * 0.98; for (let i = count; i > 0; i--) { const openTime = now - i * 60000; const open = price; const vol = currentPrice * 0.003; const close = price + (Math.random() - 0.5) * vol; klines.push({ openTime, open: parseFloat(open.toFixed(6)), high: parseFloat(Math.max(open, close).toFixed(6)), low: parseFloat(Math.min(open, close).toFixed(6)), close: parseFloat(close.toFixed(6)), volume: parseFloat((Math.random() * 100 + 10).toFixed(4)), closeTime: openTime + 59999 }); price = close } return klines }

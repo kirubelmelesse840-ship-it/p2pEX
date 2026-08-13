@@ -75,6 +75,19 @@ export function WalletView() {
   const load = useCallback(async () => {
     if (!user) { setWallets([]); setTransactions([]); setLoading(false); return }
     try {
+      // Show cached wallet data immediately (instant load)
+      const cacheKey = `wallet-${user.id}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached && wallets.length === 0) {
+        try {
+          const cachedData = JSON.parse(cached)
+          setWallets(cachedData.wallets || [])
+          setTotalUsd(cachedData.totalUsd || 0)
+          setTransactions(cachedData.transactions || [])
+          setLoading(false)
+        } catch {}
+      }
+
       const [walletRes, txRes] = await Promise.all([
         fetch('/api/wallet'),
         fetch('/api/wallet/transactions?limit=50'),
@@ -84,6 +97,12 @@ export function WalletView() {
       setWallets(walletData.wallets || [])
       setTotalUsd(walletData.totalUsd || 0)
       setTransactions(txData.transactions || [])
+      // Cache for instant load next time
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        wallets: walletData.wallets || [],
+        totalUsd: walletData.totalUsd || 0,
+        transactions: txData.transactions || [],
+      }))
     } catch (e) {
       console.error(e)
     } finally {
@@ -94,7 +113,7 @@ export function WalletView() {
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!user) return
-    const t = setInterval(load, 4000)
+    const t = setInterval(load, 15000)
     return () => clearInterval(t)
   }, [user, load])
 

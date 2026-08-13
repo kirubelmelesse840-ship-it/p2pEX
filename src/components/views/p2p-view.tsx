@@ -104,12 +104,25 @@ export function P2PView() {
 
   const load = useCallback(async () => {
     try {
+      // Show cached listings immediately (instant load)
+      const cacheKey = `p2p-listings-${filters.asset}-${filters.fiat}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached && listings.length === 0) {
+        try {
+          const cachedData = JSON.parse(cached)
+          setListings(cachedData.listings || [])
+          setLoading(false) // Stop loading immediately
+        } catch {}
+      }
+
       const [listRes, ordersRes] = await Promise.all([
         fetch(`/api/p2p/listings?asset=${filters.asset}&fiat=${filters.fiat}`),
         user ? fetch('/api/p2p/orders?role=all') : Promise.resolve(null),
       ])
       const listData = await listRes.json()
       setListings(listData.listings || [])
+      // Cache the listings for instant load next time
+      sessionStorage.setItem(cacheKey, JSON.stringify({ listings: listData.listings || [] }))
       if (ordersRes) {
         const ordersData = await ordersRes.json()
         const newOrders = ordersData.orders || []
@@ -162,7 +175,7 @@ export function P2PView() {
   useEffect(() => {
     if (!user) return
     // Poll every 5 seconds for faster status updates
-    const t = setInterval(load, 4000)
+    const t = setInterval(load, 10000)
     return () => clearInterval(t)
   }, [user, load])
 
