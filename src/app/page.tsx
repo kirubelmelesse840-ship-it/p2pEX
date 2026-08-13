@@ -16,39 +16,39 @@ import { PushNotificationProvider } from '@/components/push-notification-provide
 export default function Home() {
   const { view, user, setUser, theme, setView } = useAppStore()
 
-  // Restore session on mount
   useEffect(() => {
-    // Set initial theme
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('dark', theme === 'dark')
     }
-    // Prevent browser's native install prompt from showing (we handle installs manually)
     if (typeof window !== 'undefined') {
       const preventInstall = (e: Event) => { e.preventDefault() }
       window.addEventListener('beforeinstallprompt', preventInstall)
     }
-    // Register service worker for push notifications (only if logged in)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
     }
-    // Try to restore session
     fetch('/api/auth', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (data.user) {
           setUser(data.user)
-          // If admin logs in, force them to the admin panel
-          if (data.user.isAdmin) {
-            setView('admin')
-          }
+          if (data.user.isAdmin) setView('admin')
         }
       })
       .catch(() => {})
   }, [])
 
-  // If the user is an admin, always show the admin panel regardless of view
   const isAdmin = user?.isAdmin
   const effectiveView = isAdmin ? 'admin' : view
+
+  // Keep all views mounted — just hide with CSS. This prevents re-fetching
+  // when switching tabs, making navigation instant.
+  const showHome = effectiveView === 'home'
+  const showMarkets = effectiveView === 'markets'
+  const showSpot = effectiveView === 'spot'
+  const showP2P = effectiveView === 'p2p'
+  const showWallet = effectiveView === 'wallet'
+  const showAdmin = effectiveView === 'admin'
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -56,12 +56,24 @@ export default function Home() {
       <Navbar />
       <main className={`flex-1 flex flex-col ${isAdmin ? '' : 'pb-16 md:pb-0'}`}>
         <div className="flex-1 flex flex-col">
-          {effectiveView === 'home' && <HomeView />}
-          {effectiveView === 'markets' && <MarketsView />}
-          {effectiveView === 'spot' && <SpotView />}
-          {effectiveView === 'p2p' && <P2PView />}
-          {effectiveView === 'wallet' && <WalletView />}
-          {effectiveView === 'admin' && <AdminView />}
+          <div style={{ display: showHome ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <HomeView />
+          </div>
+          <div style={{ display: showMarkets ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <MarketsView />
+          </div>
+          <div style={{ display: showSpot ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <SpotView />
+          </div>
+          <div style={{ display: showP2P ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <P2PView />
+          </div>
+          <div style={{ display: showWallet ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <WalletView />
+          </div>
+          <div style={{ display: showAdmin ? 'flex' : 'none' }} className="flex-1 flex flex-col">
+            <AdminView />
+          </div>
         </div>
       </main>
       <Footer />
