@@ -53,6 +53,8 @@ interface Transaction {
   network: string
   fromAddress?: string | null
   toAddress?: string | null
+  fromName?: string | null
+  toName?: string | null
   txHash?: string | null
   status: string
   confirmations: number
@@ -490,13 +492,18 @@ export function WalletView() {
                 </div>
               </div>
 
-              {/* Addresses */}
+              {/* Addresses with real person names */}
               {txDetail.fromAddress && (
                 <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
                   <span className="text-xs text-muted-foreground flex-shrink-0">
                     {isP2P ? (isIncoming ? 'From (Seller):' : 'From (You):') : 'From:'}
                   </span>
-                  <span className="font-mono text-xs break-all text-right">{txDetail.fromAddress}</span>
+                  <div className="text-right min-w-0">
+                    {txDetail.fromName && (
+                      <span className="font-bold text-sm block text-foreground">{txDetail.fromName}</span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground break-all block">{txDetail.fromAddress}</span>
+                  </div>
                 </div>
               )}
               {txDetail.toAddress && (
@@ -504,7 +511,12 @@ export function WalletView() {
                   <span className="text-xs text-muted-foreground flex-shrink-0">
                     {isP2P ? (isIncoming ? 'To (You):' : 'To (Buyer):') : 'To:'}
                   </span>
-                  <span className="font-mono text-xs break-all text-right">{txDetail.toAddress}</span>
+                  <div className="text-right min-w-0">
+                    {txDetail.toName && (
+                      <span className="font-bold text-sm block text-foreground">{txDetail.toName}</span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground break-all block">{txDetail.toAddress}</span>
+                  </div>
                 </div>
               )}
               {txDetail.txHash && (

@@ -182,3 +182,50 @@
 .notif-badge-pulse {
   animation: notif-badge-pulse 1s ease-in-out infinite;
 }
+
+/* Glowing button styles — applied globally */
+button[class*="bg-green-500"]:not(:disabled),
+button[class*="bg-red-500"]:not(:disabled),
+button[class*="bg-blue-500"]:not(:disabled),
+button[class*="bg-gradient"]:not(:disabled),
+button[class*="bg-primary"]:not(:disabled) {
+  transition: all 0.2s ease;
+}
+button[class*="bg-green-500"]:not(:disabled):hover {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+  transform: translateY(-1px);
+}
+button[class*="bg-red-500"]:not(:disabled):hover {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  transform: translateY(-1px);
+}
+button[class*="bg-blue-500"]:not(:disabled):hover {
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+button[class*="bg-gradient"]:not(:disabled):hover {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Outline button glow on hover */
+button[class*="border-"]:not(:disabled):hover {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+
+/* Dialog improvements */
+[data-slot="dialog-content"] {
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+[data-slot="dialog-header"] {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Smooth button press animation */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
