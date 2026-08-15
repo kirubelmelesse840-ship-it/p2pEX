@@ -2444,6 +2444,7 @@ function ToggleRow({ label, description, value, onChange, icon, danger }: {
 
 // =================== ADMIN NOTIFICATIONS ===================
 function AdminNotifications() {
+  const { toast } = useToast()
   const [notifications, setNotifications] = useState<any[]>([])
   const [highCount, setHighCount] = useState(0)
   const [open, setOpen] = useState(false)
@@ -2463,6 +2464,23 @@ function AdminNotifications() {
     const t = setInterval(load, 15000)
     return () => clearInterval(t)
   }, [load])
+
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch('/api/admin/notifications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: '✅ Notification deleted' })
+      load()
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e.message, variant: 'destructive' })
+    }
+  }
 
   const formatTimeAgo = (time: string) => {
     const diff = Date.now() - new Date(time).getTime()
@@ -2521,24 +2539,29 @@ function AdminNotifications() {
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={'p-3 hover:bg-muted/30 transition cursor-pointer ' + (n.priority === 'high' ? 'bg-red-500/5' : '')}
+                    className={'p-3 hover:bg-muted/30 transition cursor-pointer flex items-start gap-2 ' + (n.priority === 'high' ? 'bg-red-500/5' : '')}
                     onClick={() => setOpen(false)}
                   >
-                    <div className="flex items-start gap-2">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {iconForType(n.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{n.title}</span>
-                          {n.priority === 'high' && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.description}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.time)}</p>
-                      </div>
+                    <div className="flex-shrink-0 mt-0.5">
+                      {iconForType(n.type)}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium">{n.title}</span>
+                        {n.priority === 'high' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.description}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.time)}</p>
+                    </div>
+                    <button
+                      className="flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition"
+                      onClick={(e) => deleteNotification(n.id, e)}
+                      title="Delete notification"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2563,6 +2586,7 @@ function SendNotificationButton() {
   const [target, setTarget] = useState<'all' | 'user'>('all')
   const [selectedUser, setSelectedUser] = useState('')
   const [users, setUsers] = useState<any[]>([])
+  const [sentNotifs, setSentNotifs] = useState<any[]>([])
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [type, setType] = useState('info')
@@ -2576,9 +2600,33 @@ function SendNotificationButton() {
     } catch {}
   }
 
+  const loadSent = async () => {
+    try {
+      const res = await fetch('/api/admin/send-notification')
+      const d = await res.json()
+      setSentNotifs(d.notifications || [])
+    } catch {}
+  }
+
   useEffect(() => {
-    if (open) loadUsers()
+    if (open) { loadUsers(); loadSent() }
   }, [open])
+
+  const deleteSent = async (id: string) => {
+    try {
+      const res = await fetch('/api/admin/notifications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id }),
+      })
+      const d = await res.json()
+      if (d.error) throw new Error(d.error)
+      toast({ title: '✅ Notification deleted' })
+      loadSent()
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e.message, variant: 'destructive' })
+    }
+  }
 
   const send = async () => {
     if (!title || !message) {
@@ -2720,6 +2768,39 @@ function SendNotificationButton() {
                   {sending ? 'Sending...' : 'Send Notification'}
                 </Button>
               </DialogFooter>
+
+              {/* Sent notifications list with delete */}
+              {sentNotifs.length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
+                    <span>Sent Notifications ({sentNotifs.length})</span>
+                    <button onClick={loadSent} className="text-primary hover:underline text-[10px]">Refresh</button>
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {sentNotifs.slice(0, 10).map(n => (
+                      <div key={n.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg text-xs">
+                        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${
+                          n.type === 'success' ? 'bg-green-500' :
+                          n.type === 'warning' ? 'bg-yellow-500' :
+                          n.type === 'announcement' ? 'bg-purple-500' :
+                          'bg-blue-500'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium truncate block">{n.title}</span>
+                          <span className="text-muted-foreground text-[10px] truncate block">{n.userId ? '→ specific user' : '→ all users'}</span>
+                        </div>
+                        <button
+                          className="flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition"
+                          onClick={() => deleteSent(n.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
