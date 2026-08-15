@@ -399,19 +399,26 @@ export function WalletView() {
         const isInternal = txDetail.type === 'INTERNAL_TRANSFER'
         const isIncoming = isInternal ? !!txDetail.fromAddress : txDetail.type === 'DEPOSIT'
         const isP2P = txDetail.network === 'P2P'
-        // Parse the note to get context (e.g. "P2P trade #xxx - bought 10 USDT from Kirubel")
         const noteText = txDetail.note || ''
+        // Parse P2P note: "P2P trade #xxx - bought 10 USDT for 1863.00 ETB via Telebirr"
+        // or "P2P trade #xxx - sold 10 USDT for 1863.00 ETB via Telebirr"
+        const p2pAction = noteText.includes('bought') ? 'bought' : noteText.includes('sold') ? 'sold' : ''
+        const p2pAmount = noteText.match(/(\d+\.?\d*)\s*(USDT|BTC|ETH|BNB|SOL)/i)
+        const p2pFiat = noteText.match(/for\s+(\d+\.?\d*)\s*(ETB|USD|EUR)/i)
+        const p2pMethod = noteText.match(/via\s+(\w+)/)
         return (
         <Dialog open onOpenChange={() => setTxDetail(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {isInternal ? <ArrowLeftRight className="h-5 w-5 text-blue-500" /> :
+                {isP2P ? (
+                  isIncoming ? <ArrowDownToLine className="h-5 w-5 text-green-500" /> : <ArrowUpFromLine className="h-5 w-5 text-red-500" />
+                ) : isInternal ? <ArrowLeftRight className="h-5 w-5 text-blue-500" /> :
                  txDetail.type === 'DEPOSIT' ? <ArrowDownToLine className="h-5 w-5 text-green-500" /> :
                  <ArrowUpFromLine className="h-5 w-5 text-red-500" />}
-                {isInternal ? (isIncoming ? 'Received (Internal Transfer)' : 'Sent (Internal Transfer)') :
-                 txDetail.type === 'DEPOSIT' ? (isP2P ? 'P2P Buy — Crypto Received' : 'Deposit') :
-                 (isP2P ? 'P2P Sell — Crypto Sent' : 'Withdrawal')}
+                {isP2P ? (isIncoming ? '🤝 P2P Buy Order' : '🤝 P2P Sell Order') :
+                 isInternal ? (isIncoming ? 'Received (Internal Transfer)' : 'Sent (Internal Transfer)') :
+                 txDetail.type === 'DEPOSIT' ? '📥 Deposit' : '📤 Withdrawal'}
               </DialogTitle>
               <DialogDescription>Transaction #{txDetail.id.slice(-8).toUpperCase()}</DialogDescription>
             </DialogHeader>
@@ -421,15 +428,47 @@ export function WalletView() {
                 <p className="text-xs text-muted-foreground mb-1">
                   {isIncoming ? 'Received' : 'Sent'}
                 </p>
-                <p className={`text-2xl font-bold tabular-nums ${isIncoming ? 'text-green-500' : 'text-red-500'}`}>
+                <p className={`text-3xl font-bold tabular-nums ${isIncoming ? 'text-green-500' : 'text-red-500'}`}>
                   {isIncoming ? '+' : '-'}{formatQty(txDetail.amount)} {txDetail.asset}
                 </p>
                 {txDetail.fee > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">Fee: {formatQty(txDetail.fee)} {txDetail.asset}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Network Fee: {formatQty(txDetail.fee)} {txDetail.asset}</p>
                 )}
               </div>
 
-              {/* Transaction context */}
+              {/* P2P trade context — the REAL details */}
+              {isP2P && p2pAction && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    {isIncoming ? '✅ You bought crypto' : '💰 You sold crypto'}
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{isIncoming ? 'You bought:' : 'You sold:'}</span>
+                      <span className="font-bold">{p2pAmount ? `${p2pAmount[1]} ${p2pAmount[2]}` : `${formatQty(txDetail.amount)} ${txDetail.asset}`}</span>
+                    </div>
+                    {p2pFiat && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{isIncoming ? 'You paid:' : 'You received:'}</span>
+                        <span className="font-bold tabular-nums">{p2pFiat[1]} {p2pFiat[2]}</span>
+                      </div>
+                    )}
+                    {p2pMethod && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment method:</span>
+                        <span className="font-medium">{p2pMethod[1]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-blue-500/20 text-xs text-muted-foreground">
+                    {isIncoming
+                      ? `The crypto has been credited to your wallet after admin approved the trade.`
+                      : `The crypto has been sent to the buyer after admin approved the trade.`}
+                  </div>
+                </div>
+              )}
+
+              {/* General transaction info */}
               <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Type</span>
@@ -451,19 +490,11 @@ export function WalletView() {
                 </div>
               </div>
 
-              {/* Context-specific details */}
-              {isP2P && noteText && (
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">P2P Trade Details</p>
-                  <p className="text-xs text-muted-foreground">{noteText}</p>
-                </div>
-              )}
-
-              {/* From / To addresses */}
+              {/* Addresses */}
               {txDetail.fromAddress && (
                 <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
                   <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {isP2P ? 'From (Seller):' : 'From:'}
+                    {isP2P ? (isIncoming ? 'From (Seller):' : 'From (You):') : 'From:'}
                   </span>
                   <span className="font-mono text-xs break-all text-right">{txDetail.fromAddress}</span>
                 </div>
@@ -471,7 +502,7 @@ export function WalletView() {
               {txDetail.toAddress && (
                 <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
                   <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {isP2P ? 'To (Buyer):' : 'To:'}
+                    {isP2P ? (isIncoming ? 'To (You):' : 'To (Buyer):') : 'To:'}
                   </span>
                   <span className="font-mono text-xs break-all text-right">{txDetail.toAddress}</span>
                 </div>
@@ -480,11 +511,6 @@ export function WalletView() {
                 <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
                   <span className="text-xs text-muted-foreground flex-shrink-0">Tx Hash:</span>
                   <span className="font-mono text-xs break-all text-right">{txDetail.txHash}</span>
-                </div>
-              )}
-              {!isP2P && noteText && (
-                <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
-                  <span className="font-medium">Note:</span> {noteText}
                 </div>
               )}
             </div>

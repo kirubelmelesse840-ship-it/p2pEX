@@ -872,17 +872,17 @@ function UserNotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className={`relative h-10 w-10 rounded-full transition-all ${
+        className={`relative h-11 w-11 rounded-full transition-all ${
           unreadCount > 0
-            ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/30'
+            ? 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30 hover:from-yellow-500/40 hover:to-orange-500/40 notif-glow ring-2 ring-yellow-500'
             : 'hover:bg-muted'
         }`}
         onClick={() => { setOpen(!open); if (!open) { load(); markAllRead() } }}
         title="Notifications"
       >
-        <Bell className={`h-5 w-5 transition-all ${unreadCount > 0 ? 'text-yellow-500 animate-pulse' : 'text-muted-foreground'}`} />
+        <Bell className={`h-6 w-6 transition-all ${unreadCount > 0 ? 'text-yellow-400' : 'text-muted-foreground'}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 animate-bounce shadow-lg shadow-red-500/60 ring-2 ring-background">
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 notif-badge-pulse ring-2 ring-background z-10">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
