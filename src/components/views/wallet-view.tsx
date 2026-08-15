@@ -395,76 +395,104 @@ export function WalletView() {
       )}
 
       {/* Transaction detail dialog */}
-      {txDetail && (
+      {txDetail && (() => {
+        const isInternal = txDetail.type === 'INTERNAL_TRANSFER'
+        const isIncoming = isInternal ? !!txDetail.fromAddress : txDetail.type === 'DEPOSIT'
+        const isP2P = txDetail.network === 'P2P'
+        // Parse the note to get context (e.g. "P2P trade #xxx - bought 10 USDT from Kirubel")
+        const noteText = txDetail.note || ''
+        return (
         <Dialog open onOpenChange={() => setTxDetail(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {txDetail.type === 'INTERNAL_TRANSFER' ? <ArrowLeftRight className="h-5 w-5 text-blue-500" /> :
+                {isInternal ? <ArrowLeftRight className="h-5 w-5 text-blue-500" /> :
                  txDetail.type === 'DEPOSIT' ? <ArrowDownToLine className="h-5 w-5 text-green-500" /> :
                  <ArrowUpFromLine className="h-5 w-5 text-red-500" />}
-                {txDetail.type === 'INTERNAL_TRANSFER' ? 'Internal Transfer' : txDetail.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
+                {isInternal ? (isIncoming ? 'Received (Internal Transfer)' : 'Sent (Internal Transfer)') :
+                 txDetail.type === 'DEPOSIT' ? (isP2P ? 'P2P Buy — Crypto Received' : 'Deposit') :
+                 (isP2P ? 'P2P Sell — Crypto Sent' : 'Withdrawal')}
               </DialogTitle>
               <DialogDescription>Transaction #{txDetail.id.slice(-8).toUpperCase()}</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Asset</span>
-                  <span className="font-medium">{txDetail.asset}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Amount</span>
-                  <span className="font-bold tabular-nums">{formatQty(txDetail.amount)} {txDetail.asset}</span>
-                </div>
+              {/* Main amount card */}
+              <div className={`rounded-xl p-4 text-center ${isIncoming ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {isIncoming ? 'Received' : 'Sent'}
+                </p>
+                <p className={`text-2xl font-bold tabular-nums ${isIncoming ? 'text-green-500' : 'text-red-500'}`}>
+                  {isIncoming ? '+' : '-'}{formatQty(txDetail.amount)} {txDetail.asset}
+                </p>
                 {txDetail.fee > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Network Fee</span>
-                    <span className="tabular-nums">{formatQty(txDetail.fee)} {txDetail.asset}</span>
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Fee: {formatQty(txDetail.fee)} {txDetail.asset}</p>
                 )}
-                <div className="flex justify-between">
+              </div>
+
+              {/* Transaction context */}
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Type</span>
+                  <span className="font-medium">
+                    {isP2P ? '🤝 P2P Trade' : isInternal ? '🔄 Internal Transfer' : txDetail.type === 'DEPOSIT' ? '📥 Deposit' : '📤 Withdrawal'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Network</span>
                   <span className="font-medium">{txDetail.network}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Status</span>
                   <StatusBadge status={txDetail.status} />
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Date</span>
                   <span className="text-xs">{formatDateTime(txDetail.createdAt)}</span>
                 </div>
               </div>
 
+              {/* Context-specific details */}
+              {isP2P && noteText && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">P2P Trade Details</p>
+                  <p className="text-xs text-muted-foreground">{noteText}</p>
+                </div>
+              )}
+
+              {/* From / To addresses */}
               {txDetail.fromAddress && (
-                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
-                  <span className="text-xs text-muted-foreground">From:</span>
-                  <span className="font-mono text-xs break-all">{txDetail.fromAddress}</span>
+                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {isP2P ? 'From (Seller):' : 'From:'}
+                  </span>
+                  <span className="font-mono text-xs break-all text-right">{txDetail.fromAddress}</span>
                 </div>
               )}
               {txDetail.toAddress && (
-                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
-                  <span className="text-xs text-muted-foreground">To:</span>
-                  <span className="font-mono text-xs break-all">{txDetail.toAddress}</span>
+                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {isP2P ? 'To (Buyer):' : 'To:'}
+                  </span>
+                  <span className="font-mono text-xs break-all text-right">{txDetail.toAddress}</span>
                 </div>
               )}
               {txDetail.txHash && (
-                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
-                  <span className="text-xs text-muted-foreground">Tx Hash:</span>
-                  <span className="font-mono text-xs break-all">{txDetail.txHash}</span>
+                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
+                  <span className="text-xs text-muted-foreground flex-shrink-0">Tx Hash:</span>
+                  <span className="font-mono text-xs break-all text-right">{txDetail.txHash}</span>
                 </div>
               )}
-              {txDetail.note && (
+              {!isP2P && noteText && (
                 <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
-                  <span className="font-medium">Note:</span> {txDetail.note}
+                  <span className="font-medium">Note:</span> {noteText}
                 </div>
               )}
             </div>
             <Button variant="outline" className="w-full" onClick={() => setTxDetail(null)}>Close</Button>
           </DialogContent>
         </Dialog>
-      )}
+        )
+      })()}
     </div>
   )
 }

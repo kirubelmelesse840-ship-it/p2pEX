@@ -29,7 +29,7 @@ import { SupportChatDialog } from '@/components/support-chat-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
-  Headphones, Copy,
+  Headphones, Copy, Megaphone, AlertCircle, Clock,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -858,18 +858,31 @@ function UserNotificationBell() {
     }
   }
 
+  const iconForType = (type: string) => {
+    switch (type) {
+      case 'success': return <CheckCircle2 className="h-4 w-4" />
+      case 'warning': return <AlertCircle className="h-4 w-4" />
+      case 'announcement': return <Megaphone className="h-4 w-4" />
+      default: return <Bell className="h-4 w-4" />
+    }
+  }
+
   return (
     <div className="relative">
       <Button
         variant="ghost"
         size="icon"
-        className={`relative ${unreadCount > 0 ? 'bg-yellow-500/10 hover:bg-yellow-500/20' : ''}`}
+        className={`relative h-10 w-10 rounded-full transition-all ${
+          unreadCount > 0
+            ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/30'
+            : 'hover:bg-muted'
+        }`}
         onClick={() => { setOpen(!open); if (!open) { load(); markAllRead() } }}
         title="Notifications"
       >
-        <Bell className={`h-5 w-5 ${unreadCount > 0 ? 'text-yellow-500 animate-pulse' : ''}`} />
+        <Bell className={`h-5 w-5 transition-all ${unreadCount > 0 ? 'text-yellow-500 animate-pulse' : 'text-muted-foreground'}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 animate-bounce shadow-lg shadow-red-500/50">
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 animate-bounce shadow-lg shadow-red-500/60 ring-2 ring-background">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -878,40 +891,62 @@ function UserNotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
-            <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
-              <span className="text-sm font-semibold">Notifications</span>
+          <div className="absolute right-0 top-full mt-2 w-80 max-h-[420px] overflow-y-auto bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+            {/* Header with gradient */}
+            <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white">
+                  <Bell className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-bold">Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
               {unreadCount > 0 && (
-                <button className="text-xs text-primary hover:underline" onClick={markAllRead}>
+                <button className="text-xs text-primary hover:underline font-medium" onClick={markAllRead}>
                   Mark all read
                 </button>
               )}
             </div>
 
             {notifications.length === 0 ? (
-              <div className="p-6 text-center text-xs text-muted-foreground">
-                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                No notifications
+              <div className="p-8 text-center">
+                <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
+                  <Bell className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">No notifications</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/40">
+              <div className="divide-y divide-border/30">
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={'p-3 hover:bg-muted/30 transition ' + (!n.isRead ? 'bg-primary/5' : '')}
+                    className={`p-3 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
                     onClick={() => { if (!n.isRead) markRead(n.id) }}
                   >
-                    <div className="flex items-start gap-2">
-                      <div className={'flex-shrink-0 mt-0.5 ' + colorForType(n.type)}>
-                        <Bell className="h-4 w-4" />
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full ${
+                        n.type === 'success' ? 'bg-green-500/15 text-green-500' :
+                        n.type === 'warning' ? 'bg-yellow-500/15 text-yellow-500' :
+                        n.type === 'announcement' ? 'bg-purple-500/15 text-purple-500' :
+                        'bg-blue-500/15 text-blue-500'
+                      }`}>
+                        {iconForType(n.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{n.title}</span>
-                          {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold truncate">{n.title}</span>
+                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.createdAt)}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatTimeAgo(n.createdAt)}
+                        </p>
                       </div>
                     </div>
                   </div>

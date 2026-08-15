@@ -172,6 +172,7 @@ export function AdminView() {
 function DashboardTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -416,6 +417,7 @@ function UsersTab() {
   const [users, setUsers] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [kycFilter, setKycFilter] = useState('all')
@@ -492,8 +494,8 @@ function UsersTab() {
             <SelectItem value="level2">Level 2</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
 
@@ -1051,6 +1053,7 @@ function PairsTab() {
   const { toast } = useToast()
   const [pairs, setPairs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [addDialog, setAddDialog] = useState(false)
 
   const load = useCallback(async () => {
@@ -1243,6 +1246,7 @@ function P2PTab() {
   const { toast } = useToast()
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -1315,8 +1319,8 @@ function P2PTab() {
             className="pl-8 h-9"
           />
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="h-3.5 w-3.5" /> Add New Ad
@@ -1779,6 +1783,7 @@ function PaymentReviewTab() {
   const { toast } = useToast()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('PENDING_REVIEW')
   const [reviewDialog, setReviewDialog] = useState<any>(null)
 
@@ -1827,8 +1832,8 @@ function PaymentReviewTab() {
             <SelectItem value="COMPLETED">✓ Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         {statusFilter === 'PENDING_REVIEW' && orders.length > 0 && (
           <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 ml-auto">
@@ -2025,6 +2030,7 @@ function PaymentReviewTab() {
 function OrdersTab() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [symbolFilter, setSymbolFilter] = useState('all')
 
@@ -2068,8 +2074,8 @@ function OrdersTab() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
 
@@ -2128,6 +2134,7 @@ function OrdersTab() {
 function TransactionsTab() {
   const [txs, setTxs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -2171,8 +2178,8 @@ function TransactionsTab() {
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
 
@@ -2233,6 +2240,7 @@ function SettingsTab() {
   const { toast } = useToast()
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -2725,6 +2733,7 @@ function UserDetailsTab() {
   const { toast } = useToast()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [details, setDetails] = useState<any>(null)
@@ -2810,7 +2819,7 @@ function UserDetailsTab() {
           />
         </div>
         <Button variant="outline" size="sm" onClick={loadUsers}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
 
@@ -3496,6 +3505,7 @@ function DepositWithdrawApprovalsTab() {
   const { toast } = useToast()
   const [txs, setTxs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('pending')
   const [confirmDialog, setConfirmDialog] = useState<{ tx: any; action: 'approve' | 'reject' } | null>(null)
   const [acting, setActing] = useState(false)
@@ -3588,8 +3598,8 @@ function DepositWithdrawApprovalsTab() {
             <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" onClick={() => { sessionStorage.removeItem("admin-stats"); load() }} disabled={loading}>
+          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         {statusFilter === 'pending' && txs.length > 0 && (
           <Badge className="ml-auto bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
