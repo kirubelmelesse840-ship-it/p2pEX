@@ -1560,11 +1560,14 @@ function EditListingDialog({ listing, onClose, onSuccess }: { listing: any; onCl
 }
 
 // =================== CREATE LISTING DIALOG ===================
-const BUY_PAYMENT_METHODS = [
+// P2P ad types:
+// SELL ad = admin is SELLING USDT → buyer pays via FIAT (banks, mobile money)
+// BUY ad  = admin is BUYING USDT  → seller sends via CRYPTO NETWORK (TRC20, BEP20, etc.)
+const SELL_PAYMENT_METHODS = [
   'Telebirr', 'CBE', 'Awash', 'Dashen', 'Hibret', 'Wegagen', 'Abay', 'Coopbank',
   'Bank of Abyssinia', 'United', 'Nib', 'Berhan', 'Enat', 'Lion', 'Oromia', 'Zemen',
 ]
-const SELL_PAYMENT_METHODS = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB']
+const BUY_PAYMENT_METHODS = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB']
 
 function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { toast } = useToast()
@@ -1574,20 +1577,22 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('')
   const [minOrder, setMinOrder] = useState('100')
-  const [paymentMethod, setPaymentMethod] = useState(side === 'BUY' ? 'Telebirr' : 'TRC20')
+  const [paymentMethod, setPaymentMethod] = useState('Telebirr')
   const [advertiserName, setAdvertiserName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [terms, setTerms] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const methods = side === 'BUY' ? BUY_PAYMENT_METHODS : SELL_PAYMENT_METHODS
+  // SELL ad → buyer pays via fiat (banks) → show SELL_PAYMENT_METHODS
+  // BUY ad  → seller sends via crypto network → show BUY_PAYMENT_METHODS
+  const methods = side === 'SELL' ? SELL_PAYMENT_METHODS : BUY_PAYMENT_METHODS
   const accountLabel = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(paymentMethod)
     ? 'Wallet Address'
     : 'Account Number / Phone'
 
   // Reset payment method when side changes
   useEffect(() => {
-    setPaymentMethod(side === 'BUY' ? BUY_PAYMENT_METHODS[0] : SELL_PAYMENT_METHODS[0])
+    setPaymentMethod(side === 'SELL' ? SELL_PAYMENT_METHODS[0] : BUY_PAYMENT_METHODS[0])
   }, [side])
 
   // Auto-generate terms if empty
@@ -1728,7 +1733,7 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
               </SelectContent>
             </Select>
             <p className="text-[10px] text-muted-foreground mt-1">
-              {side === 'BUY' ? 'Ethiopian banks / mobile money' : 'Crypto networks for direct settlement'}
+              {side === 'SELL' ? 'Ethiopian banks / mobile money (buyer pays you in fiat)' : 'Crypto networks (seller sends you USDT)'}
             </p>
           </div>
 
