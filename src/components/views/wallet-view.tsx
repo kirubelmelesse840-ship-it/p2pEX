@@ -491,40 +491,6 @@ export function WalletView() {
                   <span className="text-xs">{formatDateTime(txDetail.createdAt)}</span>
                 </div>
               </div>
-
-              {/* Addresses with real person names */}
-              {txDetail.fromAddress && (
-                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {isP2P ? (isIncoming ? 'From (Seller):' : 'From (You):') : 'From:'}
-                  </span>
-                  <div className="text-right min-w-0">
-                    {txDetail.fromName && (
-                      <span className="font-bold text-sm block text-foreground">{txDetail.fromName}</span>
-                    )}
-                    <span className="font-mono text-xs text-muted-foreground break-all block">{txDetail.fromAddress}</span>
-                  </div>
-                </div>
-              )}
-              {txDetail.toAddress && (
-                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {isP2P ? (isIncoming ? 'To (You):' : 'To (Buyer):') : 'To:'}
-                  </span>
-                  <div className="text-right min-w-0">
-                    {txDetail.toName && (
-                      <span className="font-bold text-sm block text-foreground">{txDetail.toName}</span>
-                    )}
-                    <span className="font-mono text-xs text-muted-foreground break-all block">{txDetail.toAddress}</span>
-                  </div>
-                </div>
-              )}
-              {txDetail.txHash && (
-                <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border gap-2">
-                  <span className="text-xs text-muted-foreground flex-shrink-0">Tx Hash:</span>
-                  <span className="font-mono text-xs break-all text-right">{txDetail.txHash}</span>
-                </div>
-              )}
             </div>
             <Button variant="outline" className="w-full" onClick={() => setTxDetail(null)}>Close</Button>
           </DialogContent>
