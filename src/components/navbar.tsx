@@ -807,19 +807,21 @@ function UserNotificationBell() {
   const { user } = useAppStore()
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [latestType, setLatestType] = useState<string>('info')
   const [open, setOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
       if (user) {
-        // Logged-in user: fetch their personal notifications + broadcasts
         const res = await fetch('/api/notifications')
         const d = await res.json()
         if (d.error) return
         setNotifications(d.notifications || [])
         setUnreadCount(d.unreadCount || 0)
+        // Get the type of the most recent unread notification
+        const latestUnread = (d.notifications || []).find((n: any) => !n.isRead)
+        if (latestUnread) setLatestType(latestUnread.type || 'info')
       } else {
-        // Not logged in: fetch broadcast notifications only
         const res = await fetch('/api/notifications/public')
         const d = await res.json()
         const notifs = d.notifications || []
@@ -829,6 +831,7 @@ function UserNotificationBell() {
           Date.now() - new Date(n.createdAt).getTime() < 24 * 60 * 60 * 1000
         )
         setUnreadCount(recent.length)
+        if (recent.length > 0 && recent[0]) setLatestType(recent[0].type || 'info')
       }
     } catch {}
   }, [user])
@@ -888,22 +891,48 @@ function UserNotificationBell() {
     }
   }
 
+  // Determine glow class based on latest notification type
+  const glowClass = unreadCount > 0
+    ? latestType === 'success' ? 'notif-glow-success'
+    : latestType === 'warning' ? 'notif-glow-warning'
+    : latestType === 'announcement' ? 'notif-glow-announcement'
+    : 'notif-glow-info'
+    : ''
+
+  // Determine button background color based on type
+  const bgClass = unreadCount > 0
+    ? latestType === 'success' ? 'bg-green-500/20 hover:bg-green-500/30 ring-2 ring-green-500'
+    : latestType === 'warning' ? 'bg-yellow-500/20 hover:bg-yellow-500/30 ring-2 ring-yellow-500'
+    : latestType === 'announcement' ? 'bg-purple-500/20 hover:bg-purple-500/30 ring-2 ring-purple-500'
+    : 'bg-blue-500/20 hover:bg-blue-500/30 ring-2 ring-blue-500'
+    : 'hover:bg-muted'
+
+  // Determine bell icon color
+  const bellColor = unreadCount > 0
+    ? latestType === 'success' ? 'text-green-400'
+    : latestType === 'warning' ? 'text-yellow-400'
+    : latestType === 'announcement' ? 'text-purple-400'
+    : 'text-blue-400'
+    : 'text-muted-foreground'
+
+  // Determine badge color
+  const badgeBg = latestType === 'success' ? 'bg-green-500'
+    : latestType === 'warning' ? 'bg-yellow-500'
+    : latestType === 'announcement' ? 'bg-purple-500'
+    : 'bg-red-500'
+
   return (
     <div className="relative">
       <Button
         variant="ghost"
         size="icon"
-        className={`relative h-11 w-11 rounded-full transition-all ${
-          unreadCount > 0
-            ? 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30 hover:from-yellow-500/40 hover:to-orange-500/40 notif-glow ring-2 ring-yellow-500'
-            : 'hover:bg-muted'
-        }`}
+        className={`relative h-11 w-11 rounded-full transition-all ${bgClass} ${glowClass}`}
         onClick={() => { setOpen(!open); if (!open) { load(); markAllRead() } }}
         title="Notifications"
       >
-        <Bell className={`h-6 w-6 transition-all ${unreadCount > 0 ? 'text-yellow-400' : 'text-muted-foreground'}`} />
+        <Bell className={`h-6 w-6 transition-all ${bellColor}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 notif-badge-pulse ring-2 ring-background z-10">
+          <span className={`absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full ${badgeBg} text-white text-[11px] font-bold px-1.5 notif-badge-pulse ring-2 ring-background z-10`}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

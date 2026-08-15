@@ -12,8 +12,8 @@ export function AutoPushRegister() {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
-    // Wait a bit for the service worker to register first
-    const timer = setTimeout(async () => {
+    // Register immediately (no delay)
+    const doRegister = async () => {
       try {
         // Check if already have permission
         if (Notification.permission === 'denied') return
@@ -52,9 +52,12 @@ export function AutoPushRegister() {
       } catch (e) {
         // Silent fail — don't bother the user
       }
-    }, 3000) // Wait 3 seconds after page load
+    }
 
-    return () => clearTimeout(timer)
+    // Run immediately on page load
+    doRegister()
+
+    return undefined
   }, [])
 
   return null
