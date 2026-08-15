@@ -190,8 +190,8 @@ export function Navbar() {
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        {/* User notification bell (for non-admin logged-in users) */}
-        {user && !isAdmin && <UserNotificationBell />}
+        {/* Notification bell — visible to ALL users (logged in or not) */}
+        {!isAdmin && <UserNotificationBell />}
 
         {/* User menu */}
         {user ? (
@@ -804,19 +804,34 @@ function GoogleLoginDialog({ loading, onClose, onLogin }: {
 
 // =================== USER NOTIFICATION BELL ===================
 function UserNotificationBell() {
+  const { user } = useAppStore()
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/notifications')
-      const d = await res.json()
-      if (d.error) return
-      setNotifications(d.notifications || [])
-      setUnreadCount(d.unreadCount || 0)
+      if (user) {
+        // Logged-in user: fetch their personal notifications + broadcasts
+        const res = await fetch('/api/notifications')
+        const d = await res.json()
+        if (d.error) return
+        setNotifications(d.notifications || [])
+        setUnreadCount(d.unreadCount || 0)
+      } else {
+        // Not logged in: fetch broadcast notifications only
+        const res = await fetch('/api/notifications/public')
+        const d = await res.json()
+        const notifs = d.notifications || []
+        setNotifications(notifs)
+        // For non-logged-in users, count recent (last 24h) as "unread"
+        const recent = notifs.filter((n: any) => 
+          Date.now() - new Date(n.createdAt).getTime() < 24 * 60 * 60 * 1000
+        )
+        setUnreadCount(recent.length)
+      }
     } catch {}
-  }, [])
+  }, [user])
 
   useEffect(() => {
     load()
@@ -825,6 +840,7 @@ function UserNotificationBell() {
   }, [load])
 
   const markRead = async (id: string) => {
+    if (!user) return // Can't mark read if not logged in
     try {
       await fetch('/api/notifications', {
         method: 'POST',
@@ -836,6 +852,11 @@ function UserNotificationBell() {
   }
 
   const markAllRead = async () => {
+    if (!user) {
+      // For non-logged-in users, just clear the unread count locally
+      setUnreadCount(0)
+      return
+    }
     for (const n of notifications.filter(n => !n.isRead)) {
       await markRead(n.id)
     }
