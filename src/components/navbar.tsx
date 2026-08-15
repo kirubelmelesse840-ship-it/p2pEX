@@ -941,7 +941,7 @@ function UserNotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 max-h-[420px] overflow-y-auto bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+          <div className="fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 top-full mt-2 max-h-[60vh] sm:max-h-[420px] overflow-y-auto bg-card border border-border rounded-xl shadow-2xl z-[200] overflow-hidden">
             {/* Header with gradient */}
             <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">

@@ -17,20 +17,40 @@ export async function POST(req: NextRequest) {
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
-    const existing = await db.user.findUnique({ where: { email } })
+
+    // Validate email format
+    const normalizedEmail = email.toLowerCase().trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
+    }
+
+    // Block disposable/fake email domains
+    const BLOCKED_DOMAINS = [
+      'tempmail', 'guerrillamail', 'mailinator', '10minutemail', 'throwaway',
+      'temp-mail', 'fakeinbox', 'getnada', 'maildrop', 'dispostable',
+      'sharklasers', 'guerrilla', 'spam4', 'yopmail', 'mintemail',
+      'mailnesia', 'trashmail', 'tempinbox', 'fakeemail', 'mailcatch',
+      'emailondeck', 'mohmal', 'tempmailo', 'mytemp', 'tempr.email',
+    ]
+    const domain = normalizedEmail.split('@')[1] || ''
+    if (BLOCKED_DOMAINS.some(d => domain.includes(d))) {
+      return NextResponse.json({ error: 'Disposable email addresses are not allowed. Please use your real email (Gmail, Outlook, iCloud, etc.)' }, { status: 400 })
+    }
+
+    const existing = await db.user.findUnique({ where: { email: normalizedEmail } })
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
     // Auto-generate numerical userId and username
     const userCount = await db.user.count()
     const newUserId = String(userCount + 1).padStart(6, '0')
-    const baseName = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '')
+    const baseName = (name || normalizedEmail.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '')
     const newUsername = baseName + Math.floor(Math.random() * 9000 + 1000)
 
     const user = await db.user.create({
       data: {
-        email,
-        name: name || email.split('@')[0],
+        email: normalizedEmail,
+        name: name || normalizedEmail.split('@')[0],
         userId: newUserId,
         username: newUsername,
         passwordHash: hashPassword(password),
