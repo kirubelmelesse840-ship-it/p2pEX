@@ -238,26 +238,30 @@ function MoverRow({ ticker, onClick }: { ticker: any; onClick: () => void }) {
 }
 
 function AssetIcon({ asset, small }: { asset: string; small?: boolean }) {
-  const colors: Record<string, string> = {
-    BTC: 'bg-orange-500',
-    ETH: 'bg-blue-500',
-    USDT: 'bg-green-500',
-    USDC: 'bg-blue-400',
-    BNB: 'bg-yellow-500',
-    SOL: 'bg-purple-500',
-    XRP: 'bg-gray-500',
-    ADA: 'bg-blue-600',
-    DOGE: 'bg-yellow-400',
-    AVAX: 'bg-red-500',
-    LINK: 'bg-blue-500',
-    DOT: 'bg-pink-500',
-    MATIC: 'bg-purple-600',
-    LTC: 'bg-gray-400',
+  const icons: Record<string, string> = {
+    BTC: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
+    ETH: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
+    USDT: 'https://assets.coingecko.com/coins/images/325/large/Tether.png',
+    USDC: 'https://assets.coingecko.com/coins/images/6319/large/usdc.png',
+    BNB: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
+    SOL: 'https://assets.coingecko.com/coins/images/4128/large/solana.png',
+    XRP: 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png',
+    ADA: 'https://assets.coingecko.com/coins/images/975/large/cardano.png',
+    DOGE: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png',
+    AVAX: 'https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedTransparent.png',
+    LINK: 'https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png',
+    DOT: 'https://assets.coingecko.com/coins/images/12171/large/polkadot.png',
+    MATIC: 'https://assets.coingecko.com/coins/images/4713/large/polygon.png',
+    LTC: 'https://assets.coingecko.com/coins/images/2/large/litecoin.png',
   }
-  const size = small ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs'
+  const size = small ? 'h-6 w-6' : 'h-8 w-8'
   return (
-    <div className={`flex ${size} items-center justify-center rounded-full text-white font-bold ${colors[asset] || 'bg-gray-500'}`}>
-      {asset.slice(0, 3)}
+    <div className={`flex ${size} items-center justify-center rounded-full overflow-hidden bg-muted flex-shrink-0`}>
+      {icons[asset] ? (
+        <img src={icons[asset]} alt={asset} className="h-full w-full rounded-full" loading="lazy" />
+      ) : (
+        <span className="text-xs font-bold">{asset.slice(0, 3)}</span>
+      )}
     </div>
   )
 }

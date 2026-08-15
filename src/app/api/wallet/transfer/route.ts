@@ -78,6 +78,23 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
+    // Bonus restriction: users can't transfer/withdraw the bonus until they
+    // complete at least 1 P2P order OR deposit at least 10 USDT
+    const [completedP2P, approvedDeposits] = await Promise.all([
+      db.p2POrder.count({ where: { sellerId: user.id, status: 'COMPLETED' } }),
+      db.transaction.aggregate({
+        where: { userId: user.id, type: 'DEPOSIT', status: 'COMPLETED', network: { not: 'WELCOME_BONUS' } },
+        _sum: { amount: true },
+      }),
+    ])
+    const totalDeposited = approvedDeposits._sum.amount || 0
+
+    if (completedP2P === 0 && totalDeposited < 10) {
+      return NextResponse.json({
+        error: `You need to complete at least 1 P2P order or deposit at least 10 USDT before transferring your bonus balance.`,
+      }, { status: 400 })
+    }
+
     // Lock funds on sender's wallet — move from `available` to `locked`.
     // Balance (total) is unchanged. The recipient is NOT credited yet.
     await db.wallet.update({

@@ -71,6 +71,7 @@ export function WalletView() {
   const [sendDialog, setSendDialog] = useState<WalletData | null>(null)
   const [depositDialog, setDepositDialog] = useState<WalletData | null>(null)
   const [transferDialog, setTransferDialog] = useState<WalletData | null>(null)
+  const [txDetail, setTxDetail] = useState<Transaction | null>(null)
 
   const load = useCallback(async () => {
     if (!user) { setWallets([]); setTransactions([]); setLoading(false); return }
@@ -295,7 +296,7 @@ export function WalletView() {
                     ? !!t.fromAddress  // if fromAddress exists, we received it
                     : t.type === 'DEPOSIT'
                   return (
-                    <tr key={t.id} className={`border-t border-border/40 hover:bg-muted/30 ${isInternal ? 'bg-blue-500/5' : ''}`}>
+                    <tr key={t.id} className={`border-t border-border/40 hover:bg-muted/30 cursor-pointer ${isInternal ? 'bg-blue-500/5' : ''}`} onClick={() => setTxDetail(t)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {isInternal ? (
@@ -392,30 +393,106 @@ export function WalletView() {
           onSuccess={load}
         />
       )}
+
+      {/* Transaction detail dialog */}
+      {txDetail && (
+        <Dialog open onOpenChange={() => setTxDetail(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {txDetail.type === 'INTERNAL_TRANSFER' ? <ArrowLeftRight className="h-5 w-5 text-blue-500" /> :
+                 txDetail.type === 'DEPOSIT' ? <ArrowDownToLine className="h-5 w-5 text-green-500" /> :
+                 <ArrowUpFromLine className="h-5 w-5 text-red-500" />}
+                {txDetail.type === 'INTERNAL_TRANSFER' ? 'Internal Transfer' : txDetail.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
+              </DialogTitle>
+              <DialogDescription>Transaction #{txDetail.id.slice(-8).toUpperCase()}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Asset</span>
+                  <span className="font-medium">{txDetail.asset}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-bold tabular-nums">{formatQty(txDetail.amount)} {txDetail.asset}</span>
+                </div>
+                {txDetail.fee > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Network Fee</span>
+                    <span className="tabular-nums">{formatQty(txDetail.fee)} {txDetail.asset}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Network</span>
+                  <span className="font-medium">{txDetail.network}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <StatusBadge status={txDetail.status} />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="text-xs">{formatDateTime(txDetail.createdAt)}</span>
+                </div>
+              </div>
+
+              {txDetail.fromAddress && (
+                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
+                  <span className="text-xs text-muted-foreground">From:</span>
+                  <span className="font-mono text-xs break-all">{txDetail.fromAddress}</span>
+                </div>
+              )}
+              {txDetail.toAddress && (
+                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
+                  <span className="text-xs text-muted-foreground">To:</span>
+                  <span className="font-mono text-xs break-all">{txDetail.toAddress}</span>
+                </div>
+              )}
+              {txDetail.txHash && (
+                <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-border">
+                  <span className="text-xs text-muted-foreground">Tx Hash:</span>
+                  <span className="font-mono text-xs break-all">{txDetail.txHash}</span>
+                </div>
+              )}
+              {txDetail.note && (
+                <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
+                  <span className="font-medium">Note:</span> {txDetail.note}
+                </div>
+              )}
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setTxDetail(null)}>Close</Button>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
 
 function AssetIcon({ asset }: { asset: string }) {
-  const colors: Record<string, string> = {
-    BTC: 'bg-orange-500',
-    ETH: 'bg-blue-500',
-    USDT: 'bg-green-500',
-    USDC: 'bg-blue-400',
-    BNB: 'bg-yellow-500',
-    SOL: 'bg-purple-500',
-    XRP: 'bg-gray-500',
-    ADA: 'bg-blue-600',
-    DOGE: 'bg-yellow-400',
-    AVAX: 'bg-red-500',
-    LINK: 'bg-blue-500',
-    DOT: 'bg-pink-500',
-    MATIC: 'bg-purple-600',
-    LTC: 'bg-gray-400',
+  const icons: Record<string, string> = {
+    BTC: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
+    ETH: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
+    USDT: 'https://assets.coingecko.com/coins/images/325/large/Tether.png',
+    USDC: 'https://assets.coingecko.com/coins/images/6319/large/usdc.png',
+    BNB: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
+    SOL: 'https://assets.coingecko.com/coins/images/4128/large/solana.png',
+    XRP: 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png',
+    ADA: 'https://assets.coingecko.com/coins/images/975/large/cardano.png',
+    DOGE: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png',
+    AVAX: 'https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedTransparent.png',
+    LINK: 'https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png',
+    DOT: 'https://assets.coingecko.com/coins/images/12171/large/polkadot.png',
+    MATIC: 'https://assets.coingecko.com/coins/images/4713/large/polygon.png',
+    LTC: 'https://assets.coingecko.com/coins/images/2/large/litecoin.png',
   }
   return (
-    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-bold ${colors[asset] || 'bg-gray-500'}`}>
-      {asset.slice(0, 3)}
+    <div className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden bg-muted flex-shrink-0">
+      {icons[asset] ? (
+        <img src={icons[asset]} alt={asset} className="h-7 w-7 rounded-full" loading="lazy" />
+      ) : (
+        <span className="text-xs font-bold">{asset.slice(0, 3)}</span>
+      )}
     </div>
   )
 }

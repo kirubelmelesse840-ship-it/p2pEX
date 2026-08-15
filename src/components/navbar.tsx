@@ -863,13 +863,13 @@ function UserNotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
-        onClick={() => { setOpen(!open); if (!open) load() }}
+        className={`relative ${unreadCount > 0 ? 'bg-yellow-500/10 hover:bg-yellow-500/20' : ''}`}
+        onClick={() => { setOpen(!open); if (!open) { load(); markAllRead() } }}
         title="Notifications"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className={`h-5 w-5 ${unreadCount > 0 ? 'text-yellow-500 animate-pulse' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold px-1">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 animate-bounce shadow-lg shadow-red-500/50">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
