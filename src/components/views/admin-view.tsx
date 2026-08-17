@@ -446,7 +446,10 @@ function UsersTab() {
 
   useEffect(() => { load() }, [load])
 
+  const [acting, setActing] = useState(false)
   const act = async (userId: string, action: string, payload?: any) => {
+    if (acting) return // Prevent duplicate actions
+    setActing(true)
     try {
       const res = await fetch('/api/admin/users/action', {
         method: 'POST',
@@ -459,6 +462,8 @@ function UsersTab() {
       load()
     } catch (e: any) {
       toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setActing(false)
     }
   }
 
@@ -652,6 +657,7 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
   const [processing, setProcessing] = useState(false)
 
   const handleApprove = async () => {
+    if (processing) return // Prevent duplicate approvals
     setProcessing(true)
     try {
       const res = await fetch('/api/admin/users/action', {
@@ -671,6 +677,7 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
   }
 
   const handleReject = async () => {
+    if (processing) return // Prevent duplicate rejections
     if (!rejectReason.trim()) {
       toast({ title: 'Reason required', description: 'Please provide a reason for rejection', variant: 'destructive' })
       return
@@ -1268,7 +1275,10 @@ function P2PTab() {
 
   useEffect(() => { load() }, [load])
 
+  const [acting, setActing] = useState(false)
   const act = async (listingId: string, action: string) => {
+    if (acting) return // Prevent duplicate actions
+    setActing(true)
     try {
       const res = await fetch('/api/admin/listings/action', {
         method: 'POST',
@@ -1281,6 +1291,8 @@ function P2PTab() {
       load()
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setActing(false)
     }
   }
 
@@ -1808,7 +1820,10 @@ function PaymentReviewTab() {
 
   useEffect(() => { load() }, [load])
 
+  const [acting, setActing] = useState(false)
   const act = async (orderId: string, action: string) => {
+    if (acting) return // Prevent duplicate actions
+    setActing(true)
     try {
       const res = await fetch('/api/admin/p2p-review/action', {
         method: 'POST',
@@ -1822,6 +1837,8 @@ function PaymentReviewTab() {
       load()
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+    } finally {
+      setActing(false)
     }
   }
 
@@ -2634,6 +2651,7 @@ function SendNotificationButton() {
   }
 
   const send = async () => {
+    if (sending) return // Prevent duplicate sends
     if (!title || !message) {
       toast({ title: 'Title and message required', variant: 'destructive' })
       return
@@ -3617,6 +3635,7 @@ function DepositWithdrawApprovalsTab() {
   useEffect(() => { load() }, [load])
 
   const act = async (tx: any, action: 'approve' | 'reject') => {
+    if (acting) return // Prevent duplicate actions
     setActing(true)
     try {
       const res = await fetch('/api/admin/transactions/action', {
