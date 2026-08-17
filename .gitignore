@@ -62,4 +62,4 @@ server.log
 *.bak
 
 # Upload directory (user screenshots)
-/upload/
+/upload/*.pid
