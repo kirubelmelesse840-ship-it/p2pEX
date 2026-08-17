@@ -1890,13 +1890,13 @@ function PaymentReviewTab() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-xs text-muted-foreground">Buyer:</span>
+                      <span className="text-xs text-muted-foreground">Buyer (User):</span>
                       <div className="font-medium">{o.buyer.name}</div>
                       <div className="text-xs text-muted-foreground">{o.buyer.email}</div>
                     </div>
                     <div>
-                      <span className="text-xs text-muted-foreground">Seller:</span>
-                      <div className="font-medium">{o.seller.name}</div>
+                      <span className="text-xs text-muted-foreground">Seller (Ad by):</span>
+                      <div className="font-medium">{o.adPersonName || o.seller.name}</div>
                       <div className="text-xs text-muted-foreground">{o.seller.email}</div>
                     </div>
                   </div>
@@ -1980,8 +1980,8 @@ function PaymentReviewTab() {
             <div className="space-y-4">
               {/* Order details */}
               <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-muted-foreground">Buyer:</span> <span className="font-medium">{reviewDialog.buyer.name}</span></div>
-                <div><span className="text-muted-foreground">Seller:</span> <span className="font-medium">{reviewDialog.seller.name}</span></div>
+                <div><span className="text-muted-foreground">Buyer (User):</span> <span className="font-medium">{reviewDialog.buyer.name}</span></div>
+                <div><span className="text-muted-foreground">Seller (Ad by):</span> <span className="font-medium">{reviewDialog.adPersonName || reviewDialog.seller.name}</span></div>
                 <div><span className="text-muted-foreground">Asset:</span> <span className="font-medium">{formatQty(reviewDialog.amount)} {reviewDialog.asset}</span></div>
                 <div><span className="text-muted-foreground">Total:</span> <span className="font-medium tabular-nums">{formatPrice(reviewDialog.total)} {reviewDialog.fiatCurrency}</span></div>
                 <div><span className="text-muted-foreground">Payment Method:</span> <span className="font-medium">{reviewDialog.paymentMethod}</span></div>

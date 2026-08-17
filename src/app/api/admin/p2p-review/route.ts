@@ -19,27 +19,40 @@ export async function GET(req: NextRequest) {
     include: {
       buyer: { select: { id: true, name: true, email: true } },
       seller: { select: { id: true, name: true, email: true } },
-      listing: { select: { asset: true, fiatCurrency: true } },
+      listing: { select: { asset: true, fiatCurrency: true, paymentMethods: true, paymentDetails: true } },
     },
   })
 
   return NextResponse.json({
-    orders: orders.map(o => ({
-      id: o.id,
-      asset: o.asset,
-      fiatCurrency: o.fiatCurrency,
-      amount: o.amount,
-      price: o.price,
-      total: o.total,
-      paymentMethod: o.paymentMethod,
-      paymentScreenshot: o.paymentScreenshot,
-      sellerPaymentMethod: o.sellerPaymentMethod,
-      sellerAccountNumber: o.sellerAccountNumber,
-      sellerAccountName: o.sellerAccountName,
-      status: o.status,
-      createdAt: o.createdAt,
-      buyer: o.buyer,
-      seller: o.seller,
-    })),
+    orders: orders.map(o => {
+      // Extract the ad person name from the listing's paymentDetails
+      let adPersonName = null
+      try {
+        const methods = JSON.parse(o.listing.paymentMethods || '[]')
+        const details = JSON.parse(o.listing.paymentDetails || '{}')
+        const firstMethod = methods[0]
+        if (firstMethod && details[firstMethod]) {
+          adPersonName = details[firstMethod].name || null
+        }
+      } catch {}
+      return {
+        id: o.id,
+        asset: o.asset,
+        fiatCurrency: o.fiatCurrency,
+        amount: o.amount,
+        price: o.price,
+        total: o.total,
+        paymentMethod: o.paymentMethod,
+        paymentScreenshot: o.paymentScreenshot,
+        sellerPaymentMethod: o.sellerPaymentMethod,
+        sellerAccountNumber: o.sellerAccountNumber,
+        sellerAccountName: o.sellerAccountName,
+        status: o.status,
+        createdAt: o.createdAt,
+        buyer: o.buyer,
+        seller: o.seller,
+        adPersonName, // The merchant name from the ad (e.g. "Kirubel", "Melesech")
+      }
+    }),
   })
 }
