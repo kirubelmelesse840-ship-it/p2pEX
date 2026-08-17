@@ -21,9 +21,12 @@ export async function POST(req: NextRequest) {
   const detailsMap: Record<string, any> = {}
   for (const m of paymentMethods) {
     const isCryptoNetwork = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(m)
+    const isPhoneBased = ['Telebirr', 'CBE Birr', 'CBE'].includes(m)
     detailsMap[m] = isCryptoNetwork
       ? { name: advertiserName || '', address: accountNumber || '' }
-      : { name: advertiserName || '', phone: accountNumber || '', account: accountNumber || '' }
+      : isPhoneBased
+      ? { name: advertiserName || '', phone: accountNumber || '' }
+      : { name: advertiserName || '', account: accountNumber || '' }
   }
   const finalPaymentDetails = paymentDetails || detailsMap
 

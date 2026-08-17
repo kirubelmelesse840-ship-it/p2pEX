@@ -58,7 +58,7 @@ export function AdminView() {
       } catch {}
     }
     loadCounts()
-    const t = setInterval(loadCounts, 30000)
+    const t = setInterval(loadCounts, 60000)
     return () => clearInterval(t)
   }, [])
 
@@ -199,7 +199,7 @@ function DashboardTab() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => {
-    const t = setInterval(load, 30000) // 30 seconds
+    const t = setInterval(load, 60000) // 30 seconds
     return () => clearInterval(t)
   }, [load])
 
@@ -2483,7 +2483,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 60000)
     return () => clearInterval(t)
   }, [load])
 
@@ -3269,14 +3269,14 @@ function SupportTab() {
   // Polling
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 5000)
+    const t1 = setInterval(loadConversations, 10000)
     return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 5000)
+      const t2 = setInterval(loadMessages, 10000)
       return () => clearInterval(t2)
     } else {
       setMessages([])

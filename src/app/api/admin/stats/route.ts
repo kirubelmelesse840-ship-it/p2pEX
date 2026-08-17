@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
   // Run ALL queries in parallel — single round trip
   const [
     totalUsers, activeUsers, bannedUsers, adminUsers, kycPending, kycUnverified, kycPendingReview,

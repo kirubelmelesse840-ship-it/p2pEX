@@ -51,11 +51,14 @@ export async function POST(req: NextRequest) {
         name: advertiserName || prev.name || '',
       }
       if (accountNumber) {
-        // Heuristic: crypto networks use 'address', others use 'phone'/'account'
+        // Heuristic: crypto networks use 'address', phone-based methods use 'phone', bank methods use 'account'
         if (['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(m)) {
           newDetails[m].address = accountNumber
-        } else {
+        } else if (['Telebirr', 'CBE Birr', 'CBE'].includes(m)) {
+          // Telebirr/CBE uses phone number
           newDetails[m].phone = accountNumber
+        } else {
+          // Banks use account number
           newDetails[m].account = accountNumber
         }
       }
