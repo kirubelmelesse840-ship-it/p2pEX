@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
     const transactions = await db.transaction.findMany({
       where: {
         userId: user.id,
+        // Hide admin wallet adjustments from user's transaction history
+        network: { not: 'ADMIN' },
         ...(asset ? { asset } : {}),
       },
       orderBy: { createdAt: 'desc' },

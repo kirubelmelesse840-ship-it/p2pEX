@@ -171,7 +171,7 @@ export function AdminView() {
 // =================== DASHBOARD TAB ===================
 function DashboardTab() {
   const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -416,7 +416,7 @@ function UsersTab() {
   const { toast } = useToast()
   const [users, setUsers] = useState<any[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -1052,7 +1052,7 @@ function BanDialog({ user, onClose, onConfirm }: any) {
 function PairsTab() {
   const { toast } = useToast()
   const [pairs, setPairs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [addDialog, setAddDialog] = useState(false)
 
@@ -1245,7 +1245,7 @@ function AddPairDialog({ onClose, onSuccess }: any) {
 function P2PTab() {
   const { toast } = useToast()
   const [listings, setListings] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -1787,7 +1787,7 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
 function PaymentReviewTab() {
   const { toast } = useToast()
   const [orders, setOrders] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('PENDING_REVIEW')
   const [reviewDialog, setReviewDialog] = useState<any>(null)
@@ -2034,7 +2034,7 @@ function PaymentReviewTab() {
 // =================== ORDERS TAB ===================
 function OrdersTab() {
   const [orders, setOrders] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [symbolFilter, setSymbolFilter] = useState('all')
@@ -2138,7 +2138,7 @@ function OrdersTab() {
 // =================== TRANSACTIONS TAB ===================
 function TransactionsTab() {
   const [txs, setTxs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -2244,7 +2244,7 @@ function TransactionsTab() {
 function SettingsTab() {
   const { toast } = useToast()
   const [settings, setSettings] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -2818,7 +2818,7 @@ function SendNotificationButton() {
 function UserDetailsTab() {
   const { toast } = useToast()
   const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -3590,7 +3590,7 @@ function SupportTab() {
 function DepositWithdrawApprovalsTab() {
   const { toast } = useToast()
   const [txs, setTxs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('pending')
   const [confirmDialog, setConfirmDialog] = useState<{ tx: any; action: 'approve' | 'reject' } | null>(null)

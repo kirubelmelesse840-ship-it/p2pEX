@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!transactionId || !action) return NextResponse.json({ error: 'transactionId and action required' }, { status: 400 })
   const tx = await db.transaction.findUnique({ where: { id: transactionId }, include: { user: true } })
   if (!tx) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (tx.status !== 'PENDING') return NextResponse.json({ error: 'Not pending' }, { status: 400 })
+  if (tx.status !== 'PENDING') return NextResponse.json({ error: `This transaction is already ${tx.status}. No action taken.` }, { status: 400 })
 
   const typeLabel = tx.type === 'DEPOSIT' ? 'Deposit' : tx.type === 'WITHDRAW' ? 'Withdrawal' : 'Transfer'
 

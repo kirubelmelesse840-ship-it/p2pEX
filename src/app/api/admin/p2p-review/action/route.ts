@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   if (action === 'approve' || action === 'finish') {
         if (order.status !== 'PENDING_REVIEW' && order.status !== 'PAYMENT_RECEIVED') {
-      return NextResponse.json({ error: 'Order is not pending review or payment received' }, { status: 400 })
+      return NextResponse.json({ error: `This order is already ${order.status}. No action taken.` }, { status: 400 })
     }
 
     // Transfer USDT from seller's locked balance to buyer's wallet
@@ -142,6 +142,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'reject') {
+    // Prevent rejecting an already-completed or already-canceled order
+    if (order.status === 'COMPLETED' || order.status === 'CANCELED') {
+      return NextResponse.json({ error: `This order is already ${order.status}. No action taken.` }, { status: 400 })
+    }
     // Refund seller's locked USDT
     const sellerWallet = await db.wallet.findUnique({
       where: { userId_asset: { userId: order.sellerId, asset: order.asset } },
