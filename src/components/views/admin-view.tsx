@@ -499,7 +499,7 @@ function UsersTab() {
             <SelectItem value="level2">Level 2</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
@@ -1331,7 +1331,7 @@ function P2PTab() {
             className="pl-8 h-9"
           />
         </div>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -1854,7 +1854,7 @@ function PaymentReviewTab() {
             <SelectItem value="COMPLETED">✓ Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         {statusFilter === 'PENDING_REVIEW' && orders.length > 0 && (
@@ -2096,7 +2096,7 @@ function OrdersTab() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
@@ -2200,7 +2200,7 @@ function TransactionsTab() {
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
       </div>
@@ -3703,7 +3703,7 @@ function DepositWithdrawApprovalsTab() {
             <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); load() }}>
+        <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
         </Button>
         {statusFilter === 'pending' && txs.length > 0 && (
