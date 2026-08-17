@@ -735,12 +735,22 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                   <div className="space-y-1.5">
                     {(() => {
                       const details = listing.paymentDetails[paymentMethod]
+                      // Determine what fields to show based on payment method:
+                      // - Telebirr/CBE: show phone ONLY (not account, even if it exists)
+                      // - Banks (Awash, Dashen, etc.): show account ONLY (not phone)
+                      // - Crypto (TRC20, etc.): show network + address
+                      const isPhoneMethod = ['Telebirr', 'CBE Birr', 'CBE'].includes(paymentMethod)
+                      const isCryptoMethod = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(paymentMethod)
                       return (
                         <>
                           {details.network && copyField('Network', details.network)}
                           {details.address && copyField('Address', details.address)}
-                          {details.phone && copyField('Phone Number', details.phone)}
-                          {details.account && copyField('Account Number', details.account)}
+                          {/* Phone-based methods: show phone only */}
+                          {isPhoneMethod && details.phone && copyField('Phone Number', details.phone)}
+                          {/* Bank methods: show account only (hide if it's a phone method) */}
+                          {!isPhoneMethod && !isCryptoMethod && details.account && copyField('Account Number', details.account)}
+                          {/* Non-phone, non-bank, non-crypto: show whatever exists */}
+                          {!isPhoneMethod && !isCryptoMethod && !details.account && details.phone && copyField('Phone Number', details.phone)}
                           {details.email && copyField('Email', details.email)}
                           {details.iban && copyField('IBAN', details.iban)}
                           {details.cashtag && copyField('Cashtag', details.cashtag)}

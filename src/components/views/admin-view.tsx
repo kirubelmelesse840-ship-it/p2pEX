@@ -203,7 +203,7 @@ function DashboardTab() {
     return () => clearInterval(t)
   }, [load])
 
-  if (loading && !data) {
+  if (!data) {
     return <div className="text-center py-12 text-muted-foreground">Loading dashboard...</div>
   }
 
@@ -522,7 +522,7 @@ function UsersTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : users.filter(u => !u.isAdmin).length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No users found</td></tr>
               ) : (
@@ -1137,7 +1137,7 @@ function PairsTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : pairs.map(p => (
                 <tr key={p.id} className="border-t border-border/40 hover:bg-muted/30">
                   <td className="px-3 py-3 font-medium">{p.symbol}</td>
@@ -1359,7 +1359,7 @@ function P2PTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No listings</td></tr>
               ) : filtered.map(l => {
@@ -1865,7 +1865,7 @@ function PaymentReviewTab() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-8 text-muted-foreground text-xs">No data</div>
       ) : orders.length === 0 ? (
         <div className="text-center py-12">
           <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
@@ -2118,7 +2118,7 @@ function OrdersTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : orders.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No orders</td></tr>
               ) : orders.map(o => (
@@ -2222,7 +2222,7 @@ function TransactionsTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : txs.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No transactions</td></tr>
               ) : txs.map(t => (
@@ -2302,7 +2302,7 @@ function SettingsTab() {
     setSettings(s => ({ ...s, [key]: value }))
   }
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground">Loading settings...</div>
+  
 
   return (
     <div className="space-y-4">
@@ -2943,7 +2943,7 @@ function UserDetailsTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">No users found</td></tr>
               ) : filtered.map(u => (
@@ -3730,7 +3730,7 @@ function DepositWithdrawApprovalsTab() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
               ) : txs.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No transactions</td></tr>
               ) : txs.map(t => (
