@@ -736,21 +736,22 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                     {(() => {
                       const details = listing.paymentDetails[paymentMethod]
                       // Determine what fields to show based on payment method:
-                      // - Telebirr/CBE: show phone ONLY (not account, even if it exists)
-                      // - Banks (Awash, Dashen, etc.): show account ONLY (not phone)
-                      // - Crypto (TRC20, etc.): show network + address
-                      const isPhoneMethod = ['Telebirr', 'CBE Birr', 'CBE'].includes(paymentMethod)
+                      // - Telebirr: phone only (it's a mobile wallet)
+                      // - CBE/Banks: account only (it's a bank account)
+                      // - Crypto (TRC20, etc.): network + address
+                      const isTelebirr = paymentMethod === 'Telebirr'
                       const isCryptoMethod = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(paymentMethod)
+                      // For Telebirr: show as "Phone Number"
+                      // For banks (CBE, Awash, etc.): show as "Account Number" (use account field, or phone field if that's all that exists)
+                      // For crypto: show network + address
                       return (
                         <>
                           {details.network && copyField('Network', details.network)}
                           {details.address && copyField('Address', details.address)}
-                          {/* Phone-based methods: show phone only */}
-                          {isPhoneMethod && details.phone && copyField('Phone Number', details.phone)}
-                          {/* Bank methods: show account only (hide if it's a phone method) */}
-                          {!isPhoneMethod && !isCryptoMethod && details.account && copyField('Account Number', details.account)}
-                          {/* Non-phone, non-bank, non-crypto: show whatever exists */}
-                          {!isPhoneMethod && !isCryptoMethod && !details.account && details.phone && copyField('Phone Number', details.phone)}
+                          {/* Telebirr → Phone Number */}
+                          {isTelebirr && (details.phone || details.account) && copyField('Phone Number', details.phone || details.account)}
+                          {/* Banks → Account Number (show account, or phone if that's all that exists) */}
+                          {!isTelebirr && !isCryptoMethod && (details.account || details.phone) && copyField('Account Number', details.account || details.phone)}
                           {details.email && copyField('Email', details.email)}
                           {details.iban && copyField('IBAN', details.iban)}
                           {details.cashtag && copyField('Cashtag', details.cashtag)}
