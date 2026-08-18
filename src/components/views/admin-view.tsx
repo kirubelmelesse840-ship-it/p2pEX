@@ -98,36 +98,47 @@ export function AdminView() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — grouped by category for clarity */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
-        <TabsList className="overflow-x-auto h-auto flex-nowrap w-full justify-start">
-          <TabsTrigger value="dashboard" className="gap-1 whitespace-nowrap shrink-0 flex-none"><BarChart3 className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
-          <TabsTrigger value="users" className="gap-1 whitespace-nowrap shrink-0 flex-none">
-            <Users className="h-3.5 w-3.5" /> Users
+        <TabsList className="overflow-x-auto h-auto flex-nowrap w-full justify-start gap-0.5 p-1">
+          {/* Overview */}
+          <TabsTrigger value="dashboard" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
+
+          {/* User Management */}
+          <TabsTrigger value="users" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+            <Users className="h-4 w-4" /> Users
             {counts.kyc > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="user-details" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Search className="h-3.5 w-3.5" /> User Details</TabsTrigger>
-          <TabsTrigger value="pairs" className="gap-1 whitespace-nowrap shrink-0 flex-none"><TrendingUp className="h-3.5 w-3.5" /> Pairs</TabsTrigger>
-          <TabsTrigger value="p2p" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Shield className="h-3.5 w-3.5" /> P2P Moderation</TabsTrigger>
-          <TabsTrigger value="payment-review" className="gap-1 whitespace-nowrap shrink-0 flex-none">
-            <Clock className="h-3.5 w-3.5" /> Payment Review
+          <TabsTrigger value="user-details" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Search className="h-4 w-4" /> User Details</TabsTrigger>
+
+          {/* Trading */}
+          <TabsTrigger value="pairs" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><TrendingUp className="h-4 w-4" /> Pairs</TabsTrigger>
+          <TabsTrigger value="orders" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Activity className="h-4 w-4" /> Orders</TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><DollarSign className="h-4 w-4" /> Transactions</TabsTrigger>
+
+          {/* P2P */}
+          <TabsTrigger value="p2p" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Shield className="h-4 w-4" /> P2P Ads</TabsTrigger>
+          <TabsTrigger value="payment-review" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+            <Clock className="h-4 w-4" /> P2P Approvals
             {counts.payments > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="dw-approvals" className="gap-1 whitespace-nowrap shrink-0 flex-none">
-            <ArrowDownToLine className="h-3.5 w-3.5" /> D/W Approvals
+          <TabsTrigger value="dw-approvals" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+            <ArrowDownToLine className="h-4 w-4" /> D/W Approvals
             {counts.dw > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="orders" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-1 whitespace-nowrap shrink-0 flex-none"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Send className="h-3.5 w-3.5" /> Send Notification</TabsTrigger>
-          <TabsTrigger value="support" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Headphones className="h-3.5 w-3.5" /> Support</TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
+
+          {/* Communication */}
+          <TabsTrigger value="notifications" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Send className="h-4 w-4" /> Notifications</TabsTrigger>
+          <TabsTrigger value="support" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Headphones className="h-4 w-4" /> Support</TabsTrigger>
+
+          {/* System */}
+          <TabsTrigger value="settings" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
         </TabsList>
       </Tabs>
 
