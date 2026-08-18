@@ -464,8 +464,8 @@ export function WalletView() {
                   </div>
                   <div className="pt-2 border-t border-blue-500/20 text-xs text-muted-foreground">
                     {isIncoming
-                      ? `The crypto has been credited to your wallet after admin approved the trade.`
-                      : `The crypto has been sent to the buyer after admin approved the trade.`}
+                      ? `The crypto has been credited to your wallet after the trade was approved.`
+                      : `The crypto has been sent to the buyer after the trade was approved.`}
                   </div>
                 </div>
               )}
@@ -602,7 +602,7 @@ function SendDialog({ wallet, wallets, onClose, onSuccess }: {
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Withdrawal request submitted',
-        description: `${amountNum} ${asset} is now pending admin approval. You will be notified once processed.`,
+        description: `${amountNum} ${asset} is now pending verification. You will be notified once processed.`,
       })
       onSuccess()
       onClose()
@@ -687,7 +687,7 @@ function SendDialog({ wallet, wallets, onClose, onSuccess }: {
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <div className="text-blue-700 dark:text-blue-400">
-                <p className="font-medium mb-0.5">Admin Approval Required</p>
+                <p className="font-medium mb-0.5">Verification Required</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                   <li>Funds are locked (moved from available) until processed</li>
                   <li>Your total balance does NOT change until approved</li>
@@ -753,7 +753,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Deposit request submitted',
-        description: `${amountNum} USDT will be credited after admin verification.`,
+        description: `${amountNum} USDT will be credited after verification.`,
       })
       onSuccess()
       onClose()
@@ -815,11 +815,11 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
             <div className="flex items-start gap-2">
               <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <div className="text-blue-700 dark:text-blue-400">
-                <p className="font-medium mb-0.5">Admin Approval Required</p>
+                <p className="font-medium mb-0.5">Verification Required</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                  <li>Your balance will NOT change until admin approves</li>
+                  <li>Your balance will NOT change until verified</li>
                   <li>Submit this form after sending the funds on-chain</li>
-                  <li>The admin verifies the on-chain transaction</li>
+                  <li>We verify the on-chain transaction</li>
                   <li>You will receive a notification once approved</li>
                 </ul>
               </div>
@@ -831,7 +831,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
             <ul className="list-disc list-inside space-y-0.5">
               <li>Send only USDT to this address</li>
               <li>Network fee: 0.01 USDT</li>
-              <li>Your deposit will be credited after admin verification</li>
+              <li>Your deposit will be credited after verification</li>
             </ul>
           </div>
 
@@ -851,7 +851,7 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
 
 /**
  * TransferDialog - internal transfer between P2PEX users by User ID or @username.
- * Funds are locked pending admin approval. Recipient is credited on approval;
+ * Funds are locked pending verification. Recipient is credited on approval;
  * funds return to sender on rejection.
  */
 function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
@@ -895,7 +895,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Transfer submitted',
-        description: `${amountNum} ${asset} is locked pending admin approval. Recipient: ${recipient.trim()}.`,
+        description: `${amountNum} ${asset} is locked pending verification. Recipient: ${recipient.trim()}.`,
       })
       onSuccess()
       onClose()
@@ -915,7 +915,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
             Internal Transfer
           </DialogTitle>
           <DialogDescription>
-            Send crypto to another P2PEX user by their User ID or @username. Requires admin approval before the recipient receives the funds.
+            Send crypto to another P2PEX user by their User ID or @username. Requires verification before the recipient receives the funds.
           </DialogDescription>
         </DialogHeader>
 
@@ -928,7 +928,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
                 <p className="font-medium mb-0.5">How internal transfers work:</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                   <li>Free — no network fees</li>
-                  <li>Funds are locked until admin approves</li>
+                  <li>Funds are locked until verified</li>
                   <li>Recipient is credited only after approval</li>
                   <li>If rejected, funds return to your available balance</li>
                 </ul>
@@ -1011,7 +1011,7 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
             </div>
             <div className="flex justify-between pt-1 border-t border-border text-yellow-600 dark:text-yellow-400">
               <span>Status</span>
-              <span>Pending admin approval</span>
+              <span>Pending verification</span>
             </div>
           </div>
 

@@ -2708,25 +2708,17 @@ function SendNotificationButton() {
             </DialogHeader>
 
             <div className="space-y-3">
-              {/* Target */}
-              <div className="flex gap-2">
-                <Button
-                  variant={target === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setTarget('all')}
-                >
-                  All Users (Broadcast)
-                </Button>
-                <Button
-                  variant={target === 'user' ? 'default' : 'outline'}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setTarget('user')}
-                >
-                  Specific User
-                </Button>
-              </div>
+              {/* Two separate tabs */}
+              <Tabs value={target} onValueChange={(v) => setTarget(v as 'all' | 'user')}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="all" className="flex-1 gap-1">
+                    <Users className="h-3.5 w-3.5" /> Broadcast (All Users)
+                  </TabsTrigger>
+                  <TabsTrigger value="user" className="flex-1 gap-1">
+                    <User className="h-3.5 w-3.5" /> Specific User
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
               {target === 'user' && (
                 <div>

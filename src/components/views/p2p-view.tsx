@@ -143,14 +143,14 @@ export function P2PView() {
               toast({
                 title: '✅ Payment Confirmed by Seller',
                 description: o.myRole === 'BUYER'
-                  ? `The seller confirmed receiving your payment for ${o.amount} ${o.asset}. Admin is reviewing — please wait patiently.`
-                  : `You confirmed payment for ${o.amount} ${o.asset}. Admin is reviewing — your ${o.asset} will be debited after approval.`,
+                  ? `The seller confirmed receiving your payment for ${o.amount} ${o.asset}. We are reviewing — please wait patiently.`
+                  : `You confirmed payment for ${o.amount} ${o.asset}. We are reviewing — your ${o.asset} will be debited after approval.`,
                 duration: 8000,
               })
             } else if (o.status === 'CANCELED' && o.myRole === 'BUYER') {
-              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected by the admin. The order has been canceled.`, variant: 'destructive' })
+              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected. The order has been canceled.`, variant: 'destructive' })
             } else if (o.status === 'CANCELED' && o.myRole === 'SELLER') {
-              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected by the admin. Your ${o.asset} has been returned to your wallet.`, variant: 'destructive' })
+              toast({ title: '❌ Order Rejected', description: `Your order for ${o.amount} ${o.asset} was rejected. Your ${o.asset} has been returned to your wallet.`, variant: 'destructive' })
             } else if (o.status === 'COMPLETED' && o.myRole === 'BUYER') {
               toast({ title: '🎉 Order Completed!', description: `Your buy order for ${o.amount} ${o.asset} has been approved. The crypto has been credited to your wallet.`, duration: 8000 })
             } else if (o.status === 'COMPLETED' && o.myRole === 'SELLER') {
@@ -622,10 +622,10 @@ function TradeDialog({ listing, onClose, onSuccess }: {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       toast({
-        title: '⏳ Order submitted — Admin checking both sides',
+        title: '⏳ Order submitted — Under Review',
         description: isBuying
-          ? `Your payment proof has been sent to the admin. The admin is checking both sides. Please wait patiently — you'll be notified once your ${listing.asset} is credited.`
-          : `Your sell order has been sent to the admin. The admin is checking both sides. Please wait patiently — you'll be notified once the order is finished.`,
+          ? `Your payment proof has been submitted for review. Please wait patiently — you'll be notified once your ${listing.asset} is credited.`
+          : `Your sell order has been submitted for review. Please wait patiently — you'll be notified once the order is finished.`,
         duration: 8000,
       })
       onSuccess()
@@ -656,10 +656,10 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                 <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
                   <p className="font-bold text-orange-600 dark:text-orange-400 mb-1">
-                    ⚠ Transaction Not Complete Until Admin Approves
+                    ⚠ Transaction Not Complete Until Verified
                   </p>
                   <p className="text-muted-foreground">
-                    After the buyer pays, click "Payment Received". The admin will then review and approve. Your {listing.asset} will <strong className="text-orange-600 dark:text-orange-400">only</strong> be debited after admin approval.
+                    After the buyer pays, click "Payment Received". We will then review and approve. Your {listing.asset} will <strong className="text-orange-600 dark:text-orange-400">only</strong> be debited after verification.
                   </p>
                 </div>
               </div>
@@ -824,7 +824,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
                 <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-muted-foreground">
-                Upload a screenshot of your payment confirmation. This will be sent to the admin for verification before the order is placed.
+                Upload a screenshot of your payment confirmation. This will be sent for verification before the order is placed.
               </p>
               <input
                 ref={fileScreenshotRef}
@@ -887,9 +887,9 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
   const [loading, setLoading] = useState(false)
   const statusMap: Record<string, { color: string; icon: any; label: string }> = {
     PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', icon: Clock, label: 'Pending Seller Confirmation' },
-    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Payment Confirmed — Awaiting Admin' },
+    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Payment Confirmed — Under Review' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', icon: Clock, label: 'Pending Payment' },
-    PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Awaiting Admin Approval' },
+    PAID: { color: 'text-blue-500 bg-blue-500/10', icon: Check, label: 'Under Review' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', icon: Check, label: 'Completed' },
     CANCELED: { color: 'text-red-500 bg-red-500/10', icon: X, label: 'Canceled' },
     DISPUTED: { color: 'text-orange-500 bg-orange-500/10', icon: AlertCircle, label: 'Disputed' },
@@ -913,7 +913,7 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
       if (data.error) throw new Error(data.error)
       toast({
         title: '✅ Payment Confirmed',
-        description: `Admin has been notified. Your ${order.asset} will be released after admin approval.`,
+        description: `We have been notified. Your ${order.asset} will be released after verification.`,
         duration: 8000,
       })
     } catch (e: any) {
@@ -960,7 +960,7 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
             disabled={loading}
           >
             <CheckCircle2 className="h-4 w-4 mr-1.5" />
-            {loading ? 'Confirming...' : 'Payment Received — Notify Admin'}
+            {loading ? 'Confirming...' : 'Payment Received — Confirm'}
           </Button>
           <p className="text-[10px] text-muted-foreground text-center mt-1">
             Tap to confirm you received the payment · or tap the order for details
@@ -1003,9 +1003,9 @@ function OrderDialog({ order, onClose, onSuccess }: {
 
   const statusMap: Record<string, { color: string; label: string }> = {
     PENDING_REVIEW: { color: 'text-blue-500 bg-blue-500/10', label: 'Pending Seller Confirmation' },
-    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', label: 'Payment Confirmed — Awaiting Admin' },
+    PAYMENT_RECEIVED: { color: 'text-green-500 bg-green-500/10', label: 'Payment Confirmed — Under Review' },
     PENDING_PAYMENT: { color: 'text-yellow-500 bg-yellow-500/10', label: 'Pending Payment' },
-    PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Awaiting Admin Approval' },
+    PAID: { color: 'text-blue-500 bg-blue-500/10', label: 'Under Review' },
     COMPLETED: { color: 'text-green-500 bg-green-500/10', label: 'Completed' },
     CANCELED: { color: 'text-red-500 bg-red-500/10', label: 'Canceled' },
     DISPUTED: { color: 'text-orange-500 bg-orange-500/10', label: 'Disputed' },
@@ -1071,7 +1071,7 @@ function OrderDialog({ order, onClose, onSuccess }: {
                       The buyer claims to have sent the payment. Verify that you received the funds in your account before clicking "Payment Received".
                     </p>
                     <p className="mt-1.5 font-medium text-orange-600 dark:text-orange-400">
-                      Your {order.asset} will NOT be released until the admin approves.
+                      Your {order.asset} will NOT be released until verified.
                     </p>
                   </div>
                 </div>
@@ -1084,12 +1084,12 @@ function OrderDialog({ order, onClose, onSuccess }: {
                 disabled={loading}
               >
                 <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                Payment Received — Notify Admin
+                Payment Received — Confirm
               </Button>
 
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
                 <p className="text-xs text-muted-foreground">
-                  After you click "Payment Received", the admin will review and approve the transaction. Only then will {order.amount} {order.asset} be debited from your wallet.
+                  After you click "Payment Received", we will review and approve the transaction. Only then will {order.amount} {order.asset} be debited from your wallet.
                 </p>
               </div>
 
@@ -1107,7 +1107,7 @@ function OrderDialog({ order, onClose, onSuccess }: {
                 </div>
                 <p className="text-sm font-medium">Waiting for Seller Confirmation</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your payment screenshot has been sent. The seller needs to confirm they received your payment. Once confirmed, the admin will review and release {order.amount} {order.asset} to your wallet.
+                  Your payment screenshot has been sent. The seller needs to confirm they received your payment. Once confirmed, we will review and release {order.amount} {order.asset} to your wallet.
                 </p>
                 <div className="mt-2 pt-2 border-t border-blue-500/20 text-[10px] text-muted-foreground space-y-1">
                   <div className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
@@ -1127,18 +1127,18 @@ function OrderDialog({ order, onClose, onSuccess }: {
               <div className="bg-green-500/10 border-2 border-green-500/40 rounded-lg p-3 text-center">
                 <CheckCircle2 className="h-8 w-8 mx-auto text-green-500 mb-2" />
                 <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                  Payment Confirmed — Awaiting Admin Approval
+                  Payment Confirmed — Under Review Approval
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {order.myRole === 'SELLER'
-                    ? `You confirmed receiving the payment. The admin is now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be debited from your wallet and sent to the buyer.`
-                    : `The seller confirmed receiving your payment. The admin is now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be credited to your wallet.`
+                    ? `You confirmed receiving the payment. We are now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be debited from your wallet and sent to the buyer.`
+                    : `The seller confirmed receiving your payment. We are now reviewing this transaction. Once approved, ${order.amount} ${order.asset} will be credited to your wallet.`
                   }
                 </p>
                 <div className="mt-2 pt-2 border-t border-green-500/20 text-[10px] text-muted-foreground">
                   <div className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
                     <Clock className="h-3 w-3" />
-                    Please wait patiently for admin approval
+                    Please wait patiently for verification
                   </div>
                 </div>
               </div>
@@ -1170,7 +1170,7 @@ function OrderDialog({ order, onClose, onSuccess }: {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  After sending the payment, click "I've Paid" below. The order will then be sent to admin for verification.
+                  After sending the payment, click "I've Paid" below. The order will then be sent for verification.
                 </p>
               </div>
               <Button className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => action('mark_paid')} disabled={loading}>
@@ -1185,9 +1185,9 @@ function OrderDialog({ order, onClose, onSuccess }: {
           {order.status === 'PAID' && order.myRole === 'SELLER' && (
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
               <Clock className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-pulse" />
-              <p className="text-sm font-medium">Awaiting admin approval</p>
+              <p className="text-sm font-medium">Under review</p>
               <p className="text-xs text-muted-foreground mt-1">
-                The buyer's payment is being verified by the admin. Once the admin approves, the {order.asset} will be transferred automatically.
+                The buyer's payment is being verified. Once approved, the {order.asset} will be transferred automatically.
               </p>
             </div>
           )}
@@ -1230,7 +1230,7 @@ function OrderDialog({ order, onClose, onSuccess }: {
                 <p className="text-sm font-medium">{order.myRole === 'BUYER' ? 'Payment Rejected' : 'Order Canceled'}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {order.myRole === 'BUYER'
-                    ? `Your payment was rejected by the admin. You can place a new order.`
+                    ? `Your payment was rejected. You can place a new order.`
                     : `This order has been canceled.`}
                 </p>
               </div>
