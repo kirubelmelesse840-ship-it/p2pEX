@@ -32,7 +32,7 @@ import {
   ComposedChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
 } from 'recharts'
 
-type Tab = 'dashboard' | 'users' | 'user-details' | 'pairs' | 'p2p' | 'payment-review' | 'support' | 'transactions' | 'dw-approvals' | 'orders' | 'settings'
+type Tab = 'dashboard' | 'users' | 'user-details' | 'pairs' | 'p2p' | 'payment-review' | 'support' | 'transactions' | 'dw-approvals' | 'orders' | 'notifications' | 'settings'
 
 export function AdminView() {
   const { user, setView } = useAppStore()
@@ -91,7 +91,6 @@ export function AdminView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <SendNotificationButton />
           <AdminNotifications />
           <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
             <Shield className="h-3 w-3 mr-1" /> ADMIN
@@ -126,6 +125,7 @@ export function AdminView() {
           </TabsTrigger>
           <TabsTrigger value="orders" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Activity className="h-3.5 w-3.5" /> Orders</TabsTrigger>
           <TabsTrigger value="transactions" className="gap-1 whitespace-nowrap shrink-0 flex-none"><DollarSign className="h-3.5 w-3.5" /> Transactions</TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Send className="h-3.5 w-3.5" /> Send Notification</TabsTrigger>
           <TabsTrigger value="support" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Headphones className="h-3.5 w-3.5" /> Support</TabsTrigger>
           <TabsTrigger value="settings" className="gap-1 whitespace-nowrap shrink-0 flex-none"><Settings className="h-3.5 w-3.5" /> Settings</TabsTrigger>
         </TabsList>
@@ -157,6 +157,9 @@ export function AdminView() {
       </div>
       <div style={{ display: tab === 'transactions' ? 'block' : 'none' }}>
         <TransactionsTab />
+      </div>
+      <div style={{ display: tab === 'notifications' ? 'block' : 'none' }}>
+        <NotificationsTab />
       </div>
       <div style={{ display: tab === 'support' ? 'block' : 'none' }}>
         <SupportTab />
@@ -2601,11 +2604,10 @@ function AdminNotifications() {
   )
 }
 
-// =================== SEND NOTIFICATION (Admin → User) ===================
-function SendNotificationButton() {
+// =================== NOTIFICATIONS TAB (full tab, not dialog) ===================
+function NotificationsTab() {
   const { toast } = useToast()
-  const [open, setOpen] = useState(false)
-  const [target, setTarget] = useState<'all' | 'user'>('all')
+  const [subTab, setSubTab] = useState<'broadcast' | 'user'>('broadcast')
   const [selectedUser, setSelectedUser] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [sentNotifs, setSentNotifs] = useState<any[]>([])
@@ -2631,8 +2633,9 @@ function SendNotificationButton() {
   }
 
   useEffect(() => {
-    if (open) { loadUsers(); loadSent() }
-  }, [open])
+    loadUsers()
+    loadSent()
+  }, [])
 
   const deleteSent = async (id: string) => {
     try {
@@ -2651,12 +2654,12 @@ function SendNotificationButton() {
   }
 
   const send = async () => {
-    if (sending) return // Prevent duplicate sends
+    if (sending) return
     if (!title || !message) {
       toast({ title: 'Title and message required', variant: 'destructive' })
       return
     }
-    if (target === 'user' && !selectedUser) {
+    if (subTab === 'user' && !selectedUser) {
       toast({ title: 'Select a user', variant: 'destructive' })
       return
     }
@@ -2666,7 +2669,7 @@ function SendNotificationButton() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: target === 'user' ? selectedUser : null,
+          userId: subTab === 'user' ? selectedUser : null,
           title,
           message,
           type,
@@ -2675,8 +2678,8 @@ function SendNotificationButton() {
       const d = await res.json()
       if (d.error) throw new Error(d.error)
       toast({ title: 'Notification sent!', description: d.message })
-      setOpen(false)
-      setTitle(''); setMessage(''); setSelectedUser(''); setTarget('all'); setType('info')
+      setTitle(''); setMessage(''); setSelectedUser('')
+      loadSent()
     } catch (e: any) {
       toast({ title: 'Failed to send', description: e.message, variant: 'destructive' })
     } finally {
@@ -2684,143 +2687,120 @@ function SendNotificationButton() {
     }
   }
 
+  const formatTimeAgo = (time: string) => {
+    const diff = Date.now() - new Date(time).getTime()
+    if (diff < 60000) return 'just now'
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago'
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago'
+    return Math.floor(diff / 86400000) + 'd ago'
+  }
+
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        title="Send notification to users"
-        onClick={() => setOpen(true)}
-      >
-        <Send className="h-5 w-5" />
-      </Button>
+    <div className="space-y-4">
+      {/* Two sub-tabs */}
+      <Tabs value={subTab} onValueChange={(v) => setSubTab(v as 'broadcast' | 'user')}>
+        <TabsList className="w-full">
+          <TabsTrigger value="broadcast" className="flex-1 gap-1">
+            <Users className="h-3.5 w-3.5" /> Broadcast (All Users)
+          </TabsTrigger>
+          <TabsTrigger value="user" className="flex-1 gap-1">
+            <User className="h-3.5 w-3.5" /> Specific User
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {open && (
-        <Dialog open onOpenChange={() => setOpen(false)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Send className="h-5 w-5" /> Send Notification
-              </DialogTitle>
-              <DialogDescription>
-                Send a message notification to users. They will see it in their notification bell.
-              </DialogDescription>
-            </DialogHeader>
+      {/* Send form */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+        {subTab === 'user' && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Select User</label>
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a user" /></SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {users.map(u => (
+                  <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-            <div className="space-y-3">
-              {/* Two separate tabs */}
-              <Tabs value={target} onValueChange={(v) => setTarget(v as 'all' | 'user')}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="all" className="flex-1 gap-1">
-                    <Users className="h-3.5 w-3.5" /> Broadcast (All Users)
-                  </TabsTrigger>
-                  <TabsTrigger value="user" className="flex-1 gap-1">
-                    <User className="h-3.5 w-3.5" /> Specific User
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Notification Type</label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="info">ℹ️ Info (blue glow)</SelectItem>
+              <SelectItem value="success">✅ Success (green glow)</SelectItem>
+              <SelectItem value="warning">⚠️ Warning (yellow glow)</SelectItem>
+              <SelectItem value="announcement">📢 Announcement (purple glow)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-              {target === 'user' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Select User</label>
-                  <Select value={selectedUser} onValueChange={setSelectedUser}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a user" /></SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {users.map(u => (
-                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Title</label>
+          <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. System Maintenance" className="mt-1" maxLength={100} />
+        </div>
 
-              {/* Type */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Notification Type</label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">ℹ️ Info (blue)</SelectItem>
-                    <SelectItem value="success">✅ Success (green)</SelectItem>
-                    <SelectItem value="warning">⚠️ Warning (yellow)</SelectItem>
-                    <SelectItem value="announcement">📢 Announcement (purple)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Message</label>
+          <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message..." rows={4} className="mt-1 text-sm" maxLength={500} />
+          <p className="text-xs text-muted-foreground mt-1">{message.length}/500 characters</p>
+        </div>
 
-              {/* Title */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Title</label>
-                <Input
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  placeholder="e.g. System Maintenance"
-                  className="mt-1"
-                  maxLength={100}
-                />
-              </div>
+        <Button onClick={send} disabled={sending || !title || !message || (subTab === 'user' && !selectedUser)} className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white">
+          {sending ? 'Sending...' : subTab === 'broadcast' ? '📢 Send to All Users' : '📤 Send to Selected User'}
+        </Button>
+      </div>
 
-              {/* Message */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Message</label>
-                <Textarea
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  placeholder="Type your message to the user(s)..."
-                  rows={4}
-                  className="mt-1 text-sm"
-                  maxLength={500}
-                />
-                <p className="text-xs text-muted-foreground mt-1">{message.length}/500 characters</p>
-              </div>
+      {/* Sent notifications list */}
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Sent Notifications ({sentNotifs.length})</h3>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={loadSent}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+          </Button>
+        </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button
-                  onClick={send}
-                  disabled={sending || !title || !message || (target === 'user' && !selectedUser)}
-                >
-                  {sending ? 'Sending...' : 'Send Notification'}
-                </Button>
-              </DialogFooter>
-
-              {/* Sent notifications list with delete */}
-              {sentNotifs.length > 0 && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
-                    <span>Sent Notifications ({sentNotifs.length})</span>
-                    <button onClick={loadSent} className="text-primary hover:underline text-[10px]">Refresh</button>
-                  </p>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
-                    {sentNotifs.slice(0, 10).map(n => (
-                      <div key={n.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg text-xs">
-                        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${
-                          n.type === 'success' ? 'bg-green-500' :
-                          n.type === 'warning' ? 'bg-yellow-500' :
-                          n.type === 'announcement' ? 'bg-purple-500' :
-                          'bg-blue-500'
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <span className="font-medium truncate block">{n.title}</span>
-                          <span className="text-muted-foreground text-[10px] truncate block">{n.userId ? '→ specific user' : '→ all users'}</span>
-                        </div>
-                        <button
-                          className="flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition"
-                          onClick={() => deleteSent(n.id)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+        {sentNotifs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            <Send className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            No notifications sent yet
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {sentNotifs.slice(0, 20).map(n => (
+              <div key={n.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full mt-1 ${
+                  n.type === 'success' ? 'bg-green-500' :
+                  n.type === 'warning' ? 'bg-yellow-500' :
+                  n.type === 'announcement' ? 'bg-purple-500' :
+                  'bg-blue-500'
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{n.title}</span>
+                    <Badge variant="secondary" className="text-[10px]">{n.type}</Badge>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {n.userId ? '→ specific user' : '→ all users'} · {formatTimeAgo(n.createdAt)}
+                  </p>
                 </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+                <button
+                  className="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition"
+                  onClick={() => deleteSent(n.id)}
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
