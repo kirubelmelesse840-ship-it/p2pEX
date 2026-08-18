@@ -394,7 +394,7 @@ function ListingCard({ listing, onTrade }: { listing: Listing; onTrade: () => vo
   const advertiserName = paymentDetail?.name || listing.user.name
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition">
+    <div className={`bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition glow-card ${listing.side === 'SELL' ? 'glow-card-green' : 'glow-card-blue'}`}>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
         {/* Advertiser with verification status */}
         <div className="flex items-center gap-2">

@@ -98,7 +98,7 @@ function FeaturedChart({ symbol }: { symbol: string }) {
   const quote = symbol.startsWith(base) ? symbol.slice(base.length) : 'USDT'
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden mb-4">
+    <div className="bg-card border border-border rounded-xl overflow-hidden mb-4 glow-card-purple">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div>
@@ -257,7 +257,7 @@ export function MarketsView() {
         </TabsList>
       </Tabs>
 
-      <div className="rounded-lg border border-border overflow-hidden bg-card">
+      <div className="rounded-xl border border-border overflow-hidden bg-card glow-card">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">

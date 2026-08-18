@@ -141,7 +141,7 @@ export function WalletView() {
       </div>
 
       {/* Total balance card */}
-      <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border rounded-xl p-5 mb-4 mt-1">
+      <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-border rounded-xl p-5 mb-4 mt-1 glow-border-gradient pulse-glow">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Estimated Value</p>
@@ -175,7 +175,7 @@ export function WalletView() {
       </div>
 
       {/* Wallets table */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
+      <div className="rounded-xl border border-border bg-card overflow-hidden mb-4 glow-card-amber">
         <div className="px-4 py-3 border-b border-border">
           <h2 className="font-semibold">Assets</h2>
         </div>

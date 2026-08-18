@@ -141,7 +141,7 @@ export function HomeView() {
 
       {/* Top movers */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-xl p-4 glow-card-green">
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <ArrowUp className="h-4 w-4 text-green-500" /> Top Gainers
           </h3>
@@ -153,7 +153,7 @@ export function HomeView() {
             ))}
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card border border-border rounded-xl p-4 glow-card-red">
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <ArrowDown className="h-4 w-4 text-red-500" /> Top Losers
           </h3>
@@ -205,7 +205,7 @@ function FeatureCard({ icon, title, desc, onClick }: { icon: React.ReactNode; ti
   return (
     <button
       onClick={onClick}
-      className="text-left bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition group"
+      className="text-left bg-card border border-border rounded-xl p-4 hover:border-primary/50 hover:bg-muted/30 transition group glow-card"
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary mb-3 group-hover:scale-110 transition">
         {icon}

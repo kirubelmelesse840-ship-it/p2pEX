@@ -725,7 +725,7 @@ export function SpotView() {
           <UserProfilePanel symbol={symbol} user={user} />
         </div>
         {/* Chart */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden glow-card-purple">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">Live Price Chart</span>
@@ -749,18 +749,18 @@ export function SpotView() {
         </div>
 
         {/* Order book */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden hidden lg:block">
+        <div className="bg-card rounded-xl border border-border overflow-hidden hidden lg:block glow-card-blue">
           <OrderBook symbol={symbol} />
         </div>
 
         {/* Trade panel */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden glow-card-amber">
           <TradePanel symbol={symbol} />
         </div>
       </div>
 
       {/* Mobile order book */}
-      <div className="lg:hidden bg-card rounded-lg border border-border overflow-hidden mb-2">
+      <div className="lg:hidden bg-card rounded-xl border border-border overflow-hidden mb-2 glow-card-blue">
         <OrderBook symbol={symbol} />
       </div>
 
@@ -781,7 +781,7 @@ export function SpotView() {
           </Tabs>
         </div>
 
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden glow-card-green">
           <RecentTrades symbol={symbol} />
         </div>
       </div>

@@ -98,49 +98,44 @@ export function AdminView() {
         </div>
       </div>
 
-      {/* Tabs — grouped by category for clarity */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
-        <TabsList className="overflow-x-auto h-auto flex-nowrap w-full justify-start gap-0.5 p-1">
-          {/* Overview */}
-          <TabsTrigger value="dashboard" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
+      {/* Categorized navigation grid — replaces horizontal scroll tabs */}
+      <nav className="mb-5 space-y-3">
+        {/* Overview */}
+        <NavGroup label="Overview" icon={<BarChart3 className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'dashboard'} onClick={() => setTab('dashboard')} icon={<BarChart3 className="h-4 w-4" />} label="Dashboard" />
+        </NavGroup>
 
-          {/* User Management */}
-          <TabsTrigger value="users" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
-            <Users className="h-4 w-4" /> Users
-            {counts.kyc > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="user-details" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Search className="h-4 w-4" /> User Details</TabsTrigger>
+        {/* User Management */}
+        <NavGroup label="User Management" icon={<Users className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'users'} onClick={() => setTab('users')} icon={<Users className="h-4 w-4" />} label="Users" badge={counts.kyc} />
+          <NavPill active={tab === 'user-details'} onClick={() => setTab('user-details')} icon={<Search className="h-4 w-4" />} label="User Details" />
+        </NavGroup>
 
-          {/* Trading */}
-          <TabsTrigger value="pairs" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><TrendingUp className="h-4 w-4" /> Pairs</TabsTrigger>
-          <TabsTrigger value="orders" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Activity className="h-4 w-4" /> Orders</TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><DollarSign className="h-4 w-4" /> Transactions</TabsTrigger>
+        {/* Trading */}
+        <NavGroup label="Trading" icon={<TrendingUp className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'pairs'} onClick={() => setTab('pairs')} icon={<TrendingUp className="h-4 w-4" />} label="Pairs" />
+          <NavPill active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Activity className="h-4 w-4" />} label="Orders" />
+          <NavPill active={tab === 'transactions'} onClick={() => setTab('transactions')} icon={<DollarSign className="h-4 w-4" />} label="Transactions" />
+        </NavGroup>
 
-          {/* P2P */}
-          <TabsTrigger value="p2p" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Shield className="h-4 w-4" /> P2P Ads</TabsTrigger>
-          <TabsTrigger value="payment-review" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
-            <Clock className="h-4 w-4" /> P2P Approvals
-            {counts.payments > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="dw-approvals" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
-            <ArrowDownToLine className="h-4 w-4" /> D/W Approvals
-            {counts.dw > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
-            )}
-          </TabsTrigger>
+        {/* P2P */}
+        <NavGroup label="P2P & Approvals" icon={<Shield className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'p2p'} onClick={() => setTab('p2p')} icon={<Shield className="h-4 w-4" />} label="P2P Ads" />
+          <NavPill active={tab === 'payment-review'} onClick={() => setTab('payment-review')} icon={<Clock className="h-4 w-4" />} label="P2P Approvals" badge={counts.payments} />
+          <NavPill active={tab === 'dw-approvals'} onClick={() => setTab('dw-approvals')} icon={<ArrowDownToLine className="h-4 w-4" />} label="D/W Approvals" badge={counts.dw} />
+        </NavGroup>
 
-          {/* Communication */}
-          <TabsTrigger value="notifications" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Send className="h-4 w-4" /> Notifications</TabsTrigger>
-          <TabsTrigger value="support" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Headphones className="h-4 w-4" /> Support</TabsTrigger>
+        {/* Communication */}
+        <NavGroup label="Communication" icon={<Send className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'notifications'} onClick={() => setTab('notifications')} icon={<Send className="h-4 w-4" />} label="Notifications" />
+          <NavPill active={tab === 'support'} onClick={() => setTab('support')} icon={<Headphones className="h-4 w-4" />} label="Support" />
+        </NavGroup>
 
-          {/* System */}
-          <TabsTrigger value="settings" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
-        </TabsList>
-      </Tabs>
+        {/* System */}
+        <NavGroup label="System" icon={<Settings className="h-3.5 w-3.5" />}>
+          <NavPill active={tab === 'settings'} onClick={() => setTab('settings')} icon={<Settings className="h-4 w-4" />} label="Settings" />
+        </NavGroup>
+      </nav>
 
       <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}>
         <DashboardTab />
@@ -179,6 +174,52 @@ export function AdminView() {
         <SettingsTab />
       </div>
     </div>
+  )
+}
+
+// Navigation group container — vertical label + grid of pills
+function NavGroup({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1">
+          {icon}
+          {label}
+        </span>
+        <div className="flex-1 h-px bg-gradient-to-r from-border/60 via-border/30 to-transparent" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Single nav pill button — glowing active state
+function NavPill({
+  active, onClick, icon, label, badge,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  badge?: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-active={active ? 'true' : 'false'}
+      className={`nav-pill rounded-lg px-3 py-2.5 flex items-center gap-2 text-sm font-medium text-left w-full ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      <span className="flex-shrink-0">{icon}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="ml-auto text-[10px] font-bold bg-red-500 text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center notif-badge-pulse">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -404,8 +445,18 @@ function MetricCard({ icon, label, value, sub, color }: {
   sub?: string
   color?: string
 }) {
+  // Pick a glow color variant based on the icon color prop
+  const glowClass =
+    color?.includes('blue') ? 'glow-card-blue' :
+    color?.includes('green') ? 'glow-card-green' :
+    color?.includes('yellow') ? 'glow-card-amber' :
+    color?.includes('orange') ? 'glow-card-amber' :
+    color?.includes('red') ? 'glow-card-red' :
+    color?.includes('purple') ? 'glow-card-purple' :
+    'glow-card'
+
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
+    <div className={`bg-card border border-border rounded-xl p-4 ${glowClass}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
         <span className={color}>{icon}</span>
@@ -418,7 +469,7 @@ function MetricCard({ icon, label, value, sub, color }: {
 
 function SmallStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-muted/30 rounded-lg p-3 text-center">
+    <div className="bg-muted/30 rounded-xl p-3 text-center glow-card">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-bold tabular-nums">{value}</div>
     </div>

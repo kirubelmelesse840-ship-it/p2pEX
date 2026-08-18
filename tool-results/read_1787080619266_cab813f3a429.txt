@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react'
+     4→import { useAppStore } from '@/lib/store'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { useToast } from '@/hooks/use-toast'
+    10→import {
+    11→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    12→} from '@/components/ui/dialog'
+    13→import {
+    14→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    15→} from '@/components/ui/select'
+    16→import {
+    17→  Tabs, TabsList, TabsTrigger,
+    18→} from '@/components/ui/tabs'
+    19→import {
+    20→  Shield, Users, TrendingUp, DollarSign, Activity, Settings, AlertTriangle,
+    21→  CheckCircle2, XCircle, Clock, Search, Star, Ban, ShieldCheck, ShieldAlert,
+    22→  Zap, BarChart3, ArrowUpRight, ArrowDownRight, Plus, Trash2, Edit3, Power,
+    23→  Wallet, RefreshCw, FileText, Bell, Send,
+    24→  Headphones, Image as ImageIcon, Mic, Video, Play, Pause, X, Square,
+    25→  ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Lock, User, Copy,
+    26→} from 'lucide-react'
+    27→import { BackButton } from '@/components/back-button'
+    28→import {
+    29→  formatPrice, formatQty, formatUsd, formatCompact, formatDateTime, formatPercent,
+    30→} from '@/lib/utils'
+    31→import {
+    32→  ComposedChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
+    33→} from 'recharts'
+    34→
+    35→type Tab = 'dashboard' | 'users' | 'user-details' | 'pairs' | 'p2p' | 'payment-review' | 'support' | 'transactions' | 'dw-approvals' | 'orders' | 'notifications' | 'settings'
+    36→
+    37→export function AdminView() {
+    38→  const { user, setView } = useAppStore()
+    39→  const [tab, setTab] = useState<Tab>('dashboard')
+    40→  const [counts, setCounts] = useState({ kyc: 0, payments: 0, dw: 0 })
+    41→
+    42→  useEffect(() => {
+    43→    const loadCounts = async () => {
+    44→      try {
+    45→        const [notifRes, payRes, dwRes] = await Promise.all([
+    46→          fetch('/api/admin/notifications'),
+    47→          fetch('/api/admin/p2p-review?status=PENDING_REVIEW'),
+    48→          fetch('/api/admin/transactions?status=pending'),
+    49→        ])
+    50→        const notifData = await notifRes.json()
+    51→        const payData = await payRes.json()
+    52→        const dwData = await dwRes.json().catch(() => ({ transactions: [] }))
+    53→        setCounts({
+    54→          kyc: notifData.highPriorityCount || 0,
+    55→          payments: payData.orders?.length || 0,
+    56→          dw: dwData.transactions?.length || 0,
+    57→        })
+    58→      } catch {}
+    59→    }
+    60→    loadCounts()
+    61→    const t = setInterval(loadCounts, 60000)
+    62→    return () => clearInterval(t)
+    63→  }, [])
+    64→
+    65→  if (!user?.isAdmin) {
+    66→    return (
+    67→      <div className="container mx-auto px-4 py-16 text-center">
+    68→        <ShieldAlert className="h-12 w-12 mx-auto text-red-500 mb-4" />
+    69→        <h2 className="text-xl font-bold mb-2">Admin Access Required</h2>
+    70→        <p className="text-sm text-muted-foreground mb-6">
+    71→          You don't have permission to view this page. Only admin users can access the control panel.
+    72→        </p>
+    73→        <Button onClick={() => setView('home')}>Back to Home</Button>
+    74→      </div>
+    75→    )
+    76→  }
+    77→
+    78→  return (
+    79→    <div className="container mx-auto px-3 sm:px-4 py-4 max-w-7xl w-full">
+    80→      <BackButton to="home" />
+    81→
+    82→      {/* Header */}
+    83→      <div className="flex items-center justify-between mb-4 mt-1">
+    84→        <div>
+    85→          <h1 className="text-2xl font-bold flex items-center gap-2">
+    86→            <Shield className="h-6 w-6 text-primary" />
+    87→            Admin Panel
+    88→          </h1>
+    89→          <p className="text-sm text-muted-foreground">
+    90→            Logged in as <span className="font-medium text-foreground">{user.name}</span> ({user.email})
+    91→          </p>
+    92→        </div>
+    93→        <div className="flex items-center gap-2">
+    94→          <AdminNotifications />
+    95→          <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
+    96→            <Shield className="h-3 w-3 mr-1" /> ADMIN
+    97→          </Badge>
+    98→        </div>
+    99→      </div>
+   100→
+   101→      {/* Tabs — grouped by category for clarity */}
+   102→      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
+   103→        <TabsList className="overflow-x-auto h-auto flex-nowrap w-full justify-start gap-0.5 p-1">
+   104→          {/* Overview */}
+   105→          <TabsTrigger value="dashboard" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
+   106→
+   107→          {/* User Management */}
+   108→          <TabsTrigger value="users" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+   109→            <Users className="h-4 w-4" /> Users
+   110→            {counts.kyc > 0 && (
+   111→              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.kyc > 9 ? '9+' : counts.kyc}</Badge>
+   112→            )}
+   113→          </TabsTrigger>
+   114→          <TabsTrigger value="user-details" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Search className="h-4 w-4" /> User Details</TabsTrigger>
+   115→
+   116→          {/* Trading */}
+   117→          <TabsTrigger value="pairs" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><TrendingUp className="h-4 w-4" /> Pairs</TabsTrigger>
+   118→          <TabsTrigger value="orders" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Activity className="h-4 w-4" /> Orders</TabsTrigger>
+   119→          <TabsTrigger value="transactions" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><DollarSign className="h-4 w-4" /> Transactions</TabsTrigger>
+   120→
+   121→          {/* P2P */}
+   122→          <TabsTrigger value="p2p" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Shield className="h-4 w-4" /> P2P Ads</TabsTrigger>
+   123→          <TabsTrigger value="payment-review" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+   124→            <Clock className="h-4 w-4" /> P2P Approvals
+   125→            {counts.payments > 0 && (
+   126→              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.payments > 9 ? '9+' : counts.payments}</Badge>
+   127→            )}
+   128→          </TabsTrigger>
+   129→          <TabsTrigger value="dw-approvals" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md">
+   130→            <ArrowDownToLine className="h-4 w-4" /> D/W Approvals
+   131→            {counts.dw > 0 && (
+   132→              <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white">{counts.dw > 9 ? '9+' : counts.dw}</Badge>
+   133→            )}
+   134→          </TabsTrigger>
+   135→
+   136→          {/* Communication */}
+   137→          <TabsTrigger value="notifications" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Send className="h-4 w-4" /> Notifications</TabsTrigger>
+   138→          <TabsTrigger value="support" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Headphones className="h-4 w-4" /> Support</TabsTrigger>
+   139→
+   140→          {/* System */}
+   141→          <TabsTrigger value="settings" className="gap-1.5 whitespace-nowrap shrink-0 flex-none h-9 px-3 rounded-md"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
+   142→        </TabsList>
+   143→      </Tabs>
+   144→
+   145→      <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}>
+   146→        <DashboardTab />
+   147→      </div>
+   148→      <div style={{ display: tab === 'users' ? 'block' : 'none' }}>
+   149→        <UsersTab />
+   150→      </div>
+   151→      <div style={{ display: tab === 'user-details' ? 'block' : 'none' }}>
+   152→        <UserDetailsTab />
+   153→      </div>
+   154→      <div style={{ display: tab === 'pairs' ? 'block' : 'none' }}>
+   155→        <PairsTab />
+   156→      </div>
+   157→      <div style={{ display: tab === 'p2p' ? 'block' : 'none' }}>
+   158→        <P2PTab />
+   159→      </div>
+   160→      <div style={{ display: tab === 'payment-review' ? 'block' : 'none' }}>
+   161→        <PaymentReviewTab />
+   162→      </div>
+   163→      <div style={{ display: tab === 'dw-approvals' ? 'block' : 'none' }}>
+   164→        <DepositWithdrawApprovalsTab />
+   165→      </div>
+   166→      <div style={{ display: tab === 'orders' ? 'block' : 'none' }}>
+   167→        <OrdersTab />
+   168→      </div>
+   169→      <div style={{ display: tab === 'transactions' ? 'block' : 'none' }}>
+   170→        <TransactionsTab />
+   171→      </div>
+   172→      <div style={{ display: tab === 'notifications' ? 'block' : 'none' }}>
+   173→        <NotificationsTab />
+   174→      </div>
+   175→      <div style={{ display: tab === 'support' ? 'block' : 'none' }}>
+   176→        <SupportTab />
+   177→      </div>
+   178→      <div style={{ display: tab === 'settings' ? 'block' : 'none' }}>
+   179→        <SettingsTab />
+   180→      </div>
+   181→    </div>
+   182→  )
+   183→}
+   184→
+   185→// =================== DASHBOARD TAB ===================
+   186→function DashboardTab() {
+   187→  const [data, setData] = useState<any>(null)
+   188→  const [loading, setLoading] = useState(false)
+   189→  const [refreshing, setRefreshing] = useState(false)
+   190→  const [error, setError] = useState<string | null>(null)
+   191→
+   192→  const load = useCallback(async () => {
+   193→    try {
+   194→      // Show cached data immediately (instant load)
+   195→      const cached = sessionStorage.getItem('admin-stats')
+   196→      if (cached && !data) {
+   197→        try { setData(JSON.parse(cached)) } catch {}
+   198→      }
+   199→
+   200→      const res = await fetch('/api/admin/stats')
+   201→      const d = await res.json()
+   202→      if (d.error) throw new Error(d.error)
+   203→      setData(d)
+   204→      setError(null)
+   205→      sessionStorage.setItem('admin-stats', JSON.stringify(d))
+   206→    } catch (e: any) {
+   207→      console.error('[admin dashboard]', e)
+   208→      setError(e.message || 'Failed to load dashboard')
+   209→    } finally {
+   210→      setLoading(false)
+   211→    }
+   212→  }, [])
+   213→
+   214→  useEffect(() => { load() }, [load])
+   215→  useEffect(() => {
+   216→    const t = setInterval(load, 60000) // 30 seconds
+   217→    return () => clearInterval(t)
+   218→  }, [load])
+   219→
+   220→  if (!data) {
+   221→    return <div className="text-center py-12 text-muted-foreground">Loading dashboard...</div>
+   222→  }
+   223→
+   224→  if (error && !data) {
+   225→    return (
+   226→      <div className="text-center py-12">
+   227→        <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-3" />
+   228→        <p className="text-sm text-muted-foreground mb-2">Failed to load dashboard</p>
+   229→        <p className="text-xs text-muted-foreground mb-4">{error}</p>
+   230→        <Button onClick={load} size="sm">
+   231→          <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+   232→        </Button>
+   233→      </div>
+   234→    )
+   235→  }
+   236→
+   237→  if (!data) return null
+   238→
+   239→  const s = data.stats
+   240→
+   241→  return (
+   242→    <div className="space-y-4">
+   243→      {/* Top metric cards */}
+   244→      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   245→        <MetricCard
+   246→          icon={<Users className="h-5 w-5" />}
+   247→          label="Total Users"
+   248→          value={s.users.total}
+   249→          sub={`${s.users.active} active · ${s.users.banned} banned`}
+   250→          color="text-blue-500"
+   251→        />
+   252→        <MetricCard
+   253→          icon={<Activity className="h-5 w-5" />}
+   254→          label="24h Volume"
+   255→          value={formatUsd(s.trades.volume24hUsd)}
+   256→          sub={`${s.trades.last24h} trades in 24h`}
+   257→          color="text-green-500"
+   258→        />
+   259→        <MetricCard
+   260→          icon={<Wallet className="h-5 w-5" />}
+   261→          label="Total Balance"
+   262→          value={formatUsd(s.wallets.totalUsdValue)}
+   263→          sub={`${formatUsd(s.wallets.totalLockedValue)} locked in orders`}
+   264→          color="text-yellow-500"
+   265→        />
+   266→        <MetricCard
+   267→          icon={<Shield className="h-5 w-5" />}
+   268→          label="KYC Pending"
+   269→          value={s.users.kycPending}
+   270→          sub={`${s.users.admins} admins`}
+   271→          color="text-orange-500"
+   272→        />
+   273→      </div>
+   274→
+   275→      {/* Secondary stats */}
+   276→      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   277→        <SmallStat label="Active Pairs" value={`${s.pairs.active}/${s.pairs.total}`} />
+   278→        <SmallStat label="Open Orders" value={s.orders.open} />
+   279→        <SmallStat label="P2P Active" value={`${s.p2p.active}/${s.p2p.listings}`} />
+   280→        <SmallStat label="Pending Tx" value={s.transactions.pending} />
+   281→      </div>
+   282→
+   283→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   284→        {/* User growth chart */}
+   285→        <div className="bg-card border border-border rounded-lg p-4">
+   286→          <h3 className="font-semibold mb-3 flex items-center gap-2">
+   287→            <Users className="h-4 w-4" /> New Users (7 days)
+   288→          </h3>
+   289→          <div style={{ height: 200 }}>
+   290→            <ResponsiveContainer width="100%" height="100%">
+   291→              <ComposedChart data={data.userGrowth}>
+   292→                <defs>
+   293→                  <linearGradient id="userGrowth" x1="0" y1="0" x2="0" y2="1">
+   294→                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+   295→                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+   296→                  </linearGradient>
+   297→                </defs>
+   298→                <XAxis
+   299→                  dataKey="day"
+   300→                  tickFormatter={(v) => v.slice(5)}
+   301→                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+   302→                  axisLine={false}
+   303→                  tickLine={false}
+   304→                />
+   305→                <YAxis
+   306→                  allowDecimals={false}
+   307→                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+   308→                  axisLine={false}
+   309→                  tickLine={false}
+   310→                  width={30}
+   311→                />
+   312→                <Tooltip
+   313→                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
+   314→                />
+   315→                <Area
+   316→                  type="monotone"
+   317→                  dataKey="count"
+   318→                  stroke="#3b82f6"
+   319→                  strokeWidth={2}
+   320→                  fill="url(#userGrowth)"
+   321→                  name="New users"
+   322→                />
+   323→              </ComposedChart>
+   324→            </ResponsiveContainer>
+   325→          </div>
+   326→        </div>
+   327→
+   328→        {/* Recent activity */}
+   329→        <div className="bg-card border border-border rounded-lg p-4">
+   330→          <h3 className="font-semibold mb-3 flex items-center gap-2">
+   331→            <Activity className="h-4 w-4" /> Recent Trades
+   332→          </h3>
+   333→          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+   334→            {data.recentTrades.length === 0 ? (
+   335→              <p className="text-xs text-muted-foreground text-center py-8">No recent trades</p>
+   336→            ) : (
+   337→              data.recentTrades.map((t: any) => (
+   338→                <div key={t.id} className="flex items-center justify-between text-xs py-1.5 border-b border-border/40 last:border-0">
+   339→                  <div>
+   340→                    <div className="font-medium">{t.symbol}</div>
+   341→                    <div className="text-muted-foreground">
+   342→                      {t.buyer} ← {t.seller}
+   343→                    </div>
+   344→                  </div>
+   345→                  <div className="text-right">
+   346→                    <div className="tabular-nums font-medium">{formatPrice(t.price)}</div>
+   347→                    <div className="text-muted-foreground">{formatQty(t.quantity)} {t.symbol.replace(/USDT|USDC|BTC|ETH|BNB$/, '')}</div>
+   348→                  </div>
+   349→                </div>
+   350→              ))
+   351→            )}
+   352→          </div>
+   353→        </div>
+   354→      </div>
+   355→
+   356→      {/* Recent registrations */}
+   357→      <div className="bg-card border border-border rounded-lg overflow-hidden">
+   358→        <div className="px-4 py-3 border-b border-border">
+   359→          <h3 className="font-semibold flex items-center gap-2">
+   360→            <Users className="h-4 w-4" /> Recent Registrations
+   361→          </h3>
+   362→        </div>
+   363→        <div className="overflow-x-auto">
+   364→          <table className="w-full text-sm">
+   365→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+   366→              <tr>
+   367→                <th className="px-4 py-2 text-left font-medium">User</th>
+   368→                <th className="px-4 py-2 text-left font-medium hidden sm:table-cell">Email</th>
+   369→                <th className="px-4 py-2 text-left font-medium">KYC</th>
+   370→                <th className="px-4 py-2 text-right font-medium">Joined</th>
+   371→              </tr>
+   372→            </thead>
+   373→            <tbody>
+   374→              {data.recentUsers.length === 0 ? (
+   375→                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">No users yet</td></tr>
+   376→              ) : (
+   377→                data.recentUsers.map((u: any) => (
+   378→                  <tr key={u.id} className="border-t border-border/40 hover:bg-muted/30">
+   379→                    <td className="px-4 py-3 font-medium">{u.name}</td>
+   380→                    <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{u.email}</td>
+   381→                    <td className="px-4 py-3">
+   382→                      {u.kycVerified ? (
+   383→                        <Badge variant="default" className="bg-green-500/15 text-green-600 dark:text-green-400">L{u.kycLevel}</Badge>
+   384→                      ) : (
+   385→                        <Badge variant="secondary">Unverified</Badge>
+   386→                      )}
+   387→                    </td>
+   388→                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDateTime(u.createdAt)}</td>
+   389→                  </tr>
+   390→                ))
+   391→              )}
+   392→            </tbody>
+   393→          </table>
+   394→        </div>
+   395→      </div>
+   396→    </div>
+   397→  )
+   398→}
+   399→
+   400→function MetricCard({ icon, label, value, sub, color }: {
+   401→  icon: React.ReactNode
+   402→  label: string
+   403→  value: string | number
+   404→  sub?: string
+   405→  color?: string
+   406→}) {
+   407→  return (
+   408→    <div className="bg-card border border-border rounded-lg p-4">
+   409→      <div className="flex items-center justify-between mb-2">
+   410→        <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+   411→        <span className={color}>{icon}</span>
+   412→      </div>
+   413→      <div className="text-2xl font-bold tabular-nums">{value}</div>
+   414→      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+   415→    </div>
+   416→  )
+   417→}
+   418→
+   419→function SmallStat({ label, value }: { label: string; value: string | number }) {
+   420→  return (
+   421→    <div className="bg-muted/30 rounded-lg p-3 text-center">
+   422→      <div className="text-xs text-muted-foreground">{label}</div>
+   423→      <div className="text-lg font-bold tabular-nums">{value}</div>
+   424→    </div>
+   425→  )
+   426→}
+   427→
+   428→// =================== USERS TAB ===================
+   429→function UsersTab() {
+   430→  const { toast } = useToast()
+   431→  const [users, setUsers] = useState<any[]>([])
+   432→  const [total, setTotal] = useState(0)
+   433→  const [loading, setLoading] = useState(false)
+   434→  const [refreshing, setRefreshing] = useState(false)
+   435→  const [search, setSearch] = useState('')
+   436→  const [statusFilter, setStatusFilter] = useState('all')
+   437→  const [kycFilter, setKycFilter] = useState('all')
+   438→  const [walletDialog, setWalletDialog] = useState<any>(null)
+   439→  const [banDialog, setBanDialog] = useState<any>(null)
+   440→  const [docDialog, setDocDialog] = useState<any>(null)
+   441→
+   442→  const load = useCallback(async () => {
+   443→    setLoading(true)
+   444→    try {
+   445→      const params = new URLSearchParams()
+   446→      if (search) params.set('search', search)
+   447→      if (statusFilter !== 'all') params.set('status', statusFilter)
+   448→      if (kycFilter !== 'all') params.set('kyc', kycFilter)
+   449→      const res = await fetch(`/api/admin/users?${params}`)
+   450→      const d = await res.json()
+   451→      if (d.error) throw new Error(d.error)
+   452→      setUsers(d.users || [])
+   453→      setTotal(d.total || 0)
+   454→    } catch (e: any) {
+   455→      toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+   456→    } finally {
+   457→      setLoading(false)
+   458→    }
+   459→  }, [search, statusFilter, kycFilter, toast])
+   460→
+   461→  useEffect(() => { load() }, [load])
+   462→
+   463→  const [acting, setActing] = useState(false)
+   464→  const act = async (userId: string, action: string, payload?: any) => {
+   465→    if (acting) return // Prevent duplicate actions
+   466→    setActing(true)
+   467→    try {
+   468→      const res = await fetch('/api/admin/users/action', {
+   469→        method: 'POST',
+   470→        headers: { 'Content-Type': 'application/json' },
+   471→        body: JSON.stringify({ userId, action, ...payload }),
+   472→      })
+   473→      const d = await res.json()
+   474→      if (d.error) throw new Error(d.error)
+   475→      toast({ title: 'Action completed', description: d.message })
+   476→      load()
+   477→    } catch (e: any) {
+   478→      toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+   479→    } finally {
+   480→      setActing(false)
+   481→    }
+   482→  }
+   483→
+   484→  return (
+   485→    <div className="space-y-3">
+   486→      {/* Filters */}
+   487→      <div className="flex flex-wrap items-center gap-2 p-3 bg-card rounded-lg border border-border">
+   488→        <div className="relative flex-1 min-w-[200px]">
+   489→          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+   490→          <Input
+   491→            placeholder="Search by name or email..."
+   492→            value={search}
+   493→            onChange={e => setSearch(e.target.value)}
+   494→            className="pl-8 h-9"
+   495→          />
+   496→        </div>
+   497→        <Select value={statusFilter} onValueChange={setStatusFilter}>
+   498→          <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
+   499→          <SelectContent>
+   500→            <SelectItem value="all">All Status</SelectItem>
+   501→            <SelectItem value="active">Active</SelectItem>
+   502→            <SelectItem value="banned">Banned</SelectItem>
+   503→          </SelectContent>
+   504→        </Select>
+   505→        <Select value={kycFilter} onValueChange={setKycFilter}>
+   506→          <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
+   507→          <SelectContent>
+   508→            <SelectItem value="all">All KYC</SelectItem>
+   509→            <SelectItem value="pending">⏳ Pending Review</SelectItem>
+   510→            <SelectItem value="verified">Verified</SelectItem>
+   511→            <SelectItem value="unverified">Unverified</SelectItem>
+   512→            <SelectItem value="level1">Level 1</SelectItem>
+   513→            <SelectItem value="level2">Level 2</SelectItem>
+   514→          </SelectContent>
+   515→        </Select>
+   516→        <Button variant="outline" size="sm" onClick={load}>
+   517→          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
+   518→        </Button>
+   519→      </div>
+   520→
+   521→      <div className="text-xs text-muted-foreground">Showing {users.length} of {total} users</div>
+   522→
+   523→      {/* Users table */}
+   524→      <div className="bg-card border border-border rounded-lg overflow-hidden">
+   525→        <div className="overflow-x-auto">
+   526→          <table className="w-full text-sm">
+   527→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+   528→              <tr>
+   529→                <th className="px-3 py-2 text-left font-medium">User</th>
+   530→                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Email</th>
+   531→                <th className="px-3 py-2 text-left font-medium">KYC</th>
+   532→                <th className="px-3 py-2 text-left font-medium">Status</th>
+   533→                <th className="px-3 py-2 text-right font-medium hidden sm:table-cell">Balance</th>
+   534→                <th className="px-3 py-2 text-right font-medium">Actions</th>
+   535→              </tr>
+   536→            </thead>
+   537→            <tbody>
+   538→              {loading ? (
+   539→                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
+   540→              ) : users.filter(u => !u.isAdmin).length === 0 ? (
+   541→                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No users found</td></tr>
+   542→              ) : (
+   543→                users.filter(u => !u.isAdmin).map(u => (
+   544→                  <tr key={u.id} className="border-t border-border/40 hover:bg-muted/30">
+   545→                    <td className="px-3 py-3">
+   546→                      <div className="font-medium flex items-center gap-1">
+   547→                        {u.name}
+   548→                      </div>
+   549→                      <div className="text-xs text-muted-foreground">{u._count.orders} orders · {u._count.transactions} txs</div>
+   550→                    </td>
+   551→                    <td className="px-3 py-3 text-xs hidden md:table-cell">{u.email}</td>
+   552→                    <td className="px-3 py-3">
+   553→                      {u.kycVerified ? (
+   554→                        <Badge variant="default" className="bg-green-500/15 text-green-600 dark:text-green-400">Verified L{u.kycLevel}</Badge>
+   555→                      ) : u.kycStatus === 'PENDING' ? (
+   556→                        <Badge variant="default" className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">Pending Review</Badge>
+   557→                      ) : u.kycStatus === 'REJECTED' ? (
+   558→                        <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">Rejected</Badge>
+   559→                      ) : (
+   560→                        <Badge variant="secondary">Not Submitted</Badge>
+   561→                      )}
+   562→                    </td>
+   563→                    <td className="px-3 py-3">
+   564→                      {u.isBanned ? (
+   565→                        <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">Banned</Badge>
+   566→                      ) : u.isActive ? (
+   567→                        <Badge variant="default" className="bg-green-500/15 text-green-600 dark:text-green-400">Active</Badge>
+   568→                      ) : (
+   569→                        <Badge variant="secondary">Inactive</Badge>
+   570→                      )}
+   571→                    </td>
+   572→                    <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">
+   573→                      {formatQty(u.totalBalance)}
+   574→                    </td>
+   575→                    <td className="px-3 py-3 text-right">
+   576→                      <div className="flex gap-1 justify-end flex-wrap">
+   577→                        {/* KYC actions — Approve / Reject / Unapprove based on status */}
+   578→                        {u.kycStatus === 'PENDING' && (
+   579→                          <>
+   580→                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve KYC"
+   581→                              onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
+   582→                              <ShieldCheck className="h-3 w-3" /> Approve
+   583→                            </Button>
+   584→                            <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Reject KYC"
+   585→                              onClick={() => {
+   586→                                const reason = prompt('Reason for rejection:')
+   587→                                if (reason !== null && reason.trim()) act(u.id, 'rejectKyc', { reason })
+   588→                              }}>
+   589→                              <XCircle className="h-3 w-3" /> Reject
+   590→                            </Button>
+   591→                          </>
+   592→                        )}
+   593→                        {u.kycStatus === 'APPROVED' && (
+   594→                          <>
+   595→                            <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Upgrade to Level 2"
+   596→                              onClick={() => act(u.id, 'verifyKyc', { level: 2 })}>
+   597→                              <Star className="h-3 w-3" /> Upgrade L2
+   598→                            </Button>
+   599→                            <Button variant="ghost" size="sm" className="h-7 text-xs text-orange-500" title="Revoke verification (unapprove)"
+   600→                              onClick={() => {
+   601→                                if (confirm(`Revoke verification for ${u.name}? They will become unverified and return to pending status.`)) {
+   602→                                  act(u.id, 'unapproveKyc')
+   603→                                }
+   604→                              }}>
+   605→                              <ShieldAlert className="h-3 w-3" /> Unapprove
+   606→                            </Button>
+   607→                          </>
+   608→                        )}
+   609→                        {u.kycStatus === 'REJECTED' && (
+   610→                          <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Approve after re-review"
+   611→                            onClick={() => act(u.id, 'verifyKyc', { level: 1 })}>
+   612→                            <ShieldCheck className="h-3 w-3" /> Approve
+   613→                          </Button>
+   614→                        )}
+   615→                        {(u.kycStatus === 'PENDING' || u.kycStatus === 'APPROVED' || u.kycStatus === 'REJECTED') && u.kycDocumentFront && (
+   616→                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="View KYC documents"
+   617→                            onClick={() => setDocDialog(u)}>
+   618→                            <FileText className="h-3 w-3" /> Docs
+   619→                          </Button>
+   620→                        )}
+   621→                        <Button variant="ghost" size="sm" className="h-7 text-xs" title="Adjust wallet"
+   622→                          onClick={() => setWalletDialog(u)}>
+   623→                          <Wallet className="h-3 w-3" />
+   624→                        </Button>
+   625→                        {!u.isBanned ? (
+   626→                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Ban user"
+   627→                            onClick={() => setBanDialog(u)}>
+   628→                            <Ban className="h-3 w-3" />
+   629→                          </Button>
+   630→                        ) : (
+   631→                          <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Unban user"
+   632→                            onClick={() => act(u.id, 'unban')}>
+   633→                            <CheckCircle2 className="h-3 w-3" />
+   634→                          </Button>
+   635→                        )}
+   636→                      </div>
+   637→                    </td>
+   638→                  </tr>
+   639→                ))
+   640→              )}
+   641→            </tbody>
+   642→          </table>
+   643→        </div>
+   644→      </div>
+   645→
+   646→      {walletDialog && (
+   647→        <WalletAdjustDialog user={walletDialog} onClose={() => setWalletDialog(null)} onSuccess={load} />
+   648→      )}
+   649→      {banDialog && (
+   650→        <BanDialog user={banDialog} onClose={() => setBanDialog(null)} onConfirm={(reason) => {
+   651→          act(banDialog.id, 'ban', { reason })
+   652→          setBanDialog(null)
+   653→        }} />
+   654→      )}
+   655→
+   656→      {docDialog && (
+   657→        <DocumentViewerDialog user={docDialog} onClose={() => setDocDialog(null)} />
+   658→      )}
+   659→    </div>
+   660→  )
+   661→}
+   662→
+   663→/**
+   664→ * DocumentViewerDialog - shows the KYC document images and info for admin review,
+   665→ * with Approve and Reject buttons directly in the dialog.
+   666→ */
+   667→function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose: () => void; onAction?: (userId: string, action: string, payload?: any) => void }) {
+   668→  const { toast } = useToast()
+   669→  const [rejectMode, setRejectMode] = useState(false)
+   670→  const [rejectReason, setRejectReason] = useState('')
+   671→  const [processing, setProcessing] = useState(false)
+   672→
+   673→  const handleApprove = async () => {
+   674→    if (processing) return // Prevent duplicate approvals
+   675→    setProcessing(true)
+   676→    try {
+   677→      const res = await fetch('/api/admin/users/action', {
+   678→        method: 'POST',
+   679→        headers: { 'Content-Type': 'application/json' },
+   680→        body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 1 }),
+   681→      })
+   682→      const d = await res.json()
+   683→      if (d.error) throw new Error(d.error)
+   684→      toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1). ${d.message?.includes('bonus') ? '10 USDT welcome bonus credited!' : ''}` })
+   685→      onClose()
+   686→    } catch (e: any) {
+   687→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+   688→    } finally {
+   689→      setProcessing(false)
+   690→    }
+   691→  }
+   692→
+   693→  const handleReject = async () => {
+   694→    if (processing) return // Prevent duplicate rejections
+   695→    if (!rejectReason.trim()) {
+   696→      toast({ title: 'Reason required', description: 'Please provide a reason for rejection', variant: 'destructive' })
+   697→      return
+   698→    }
+   699→    setProcessing(true)
+   700→    try {
+   701→      const res = await fetch('/api/admin/users/action', {
+   702→        method: 'POST',
+   703→        headers: { 'Content-Type': 'application/json' },
+   704→        body: JSON.stringify({ userId: user.id, action: 'rejectKyc', reason: rejectReason.trim() }),
+   705→      })
+   706→      const d = await res.json()
+   707→      if (d.error) throw new Error(d.error)
+   708→      toast({ title: 'KYC Rejected', description: `${user.name} has been notified` })
+   709→      onClose()
+   710→    } catch (e: any) {
+   711→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+   712→    } finally {
+   713→      setProcessing(false)
+   714→    }
+   715→  }
+   716→
+   717→  const handleUnapprove = async () => {
+   718→    if (!confirm(`Revoke verification for ${user.name}? They will become unverified.`)) return
+   719→    setProcessing(true)
+   720→    try {
+   721→      const res = await fetch('/api/admin/users/action', {
+   722→        method: 'POST',
+   723→        headers: { 'Content-Type': 'application/json' },
+   724→        body: JSON.stringify({ userId: user.id, action: 'unapproveKyc' }),
+   725→      })
+   726→      const d = await res.json()
+   727→      if (d.error) throw new Error(d.error)
+   728→      toast({ title: 'Verification Revoked', description: `${user.name} is now unverified` })
+   729→      onClose()
+   730→    } catch (e: any) {
+   731→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+   732→    } finally {
+   733→      setProcessing(false)
+   734→    }
+   735→  }
+   736→
+   737→  const isPending = user.kycStatus === 'PENDING'
+   738→  const isApproved = user.kycStatus === 'APPROVED'
+   739→  const isRejected = user.kycStatus === 'REJECTED'
+   740→
+   741→  return (
+   742→    <Dialog open onOpenChange={onClose}>
+   743→      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   744→        <DialogHeader>
+   745→          <DialogTitle className="flex items-center gap-2">
+   746→            <FileText className="h-5 w-5" />
+   747→            KYC Review — {user.name}
+   748→          </DialogTitle>
+   749→          <DialogDescription>
+   750→            {user.email} · Submitted {user.kycSubmittedAt ? formatDateTime(user.kycSubmittedAt) : 'N/A'}
+   751→          </DialogDescription>
+   752→        </DialogHeader>
+   753→
+   754→        <div className="space-y-4">
+   755→          {/* Status badge */}
+   756→          <div className="flex items-center gap-2">
+   757→            <span className="text-xs text-muted-foreground">Status:</span>
+   758→            {isApproved && <Badge className="bg-green-500/15 text-green-600 dark:text-green-400"><CheckCircle2 className="h-3 w-3 mr-1" />Approved (L{user.kycLevel})</Badge>}
+   759→            {isPending && <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"><Clock className="h-3 w-3 mr-1" />Pending Review</Badge>}
+   760→            {isRejected && <Badge className="bg-red-500/15 text-red-600 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>}
+   761→            {user.kycStatus === 'NONE' && <Badge variant="secondary">Not Submitted</Badge>}
+   762→          </div>
+   763→
+   764→          {/* KYC info */}
+   765→          <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+   766→            <div><span className="text-muted-foreground">Full Name:</span> <span className="font-medium">{user.kycFullName || 'N/A'}</span></div>
+   767→            <div><span className="text-muted-foreground">ID Type:</span> <span className="font-medium">{user.kycIdType || 'N/A'}</span></div>
+   768→          </div>
+   769→
+   770→          {/* Document images — front and back side by side */}
+   771→          <div>
+   772→            <p className="text-xs font-medium text-muted-foreground mb-2">Uploaded Documents</p>
+   773→            <div className="grid grid-cols-2 gap-3">
+   774→              <div>
+   775→                <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+   776→                  <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">1</span>
+   777→                  Front
+   778→                </p>
+   779→                {user.kycDocumentFront ? (
+   780→                  <img
+   781→                    src={user.kycDocumentFront}
+   782→                    alt="Document front"
+   783→                    className="w-full rounded-lg border-2 border-border"
+   784→                  />
+   785→                ) : (
+   786→                  <div className="text-xs text-muted-foreground text-center py-12 border-2 border-dashed border-border rounded-lg">
+   787→                    No front photo
+   788→                  </div>
+   789→                )}
+   790→              </div>
+   791→              <div>
+   792→                <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+   793→                  <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">2</span>
+   794→                  Back
+   795→                </p>
+   796→                {user.kycDocumentBack ? (
+   797→                  <img
+   798→                    src={user.kycDocumentBack}
+   799→                    alt="Document back"
+   800→                    className="w-full rounded-lg border-2 border-border"
+   801→                  />
+   802→                ) : (
+   803→                  <div className="text-xs text-muted-foreground text-center py-12 border-2 border-dashed border-border rounded-lg">
+   804→                    No back photo
+   805→                  </div>
+   806→                )}
+   807→              </div>
+   808→            </div>
+   809→          </div>
+   810→
+   811→          {/* Rejection reason (if rejected previously) */}
+   812→          {isRejected && user.kycRejectionReason && (
+   813→            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+   814→              <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Rejection Reason:</p>
+   815→              <p className="text-sm text-muted-foreground">{user.kycRejectionReason}</p>
+   816→            </div>
+   817→          )}
+   818→
+   819→          {/* Approve / Reject actions */}
+   820→          {!isApproved && (
+   821→            <div className="border-t border-border pt-4 space-y-3">
+   822→              {!rejectMode ? (
+   823→                <div className="flex gap-2">
+   824→                  <Button
+   825→                    variant="outline"
+   826→                    className="flex-1"
+   827→                    onClick={onClose}
+   828→                    disabled={processing}
+   829→                  >
+   830→                    Close
+   831→                  </Button>
+   832→                  {isPending || isRejected ? (
+   833→                    <>
+   834→                      <Button
+   835→                        variant="outline"
+   836→                        className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+   837→                        onClick={() => setRejectMode(true)}
+   838→                        disabled={processing}
+   839→                      >
+   840→                        <XCircle className="h-4 w-4 mr-1" /> Reject
+   841→                      </Button>
+   842→                      <Button
+   843→                        className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+   844→                        onClick={handleApprove}
+   845→                        disabled={processing}
+   846→                      >
+   847→                        {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+   848→                        Approve
+   849→                      </Button>
+   850→                    </>
+   851→                  ) : null}
+   852→                </div>
+   853→              ) : (
+   854→                <div className="space-y-3">
+   855→                  <div>
+   856→                    <label className="text-xs font-medium text-muted-foreground">Reason for rejection</label>
+   857→                    <Textarea
+   858→                      value={rejectReason}
+   859→                      onChange={e => setRejectReason(e.target.value)}
+   860→                      placeholder="e.g. Document photo is blurry, please retake with better lighting"
+   861→                      rows={3}
+   862→                      className="mt-1 text-sm"
+   863→                      autoFocus
+   864→                    />
+   865→                  </div>
+   866→                  <div className="flex gap-2">
+   867→                    <Button
+   868→                      variant="outline"
+   869→                      className="flex-1"
+   870→                      onClick={() => { setRejectMode(false); setRejectReason('') }}
+   871→                      disabled={processing}
+   872→                    >
+   873→                      Cancel
+   874→                    </Button>
+   875→                    <Button
+   876→                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+   877→                      onClick={handleReject}
+   878→                      disabled={processing || !rejectReason.trim()}
+   879→                    >
+   880→                      {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+   881→                      Confirm Rejection
+   882→                    </Button>
+   883→                  </div>
+   884→                </div>
+   885→              )}
+   886→            </div>
+   887→          )}
+   888→
+   889→          {/* Actions for APPROVED users — can unapprove (revoke) */}
+   890→          {isApproved && (
+   891→            <div className="border-t border-border pt-4">
+   892→              <div className="flex gap-2">
+   893→                <Button
+   894→                  variant="outline"
+   895→                  className="flex-1"
+   896→                  onClick={onClose}
+   897→                  disabled={processing}
+   898→                >
+   899→                  Close
+   900→                </Button>
+   901→                {user.kycLevel < 2 && (
+   902→                  <Button
+   903→                    variant="outline"
+   904→                    className="flex-1 border-green-500 text-green-500 hover:bg-green-500/10"
+   905→                    onClick={() => {
+   906→                      setProcessing(true)
+   907→                      fetch('/api/admin/users/action', {
+   908→                        method: 'POST',
+   909→                        headers: { 'Content-Type': 'application/json' },
+   910→                        body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 2 }),
+   911→                      }).then(r => r.json()).then(d => {
+   912→                        if (d.error) throw new Error(d.error)
+   913→                        toast({ title: 'Upgraded', description: `${user.name} is now Level 2 verified` })
+   914→                        onClose()
+   915→                      }).catch(e => {
+   916→                        toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+   917→                      }).finally(() => setProcessing(false))
+   918→                    }}
+   919→                    disabled={processing}
+   920→                  >
+   921→                    <Star className="h-4 w-4 mr-1" /> Upgrade to L2
+   922→                  </Button>
+   923→                )}
+   924→                <Button
+   925→                  variant="outline"
+   926→                  className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+   927→                  onClick={handleUnapprove}
+   928→                  disabled={processing}
+   929→                >
+   930→                  {processing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <ShieldAlert className="h-4 w-4 mr-1" />}
+   931→                  Unapprove
+   932→                </Button>
+   933→              </div>
+   934→            </div>
+   935→          )}
+   936→        </div>
+   937→      </DialogContent>
+   938→    </Dialog>
+   939→  )
+   940→}
+   941→
+   942→function WalletAdjustDialog({ user, onClose, onSuccess }: any) {
+   943→  const { toast } = useToast()
+   944→  const [asset, setAsset] = useState('USDT')
+   945→  const [action, setAction] = useState<'credit' | 'debit'>('credit')
+   946→  const [amount, setAmount] = useState('')
+   947→  const [loading, setLoading] = useState(false)
+   948→
+   949→  const submit = async () => {
+   950→    setLoading(true)
+   951→    try {
+   952→      const res = await fetch('/api/admin/users/wallet', {
+   953→        method: 'POST',
+   954→        headers: { 'Content-Type': 'application/json' },
+   955→        body: JSON.stringify({ userId: user.id, asset, action, amount: parseFloat(amount) }),
+   956→      })
+   957→      const d = await res.json()
+   958→      if (d.error) throw new Error(d.error)
+   959→      toast({ title: 'Wallet adjusted', description: d.message })
+   960→      onSuccess()
+   961→      onClose()
+   962→    } catch (e: any) {
+   963→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+   964→    } finally {
+   965→      setLoading(false)
+   966→    }
+   967→  }
+   968→
+   969→  return (
+   970→    <Dialog open onOpenChange={onClose}>
+   971→      <DialogContent className="max-w-md">
+   972→        <DialogHeader>
+   973→          <DialogTitle>Adjust Wallet — {user.name}</DialogTitle>
+   974→          <DialogDescription>{user.email}</DialogDescription>
+   975→        </DialogHeader>
+   976→        <div className="space-y-3">
+   977→          <div className="flex gap-2">
+   978→            <Button
+   979→              variant={action === 'credit' ? 'default' : 'outline'}
+   980→              className={action === 'credit' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+   981→              onClick={() => setAction('credit')}
+   982→            >
+   983→              <ArrowDownRight className="h-4 w-4 mr-1.5" /> Credit
+   984→            </Button>
+   985→            <Button
+   986→              variant={action === 'debit' ? 'default' : 'outline'}
+   987→              className={action === 'debit' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
+   988→              onClick={() => setAction('debit')}
+   989→            >
+   990→              <ArrowUpRight className="h-4 w-4 mr-1.5" /> Debit
+   991→            </Button>
+   992→          </div>
+   993→          <div>
+   994→            <label className="text-xs font-medium text-muted-foreground">Asset</label>
+   995→            <Select value={asset} onValueChange={setAsset}>
+   996→              <SelectTrigger><SelectValue /></SelectTrigger>
+   997→              <SelectContent>
+   998→                {['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'LINK', 'DOT', 'MATIC', 'LTC'].map(a => (
+   999→                  <SelectItem key={a} value={a}>{a}</SelectItem>
+  1000→                ))}
+  1001→              </SelectContent>
+  1002→            </Select>
+  1003→          </div>
+  1004→          <div>
+  1005→            <label className="text-xs font-medium text-muted-foreground">Amount</label>
+  1006→            <Input
+  1007→              type="number"
+  1008→              value={amount}
+  1009→              onChange={e => setAmount(e.target.value)}
+  1010→              placeholder="0.00"
+  1011→              className="tabular-nums"
+  1012→            />
+  1013→          </div>
+  1014→          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs text-yellow-700 dark:text-yellow-400">
+  1015→            <AlertTriangle className="h-3 w-3 inline mr-1" />
+  1016→            This action will be logged as an admin transaction visible to the user.
+  1017→          </div>
+  1018→          <DialogFooter>
+  1019→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+  1020→            <Button
+  1021→              className={action === 'credit' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
+  1022→              onClick={submit}
+  1023→              disabled={loading || !amount}
+  1024→            >
+  1025→              {loading ? 'Processing...' : `${action === 'credit' ? 'Credit' : 'Debit'} ${asset}`}
+  1026→            </Button>
+  1027→          </DialogFooter>
+  1028→        </div>
+  1029→      </DialogContent>
+  1030→    </Dialog>
+  1031→  )
+  1032→}
+  1033→
+  1034→function BanDialog({ user, onClose, onConfirm }: any) {
+  1035→  const [reason, setReason] = useState('Violation of terms')
+  1036→  return (
+  1037→    <Dialog open onOpenChange={onClose}>
+  1038→      <DialogContent className="max-w-md">
+  1039→        <DialogHeader>
+  1040→          <DialogTitle className="flex items-center gap-2">
+  1041→            <Ban className="h-5 w-5 text-red-500" /> Ban User
+  1042→          </DialogTitle>
+  1043→          <DialogDescription>
+  1044→            Banning <strong>{user.name}</strong> ({user.email}) will prevent them from logging in and trading.
+  1045→          </DialogDescription>
+  1046→        </DialogHeader>
+  1047→        <div className="space-y-3">
+  1048→          <div>
+  1049→            <label className="text-xs font-medium text-muted-foreground">Reason</label>
+  1050→            <Textarea
+  1051→              value={reason}
+  1052→              onChange={e => setReason(e.target.value)}
+  1053→              rows={3}
+  1054→              placeholder="Why is this user being banned?"
+  1055→            />
+  1056→          </div>
+  1057→          <DialogFooter>
+  1058→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+  1059→            <Button
+  1060→              className="bg-red-500 hover:bg-red-600 text-white"
+  1061→              onClick={() => onConfirm(reason)}
+  1062→            >
+  1063→              <Ban className="h-4 w-4 mr-1.5" /> Confirm Ban
+  1064→            </Button>
+  1065→          </DialogFooter>
+  1066→        </div>
+  1067→      </DialogContent>
+  1068→    </Dialog>
+  1069→  )
+  1070→}
+  1071→
+  1072→// =================== PAIRS TAB ===================
+  1073→function PairsTab() {
+  1074→  const { toast } = useToast()
+  1075→  const [pairs, setPairs] = useState<any[]>([])
+  1076→  const [loading, setLoading] = useState(false)
+  1077→  const [refreshing, setRefreshing] = useState(false)
+  1078→  const [addDialog, setAddDialog] = useState(false)
+  1079→
+  1080→  const load = useCallback(async () => {
+  1081→    setLoading(true)
+  1082→    try {
+  1083→      const res = await fetch('/api/admin/pairs')
+  1084→      const d = await res.json()
+  1085→      if (d.error) throw new Error(d.error)
+  1086→      setPairs(d.pairs || [])
+  1087→    } catch (e: any) {
+  1088→      toast({ title: 'Failed to load pairs', description: e.message, variant: 'destructive' })
+  1089→    } finally {
+  1090→      setLoading(false)
+  1091→    }
+  1092→  }, [toast])
+  1093→
+  1094→  useEffect(() => { load() }, [load])
+  1095→
+  1096→  const toggleActive = async (pair: any) => {
+  1097→    try {
+  1098→      const res = await fetch('/api/admin/pairs/action', {
+  1099→        method: 'POST',
+  1100→        headers: { 'Content-Type': 'application/json' },
+  1101→        body: JSON.stringify({ pairId: pair.id, action: 'update', isActive: !pair.isActive }),
+  1102→      })
+  1103→      const d = await res.json()
+  1104→      if (d.error) throw new Error(d.error)
+  1105→      toast({ title: 'Pair updated', description: d.message })
+  1106→      load()
+  1107→    } catch (e: any) {
+  1108→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+  1109→    }
+  1110→  }
+  1111→
+  1112→  const remove = async (pair: any) => {
+  1113→    if (!confirm(`Delete pair ${pair.symbol}? This cannot be undone.`)) return
+  1114→    try {
+  1115→      const res = await fetch('/api/admin/pairs/action', {
+  1116→        method: 'POST',
+  1117→        headers: { 'Content-Type': 'application/json' },
+  1118→        body: JSON.stringify({ pairId: pair.id, action: 'delete' }),
+  1119→      })
+  1120→      const d = await res.json()
+  1121→      if (d.error) throw new Error(d.error)
+  1122→      toast({ title: 'Pair deleted', description: d.message })
+  1123→      load()
+  1124→    } catch (e: any) {
+  1125→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+  1126→    }
+  1127→  }
+  1128→
+  1129→  return (
+  1130→    <div className="space-y-3">
+  1131→      <div className="flex items-center justify-between">
+  1132→        <p className="text-sm text-muted-foreground">{pairs.length} trading pairs</p>
+  1133→        <Button size="sm" onClick={() => setAddDialog(true)}>
+  1134→          <Plus className="h-4 w-4 mr-1.5" /> Add Pair
+  1135→        </Button>
+  1136→      </div>
+  1137→
+  1138→      <div className="bg-card border border-border rounded-lg overflow-hidden">
+  1139→        <div className="overflow-x-auto">
+  1140→          <table className="w-full text-sm">
+  1141→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+  1142→              <tr>
+  1143→                <th className="px-3 py-2 text-left font-medium">Symbol</th>
+  1144→                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Base/Quote</th>
+  1145→                <th className="px-3 py-2 text-right font-medium">Last Price</th>
+  1146→                <th className="px-3 py-2 text-right font-medium hidden md:table-cell">24h Change</th>
+  1147→                <th className="px-3 py-2 text-right font-medium hidden lg:table-cell">Volume</th>
+  1148→                <th className="px-3 py-2 text-center font-medium">Status</th>
+  1149→                <th className="px-3 py-2 text-right font-medium">Actions</th>
+  1150→              </tr>
+  1151→            </thead>
+  1152→            <tbody>
+  1153→              {loading ? (
+  1154→                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
+  1155→              ) : pairs.map(p => (
+  1156→                <tr key={p.id} className="border-t border-border/40 hover:bg-muted/30">
+  1157→                  <td className="px-3 py-3 font-medium">{p.symbol}</td>
+  1158→                  <td className="px-3 py-3 text-xs text-muted-foreground hidden sm:table-cell">
+  1159→                    {p.baseAssetName} / {p.quoteAssetName}
+  1160→                  </td>
+  1161→                  <td className="px-3 py-3 text-right tabular-nums">{formatPrice(p.lastPrice)}</td>
+  1162→                  <td className="px-3 py-3 text-right tabular-nums hidden md:table-cell">
+  1163→                    <span className={p.priceChangePercent >= 0 ? 'text-green-500' : 'text-red-500'}>
+  1164→                      {formatPercent(p.priceChangePercent)}
+  1165→                    </span>
+  1166→                  </td>
+  1167→                  <td className="px-3 py-3 text-right tabular-nums text-muted-foreground hidden lg:table-cell">
+  1168→                    {formatCompact(p.volume24h)}
+  1169→                  </td>
+  1170→                  <td className="px-3 py-3 text-center">
+  1171→                    <Button
+  1172→                      variant="ghost"
+  1173→                      size="sm"
+  1174→                      className={`h-7 text-xs ${p.isActive ? 'text-green-500' : 'text-red-500'}`}
+  1175→                      onClick={() => toggleActive(p)}
+  1176→                    >
+  1177→                      <Power className="h-3 w-3 mr-1" />
+  1178→                      {p.isActive ? 'Active' : 'Disabled'}
+  1179→                    </Button>
+  1180→                  </td>
+  1181→                  <td className="px-3 py-3 text-right">
+  1182→                    <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => remove(p)}>
+  1183→                      <Trash2 className="h-3 w-3" />
+  1184→                    </Button>
+  1185→                  </td>
+  1186→                </tr>
+  1187→              ))}
+  1188→            </tbody>
+  1189→          </table>
+  1190→        </div>
+  1191→      </div>
+  1192→
+  1193→      {addDialog && (
+  1194→        <AddPairDialog onClose={() => setAddDialog(false)} onSuccess={load} />
+  1195→      )}
+  1196→    </div>
+  1197→  )
+  1198→}
+  1199→
+  1200→function AddPairDialog({ onClose, onSuccess }: any) {
+  1201→  const { toast } = useToast()
+  1202→  const [baseAsset, setBaseAsset] = useState('BTC')
+  1203→  const [quoteAsset, setQuoteAsset] = useState('USDT')
+  1204→  const [lastPrice, setLastPrice] = useState('1')
+  1205→  const [loading, setLoading] = useState(false)
+  1206→
+  1207→  const submit = async () => {
+  1208→    setLoading(true)
+  1209→    try {
+  1210→      const symbol = `${baseAsset}${quoteAsset}`
+  1211→      const res = await fetch('/api/admin/pairs', {
+  1212→        method: 'POST',
+  1213→        headers: { 'Content-Type': 'application/json' },
+  1214→        body: JSON.stringify({ symbol, baseAsset, quoteAsset, lastPrice: parseFloat(lastPrice) }),
+  1215→      })
+  1216→      const d = await res.json()
+  1217→      if (d.error) throw new Error(d.error)
+  1218→      toast({ title: 'Pair created', description: d.message })
+  1219→      onSuccess()
+  1220→      onClose()
+  1221→    } catch (e: any) {
+  1222→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+  1223→    } finally {
+  1224→      setLoading(false)
+  1225→    }
+  1226→  }
+  1227→
+  1228→  return (
+  1229→    <Dialog open onOpenChange={onClose}>
+  1230→      <DialogContent className="max-w-md">
+  1231→        <DialogHeader>
+  1232→          <DialogTitle>Add Trading Pair</DialogTitle>
+  1233→          <DialogDescription>Create a new spot trading pair</DialogDescription>
+  1234→        </DialogHeader>
+  1235→        <div className="space-y-3">
+  1236→          <div className="grid grid-cols-2 gap-2">
+  1237→            <div>
+  1238→              <label className="text-xs font-medium text-muted-foreground">Base Asset</label>
+  1239→              <Input value={baseAsset} onChange={e => setBaseAsset(e.target.value.toUpperCase())} placeholder="BTC" />
+  1240→            </div>
+  1241→            <div>
+  1242→              <label className="text-xs font-medium text-muted-foreground">Quote Asset</label>
+  1243→              <Input value={quoteAsset} onChange={e => setQuoteAsset(e.target.value.toUpperCase())} placeholder="USDT" />
+  1244→            </div>
+  1245→          </div>
+  1246→          <div>
+  1247→            <label className="text-xs font-medium text-muted-foreground">Initial Price</label>
+  1248→            <Input type="number" value={lastPrice} onChange={e => setLastPrice(e.target.value)} className="tabular-nums" />
+  1249→          </div>
+  1250→          <div className="bg-muted/30 p-2 rounded text-xs">
+  1251→            Pair symbol: <strong>{baseAsset}{quoteAsset}</strong>
+  1252→          </div>
+  1253→          <DialogFooter>
+  1254→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+  1255→            <Button onClick={submit} disabled={loading || !baseAsset || !quoteAsset}>
+  1256→              {loading ? 'Creating...' : 'Create Pair'}
+  1257→            </Button>
+  1258→          </DialogFooter>
+  1259→        </div>
+  1260→      </DialogContent>
+  1261→    </Dialog>
+  1262→  )
+  1263→}
+  1264→
+  1265→// =================== P2P MODERATION TAB ===================
+  1266→function P2PTab() {
+  1267→  const { toast } = useToast()
+  1268→  const [listings, setListings] = useState<any[]>([])
+  1269→  const [loading, setLoading] = useState(false)
+  1270→  const [refreshing, setRefreshing] = useState(false)
+  1271→  const [statusFilter, setStatusFilter] = useState('all')
+  1272→  const [search, setSearch] = useState('')
+  1273→  const [createOpen, setCreateOpen] = useState(false)
+  1274→  const [editDialog, setEditDialog] = useState<any>(null)
+  1275→
+  1276→  const load = useCallback(async () => {
+  1277→    setLoading(true)
+  1278→    try {
+  1279→      const res = await fetch(`/api/admin/listings?status=${statusFilter}`)
+  1280→      const d = await res.json()
+  1281→      if (d.error) throw new Error(d.error)
+  1282→      setListings(d.listings || [])
+  1283→    } catch (e: any) {
+  1284→      toast({ title: 'Failed to load listings', description: e.message, variant: 'destructive' })
+  1285→    } finally {
+  1286→      setLoading(false)
+  1287→    }
+  1288→  }, [statusFilter, toast])
+  1289→
+  1290→  useEffect(() => { load() }, [load])
+  1291→
+  1292→  const [acting, setActing] = useState(false)
+  1293→  const act = async (listingId: string, action: string) => {
+  1294→    if (acting) return // Prevent duplicate actions
+  1295→    setActing(true)
+  1296→    try {
+  1297→      const res = await fetch('/api/admin/listings/action', {
+  1298→        method: 'POST',
+  1299→        headers: { 'Content-Type': 'application/json' },
+  1300→        body: JSON.stringify({ listingId, action }),
+  1301→      })
+  1302→      const d = await res.json()
+  1303→      if (d.error) throw new Error(d.error)
+  1304→      toast({ title: 'Action completed', description: d.message })
+  1305→      load()
+  1306→    } catch (e: any) {
+  1307→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+  1308→    } finally {
+  1309→      setActing(false)
+  1310→    }
+  1311→  }
+  1312→
+  1313→  // Filter listings by advertiser name (from paymentDetails) or user.name
+  1314→  const filtered = listings.filter(l => {
+  1315→    if (!search.trim()) return true
+  1316→    const q = search.toLowerCase().trim()
+  1317→    const firstMethod = l.paymentMethods?.[0]
+  1318→    const advName = l.paymentDetails?.[firstMethod]?.name || l.user?.name || ''
+  1319→    return (
+  1320→      advName.toLowerCase().includes(q) ||
+  1321→      (l.user?.name || '').toLowerCase().includes(q) ||
+  1322→      (l.user?.email || '').toLowerCase().includes(q)
+  1323→    )
+  1324→  })
+  1325→
+  1326→  return (
+  1327→    <div className="space-y-3">
+  1328→      <div className="flex flex-wrap items-center gap-2">
+  1329→        <Select value={statusFilter} onValueChange={setStatusFilter}>
+  1330→          <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+  1331→          <SelectContent>
+  1332→            <SelectItem value="all">All Listings</SelectItem>
+  1333→            <SelectItem value="active">Active</SelectItem>
+  1334→            <SelectItem value="paused">Paused</SelectItem>
+  1335→            <SelectItem value="completed">Completed</SelectItem>
+  1336→            <SelectItem value="canceled">Canceled</SelectItem>
+  1337→          </SelectContent>
+  1338→        </Select>
+  1339→        <div className="relative flex-1 min-w-[180px]">
+  1340→          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+  1341→          <Input
+  1342→            placeholder="Search by advertiser name..."
+  1343→            value={search}
+  1344→            onChange={e => setSearch(e.target.value)}
+  1345→            className="pl-8 h-9"
+  1346→          />
+  1347→        </div>
+  1348→        <Button variant="outline" size="sm" onClick={load}>
+  1349→          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
+  1350→        </Button>
+  1351→        <Button size="sm" onClick={() => setCreateOpen(true)}>
+  1352→          <Plus className="h-3.5 w-3.5" /> Add New Ad
+  1353→        </Button>
+  1354→      </div>
+  1355→
+  1356→      <div className="text-xs text-muted-foreground">
+  1357→        Showing {filtered.length} of {listings.length} listings
+  1358→      </div>
+  1359→
+  1360→      <div className="bg-card border border-border rounded-lg overflow-hidden">
+  1361→        <div className="overflow-x-auto">
+  1362→          <table className="w-full text-sm">
+  1363→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+  1364→              <tr>
+  1365→                <th className="px-3 py-2 text-left font-medium">Advertiser</th>
+  1366→                <th className="px-3 py-2 text-left font-medium">Pair</th>
+  1367→                <th className="px-3 py-2 text-right font-medium">Price</th>
+  1368→                <th className="px-3 py-2 text-right font-medium hidden sm:table-cell">Available</th>
+  1369→                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Methods / Account</th>
+  1370→                <th className="px-3 py-2 text-center font-medium">Status</th>
+  1371→                <th className="px-3 py-2 text-right font-medium">Actions</th>
+  1372→              </tr>
+  1373→            </thead>
+  1374→            <tbody>
+  1375→              {loading ? (
+  1376→                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
+  1377→              ) : filtered.length === 0 ? (
+  1378→                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No listings</td></tr>
+  1379→              ) : filtered.map(l => {
+  1380→                const firstMethod = l.paymentMethods?.[0]
+  1381→                const detail = l.paymentDetails?.[firstMethod]
+  1382→                const advertiserName = detail?.name || l.user?.name || 'Unknown'
+  1383→                const accountInfo = detail?.phone || detail?.account || detail?.address || detail?.email || detail?.iban || ''
+  1384→                return (
+  1385→                  <tr key={l.id} className="border-t border-border/40 hover:bg-muted/30">
+  1386→                    <td className="px-3 py-3">
+  1387→                      <div className="font-medium text-xs flex items-center gap-1.5">
+  1388→                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-medium flex-shrink-0">
+  1389→                          {advertiserName.slice(0, 2).toUpperCase()}
+  1390→                        </div>
+  1391→                        <span>{advertiserName}</span>
+  1392→                        {l.tradesCount != null && (
+  1393→                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+  1394→                            <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500" />
+  1395→                            {(l.rating || 0).toFixed(1)} · {l.tradesCount} trades
+  1396→                          </span>
+  1397→                        )}
+  1398→                      </div>
+  1399→                      <div className="text-xs text-muted-foreground">{l.user.email}</div>
+  1400→                      {l.user.isBanned && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 text-[10px]">Banned</Badge>}
+  1401→                    </td>
+  1402→                    <td className="px-3 py-3">
+  1403→                      <div className="text-xs">{l.side === 'SELL' ? 'Selling' : 'Buying'} {l.asset}</div>
+  1404→                      <div className="text-xs text-muted-foreground">for {l.fiatCurrency}</div>
+  1405→                    </td>
+  1406→                    <td className="px-3 py-3 text-right tabular-nums">{formatPrice(l.price)}</td>
+  1407→                    <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">{formatQty(l.available)}</td>
+  1408→                    <td className="px-3 py-3 text-xs hidden md:table-cell">
+  1409→                      <div className="flex flex-wrap gap-1 mb-1">
+  1410→                        {l.paymentMethods.slice(0, 2).map((m: string) => (
+  1411→                          <Badge key={m} variant="secondary" className="text-[10px]">{m}</Badge>
+  1412→                        ))}
+  1413→                        {l.paymentMethods.length > 2 && <span className="text-[10px]">+{l.paymentMethods.length - 2}</span>}
+  1414→                      </div>
+  1415→                      {accountInfo && (
+  1416→                        <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[160px]" title={accountInfo}>
+  1417→                          {accountInfo}
+  1418→                        </div>
+  1419→                      )}
+  1420→                    </td>
+  1421→                    <td className="px-3 py-3 text-center">
+  1422→                      <Badge variant="secondary" className={
+  1423→                        l.status === 'ACTIVE' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  1424→                        l.status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+  1425→                        l.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+  1426→                        ''
+  1427→                      }>{l.status}</Badge>
+  1428→                    </td>
+  1429→                    <td className="px-3 py-3 text-right">
+  1430→                      <div className="flex gap-1 justify-end">
+  1431→                        <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-500" title="Edit listing"
+  1432→                          onClick={() => setEditDialog(l)}>
+  1433→                          <Edit3 className="h-3 w-3" />
+  1434→                        </Button>
+  1435→                        {l.status === 'ACTIVE' && (
+  1436→                          <Button variant="ghost" size="sm" className="h-7 text-xs" title="Pause" onClick={() => act(l.id, 'pause')}>
+  1437→                            <Power className="h-3 w-3" />
+  1438→                          </Button>
+  1439→                        )}
+  1440→                        {l.status === 'PAUSED' && (
+  1441→                          <Button variant="ghost" size="sm" className="h-7 text-xs text-green-500" title="Resume" onClick={() => act(l.id, 'resume')}>
+  1442→                            <CheckCircle2 className="h-3 w-3" />
+  1443→                          </Button>
+  1444→                        )}
+  1445→                        {(l.status === 'ACTIVE' || l.status === 'PAUSED') && (
+  1446→                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Cancel & refund" onClick={() => act(l.id, 'cancel')}>
+  1447→                            <XCircle className="h-3 w-3" />
+  1448→                          </Button>
+  1449→                        )}
+  1450→                        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" title="Delete" onClick={() => {
+  1451→                          if (confirm('Delete this listing permanently?')) act(l.id, 'delete')
+  1452→                        }}>
+  1453→                          <Trash2 className="h-3 w-3" />
+  1454→                        </Button>
+  1455→                      </div>
+  1456→                    </td>
+  1457→                  </tr>
+  1458→                )
+  1459→              })}
+  1460→            </tbody>
+  1461→          </table>
+  1462→        </div>
+  1463→      </div>
+  1464→
+  1465→      {createOpen && (
+  1466→        <CreateListingDialog onClose={() => setCreateOpen(false)} onSuccess={load} />
+  1467→      )}
+  1468→      {editDialog && (
+  1469→        <EditListingDialog listing={editDialog} onClose={() => setEditDialog(null)} onSuccess={load} />
+  1470→      )}
+  1471→    </div>
+  1472→  )
+  1473→}
+  1474→
+  1475→// =================== EDIT LISTING DIALOG ===================
+  1476→function EditListingDialog({ listing, onClose, onSuccess }: { listing: any; onClose: () => void; onSuccess: () => void }) {
+  1477→  const { toast } = useToast()
+  1478→  const firstMethod = listing.paymentMethods?.[0] || ''
+  1479→  const existingDetail = listing.paymentDetails?.[firstMethod] || {}
+  1480→
+  1481→  const [price, setPrice] = useState(String(listing.price || ''))
+  1482→  const [minOrder, setMinOrder] = useState(String(listing.minOrder ?? ''))
+  1483→  const [maxOrder, setMaxOrder] = useState(String(listing.maxOrder ?? ''))
+  1484→  const [tradesCount, setTradesCount] = useState(String(listing.tradesCount ?? 0))
+  1485→  const [rating, setRating] = useState(String(listing.rating ?? 4.9))
+  1486→  const [advertiserName, setAdvertiserName] = useState(existingDetail.name || listing.user?.name || '')
+  1487→  const [accountNumber, setAccountNumber] = useState(
+  1488→    existingDetail.phone || existingDetail.account || existingDetail.address || existingDetail.email || ''
+  1489→  )
+  1490→  const [terms, setTerms] = useState(listing.terms || '')
+  1491→  const [loading, setLoading] = useState(false)
+  1492→
+  1493→  const accountLabel = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(firstMethod)
+  1494→    ? 'Wallet Address'
+  1495→    : 'Account Number / Phone'
+  1496→
+  1497→  const submit = async () => {
+  1498→    setLoading(true)
+  1499→    try {
+  1500→      const res = await fetch('/api/admin/listings/action', {
+  1501→        method: 'POST',
+  1502→        headers: { 'Content-Type': 'application/json' },
+  1503→        body: JSON.stringify({
+  1504→          listingId: listing.id,
+  1505→          action: 'edit',
+  1506→          price: parseFloat(price) || 0,
+  1507→          minOrder: parseFloat(minOrder) || 0,
+  1508→          maxOrder: parseFloat(maxOrder) || 0,
+  1509→          tradesCount: parseInt(tradesCount) || 0,
+  1510→          rating: parseFloat(rating) || 0,
+  1511→          advertiserName: advertiserName.trim(),
+  1512→          accountNumber: accountNumber.trim(),
+  1513→          terms: terms.trim(),
+  1514→        }),
+  1515→      })
+  1516→      const d = await res.json()
+  1517→      if (d.error) throw new Error(d.error)
+  1518→      toast({ title: 'Listing updated', description: d.message })
+  1519→      onSuccess()
+  1520→      onClose()
+  1521→    } catch (e: any) {
+  1522→      toast({ title: 'Failed to update', description: e.message, variant: 'destructive' })
+  1523→    } finally {
+  1524→      setLoading(false)
+  1525→    }
+  1526→  }
+  1527→
+  1528→  return (
+  1529→    <Dialog open onOpenChange={onClose}>
+  1530→      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+  1531→        <DialogHeader>
+  1532→          <DialogTitle className="flex items-center gap-2">
+  1533→            <Edit3 className="h-5 w-5 text-blue-500" /> Edit Listing
+  1534→          </DialogTitle>
+  1535→          <DialogDescription>
+  1536→            {listing.side === 'SELL' ? 'Selling' : 'Buying'} {listing.asset} for {listing.fiatCurrency} · Method: {firstMethod}
+  1537→          </DialogDescription>
+  1538→        </DialogHeader>
+  1539→        <div className="space-y-3">
+  1540→          <div className="grid grid-cols-2 gap-2">
+  1541→            <div>
+  1542→              <label className="text-xs font-medium text-muted-foreground">Price ({listing.fiatCurrency})</label>
+  1543→              <Input type="number" value={price} onChange={e => setPrice(e.target.value)} className="tabular-nums" />
+  1544→            </div>
+  1545→            <div>
+  1546→              <label className="text-xs font-medium text-muted-foreground">Min Order ({listing.fiatCurrency})</label>
+  1547→              <Input type="number" value={minOrder} onChange={e => setMinOrder(e.target.value)} className="tabular-nums" />
+  1548→            </div>
+  1549→          </div>
+  1550→          <div className="grid grid-cols-2 gap-2">
+  1551→            <div>
+  1552→              <label className="text-xs font-medium text-muted-foreground">Max Order ({listing.fiatCurrency})</label>
+  1553→              <Input type="number" value={maxOrder} onChange={e => setMaxOrder(e.target.value)} className="tabular-nums" />
+  1554→            </div>
+  1555→            <div>
+  1556→              <label className="text-xs font-medium text-muted-foreground">Trades Count</label>
+  1557→              <Input type="number" value={tradesCount} onChange={e => setTradesCount(e.target.value)} className="tabular-nums" />
+  1558→            </div>
+  1559→          </div>
+  1560→          <div>
+  1561→            <label className="text-xs font-medium text-muted-foreground">Star Rating (0-5)</label>
+  1562→            <Input type="number" step="0.1" min="0" max="5" value={rating} onChange={e => setRating(e.target.value)} className="tabular-nums" />
+  1563→          </div>
+  1564→          <div>
+  1565→            <label className="text-xs font-medium text-muted-foreground">Advertiser Name</label>
+  1566→            <Input value={advertiserName} onChange={e => setAdvertiserName(e.target.value)} placeholder="e.g. Kirubel Trader" />
+  1567→          </div>
+  1568→          <div>
+  1569→            <label className="text-xs font-medium text-muted-foreground">{accountLabel}</label>
+  1570→            <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder={accountLabel} />
+  1571→          </div>
+  1572→          <div>
+  1573→            <label className="text-xs font-medium text-muted-foreground">Terms (optional)</label>
+  1574→            <Textarea value={terms} onChange={e => setTerms(e.target.value)} rows={2} placeholder="e.g. Release within 15 minutes." />
+  1575→          </div>
+  1576→          <DialogFooter>
+  1577→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+  1578→            <Button onClick={submit} disabled={loading}>
+  1579→              {loading ? 'Saving...' : 'Save Changes'}
+  1580→            </Button>
+  1581→          </DialogFooter>
+  1582→        </div>
+  1583→      </DialogContent>
+  1584→    </Dialog>
+  1585→  )
+  1586→}
+  1587→
+  1588→// =================== CREATE LISTING DIALOG ===================
+  1589→// P2P ad types:
+  1590→// SELL ad = admin is SELLING USDT → buyer pays via FIAT (banks, mobile money)
+  1591→// BUY ad  = admin is BUYING USDT  → seller sends via CRYPTO NETWORK (TRC20, BEP20, etc.)
+  1592→const SELL_PAYMENT_METHODS = [
+  1593→  'Telebirr', 'CBE', 'Awash', 'Dashen', 'Hibret', 'Wegagen', 'Abay', 'Coopbank',
+  1594→  'Bank of Abyssinia', 'United', 'Nib', 'Berhan', 'Enat', 'Lion', 'Oromia', 'Zemen',
+  1595→]
+  1596→const BUY_PAYMENT_METHODS = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB']
+  1597→
+  1598→function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  1599→  const { toast } = useToast()
+  1600→  const [side, setSide] = useState<'BUY' | 'SELL'>('SELL')
+  1601→  const [asset, setAsset] = useState('USDT')
+  1602→  const [fiatCurrency, setFiatCurrency] = useState('ETB')
+  1603→  const [price, setPrice] = useState('')
+  1604→  const [amount, setAmount] = useState('')
+  1605→  const [minOrder, setMinOrder] = useState('100')
+  1606→  const [paymentMethod, setPaymentMethod] = useState('Telebirr')
+  1607→  const [advertiserName, setAdvertiserName] = useState('')
+  1608→  const [accountNumber, setAccountNumber] = useState('')
+  1609→  const [terms, setTerms] = useState('')
+  1610→  const [loading, setLoading] = useState(false)
+  1611→
+  1612→  // SELL ad → buyer pays via fiat (banks) → show SELL_PAYMENT_METHODS
+  1613→  // BUY ad  → seller sends via crypto network → show BUY_PAYMENT_METHODS
+  1614→  const methods = side === 'SELL' ? SELL_PAYMENT_METHODS : BUY_PAYMENT_METHODS
+  1615→  const accountLabel = ['TRC20', 'BEP20', 'ERC20', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB'].includes(paymentMethod)
+  1616→    ? 'Wallet Address'
+  1617→    : 'Account Number / Phone'
+  1618→
+  1619→  // Reset payment method when side changes
+  1620→  useEffect(() => {
+  1621→    setPaymentMethod(side === 'SELL' ? SELL_PAYMENT_METHODS[0] : BUY_PAYMENT_METHODS[0])
+  1622→  }, [side])
+  1623→
+  1624→  // Auto-generate terms if empty
+  1625→  const finalTerms = terms.trim() || (
+  1626→    side === 'SELL'
+  1627→      ? `Release crypto within 15 minutes of receiving payment via ${paymentMethod}. By trading, you agree to follow P2PEX P2P guidelines.`
+  1628→      : `Send payment within 30 minutes via ${paymentMethod}. Mark payment as made after sending the funds. By trading, you agree to follow P2PEX P2P guidelines.`
+  1629→  )
+  1630→
+  1631→  const submit = async () => {
+  1632→    if (!price || !amount) {
+  1633→      toast({ title: 'Price and amount required', variant: 'destructive' })
+  1634→      return
+  1635→    }
+  1636→    if (!advertiserName.trim()) {
+  1637→      toast({ title: 'Advertiser name required', variant: 'destructive' })
+  1638→      return
+  1639→    }
+  1640→    if (!accountNumber.trim()) {
+  1641→      toast({ title: accountLabel + ' required', variant: 'destructive' })
+  1642→      return
+  1643→    }
+  1644→    setLoading(true)
+  1645→    try {
+  1646→      const res = await fetch('/api/admin/listings/create', {
+  1647→        method: 'POST',
+  1648→        headers: { 'Content-Type': 'application/json' },
+  1649→        body: JSON.stringify({
+  1650→          asset,
+  1651→          fiatCurrency,
+  1652→          side,
+  1653→          price: parseFloat(price),
+  1654→          amount: parseFloat(amount),
+  1655→          minOrder: parseFloat(minOrder) || 0,
+  1656→          maxOrder: parseFloat(price) * parseFloat(amount),
+  1657→          paymentMethods: [paymentMethod],
+  1658→          advertiserName: advertiserName.trim(),
+  1659→          accountNumber: accountNumber.trim(),
+  1660→          terms: finalTerms,
+  1661→          tradesCount: 128,
+  1662→          rating: 4.9,
+  1663→        }),
+  1664→      })
+  1665→      const d = await res.json()
+  1666→      if (d.error) throw new Error(d.error)
+  1667→      toast({ title: 'Ad created', description: `${side} ad for ${amount} ${asset} posted successfully` })
+  1668→      onSuccess()
+  1669→      onClose()
+  1670→    } catch (e: any) {
+  1671→      toast({ title: 'Failed to create ad', description: e.message, variant: 'destructive' })
+  1672→    } finally {
+  1673→      setLoading(false)
+  1674→    }
+  1675→  }
+  1676→
+  1677→  return (
+  1678→    <Dialog open onOpenChange={onClose}>
+  1679→      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+  1680→        <DialogHeader>
+  1681→          <DialogTitle className="flex items-center gap-2">
+  1682→            <Plus className="h-5 w-5" /> Create P2P Advertisement
+  1683→          </DialogTitle>
+  1684→          <DialogDescription>
+  1685→            Post a new P2P buy/sell ad as the admin
+  1686→          </DialogDescription>
+  1687→        </DialogHeader>
+  1688→
+  1689→        <div className="space-y-3">
+  1690→          {/* Buy/Sell toggle */}
+  1691→          <div className="grid grid-cols-2 gap-2">
+  1692→            <Button
+  1693→              variant={side === 'BUY' ? 'default' : 'outline'}
+  1694→              className={side === 'BUY' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
+  1695→              onClick={() => setSide('BUY')}
+  1696→            >
+  1697→              Buy Ad
+  1698→            </Button>
+  1699→            <Button
+  1700→              variant={side === 'SELL' ? 'default' : 'outline'}
+  1701→              className={side === 'SELL' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
+  1702→              onClick={() => setSide('SELL')}
+  1703→            >
+  1704→              Sell Ad
+  1705→            </Button>
+  1706→          </div>
+  1707→
+  1708→          <div className="grid grid-cols-2 gap-2">
+  1709→            <div>
+  1710→              <label className="text-xs font-medium text-muted-foreground">Asset</label>
+  1711→              <Select value={asset} onValueChange={setAsset}>
+  1712→                <SelectTrigger><SelectValue /></SelectTrigger>
+  1713→                <SelectContent>
+  1714→                  {['USDT', 'USDC', 'BTC', 'ETH', 'BNB', 'SOL'].map(a => (
+  1715→                    <SelectItem key={a} value={a}>{a}</SelectItem>
+  1716→                  ))}
+  1717→                </SelectContent>
+  1718→              </Select>
+  1719→            </div>
+  1720→            <div>
+  1721→              <label className="text-xs font-medium text-muted-foreground">Fiat Currency</label>
+  1722→              <Select value={fiatCurrency} onValueChange={setFiatCurrency}>
+  1723→                <SelectTrigger><SelectValue /></SelectTrigger>
+  1724→                <SelectContent>
+  1725→                  {['ETB', 'USD', 'EUR', 'KES', 'NGN'].map(f => (
+  1726→                    <SelectItem key={f} value={f}>{f}</SelectItem>
+  1727→                  ))}
+  1728→                </SelectContent>
+  1729→              </Select>
+  1730→            </div>
+  1731→          </div>
+  1732→
+  1733→          <div className="grid grid-cols-2 gap-2">
+  1734→            <div>
+  1735→              <label className="text-xs font-medium text-muted-foreground">Price per {asset} ({fiatCurrency})</label>
+  1736→              <Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="tabular-nums" />
+  1737→            </div>
+  1738→            <div>
+  1739→              <label className="text-xs font-medium text-muted-foreground">Total Amount ({asset})</label>
+  1740→              <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="tabular-nums" />
+  1741→            </div>
+  1742→          </div>
+  1743→
+  1744→          <div>
+  1745→            <label className="text-xs font-medium text-muted-foreground">Min Order ({fiatCurrency})</label>
+  1746→            <Input type="number" value={minOrder} onChange={e => setMinOrder(e.target.value)} className="tabular-nums" />
+  1747→          </div>
+  1748→
+  1749→          <div>
+  1750→            <label className="text-xs font-medium text-muted-foreground">
+  1751→              Payment Method <span className="text-muted-foreground/60">(filtered by ad type)</span>
+  1752→            </label>
+  1753→            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+  1754→              <SelectTrigger><SelectValue /></SelectTrigger>
+  1755→              <SelectContent className="max-h-[200px]">
+  1756→                {methods.map(m => (
+  1757→                  <SelectItem key={m} value={m}>{m}</SelectItem>
+  1758→                ))}
+  1759→              </SelectContent>
+  1760→            </Select>
+  1761→            <p className="text-[10px] text-muted-foreground mt-1">
+  1762→              {side === 'SELL' ? 'Ethiopian banks / mobile money (buyer pays you in fiat)' : 'Crypto networks (seller sends you USDT)'}
+  1763→            </p>
+  1764→          </div>
+  1765→
+  1766→          <div>
+  1767→            <label className="text-xs font-medium text-muted-foreground">Advertiser Name</label>
+  1768→            <Input value={advertiserName} onChange={e => setAdvertiserName(e.target.value)} placeholder="e.g. Kirubel Trader" />
+  1769→          </div>
+  1770→
+  1771→          <div>
+  1772→            <label className="text-xs font-medium text-muted-foreground">{accountLabel}</label>
+  1773→            <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder={accountLabel} />
+  1774→          </div>
+  1775→
+  1776→          <div>
+  1777→            <label className="text-xs font-medium text-muted-foreground">Terms (optional — auto-generated if empty)</label>
+  1778→            <Textarea
+  1779→              value={terms}
+  1780→              onChange={e => setTerms(e.target.value)}
+  1781→              rows={2}
+  1782→              placeholder={finalTerms}
+  1783→            />
+  1784→          </div>
+  1785→
+  1786→          {/* Live summary preview */}
+  1787→          <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
+  1788→            <p className="font-semibold mb-1.5">Live Preview</p>
+  1789→            <div className="grid grid-cols-2 gap-1.5">
+  1790→              <div><span className="text-muted-foreground">Type:</span> <span className={side === 'BUY' ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>{side}</span></div>
+  1791→              <div><span className="text-muted-foreground">Asset:</span> <span className="font-medium">{asset}</span></div>
+  1792→              <div><span className="text-muted-foreground">Price:</span> <span className="font-medium tabular-nums">{formatPrice(parseFloat(price) || 0)} {fiatCurrency}</span></div>
+  1793→              <div><span className="text-muted-foreground">Total:</span> <span className="font-medium tabular-nums">{formatQty(parseFloat(amount) || 0)} {asset}</span></div>
+  1794→              <div className="col-span-2"><span className="text-muted-foreground">Advertiser:</span> <span className="font-medium">{advertiserName || '—'}</span></div>
+  1795→              <div className="col-span-2"><span className="text-muted-foreground">{accountLabel}:</span> <span className="font-mono">{accountNumber || '—'}</span></div>
+  1796→            </div>
+  1797→          </div>
+  1798→
+  1799→          <DialogFooter>
+  1800→            <Button variant="outline" onClick={onClose}>Cancel</Button>
+  1801→            <Button onClick={submit} disabled={loading || !price || !amount || !advertiserName.trim() || !accountNumber.trim()}>
+  1802→              {loading ? 'Creating...' : 'Create Advertisement'}
+  1803→            </Button>
+  1804→          </DialogFooter>
+  1805→        </div>
+  1806→      </DialogContent>
+  1807→    </Dialog>
+  1808→  )
+  1809→}
+  1810→
+  1811→
+  1812→// =================== PAYMENT REVIEW TAB ===================
+  1813→function PaymentReviewTab() {
+  1814→  const { toast } = useToast()
+  1815→  const [orders, setOrders] = useState<any[]>([])
+  1816→  const [loading, setLoading] = useState(false)
+  1817→  const [refreshing, setRefreshing] = useState(false)
+  1818→  const [statusFilter, setStatusFilter] = useState('PENDING_REVIEW')
+  1819→  const [reviewDialog, setReviewDialog] = useState<any>(null)
+  1820→
+  1821→  const load = useCallback(async () => {
+  1822→    setLoading(true)
+  1823→    try {
+  1824→      const res = await fetch(`/api/admin/p2p-review?status=${statusFilter}`)
+  1825→      const d = await res.json()
+  1826→      if (d.error) throw new Error(d.error)
+  1827→      setOrders(d.orders || [])
+  1828→    } catch (e: any) {
+  1829→      toast({ title: 'Failed to load', description: e.message, variant: 'destructive' })
+  1830→    } finally {
+  1831→      setLoading(false)
+  1832→    }
+  1833→  }, [statusFilter, toast])
+  1834→
+  1835→  useEffect(() => { load() }, [load])
+  1836→
+  1837→  const [acting, setActing] = useState(false)
+  1838→  const act = async (orderId: string, action: string) => {
+  1839→    if (acting) return // Prevent duplicate actions
+  1840→    setActing(true)
+  1841→    try {
+  1842→      const res = await fetch('/api/admin/p2p-review/action', {
+  1843→        method: 'POST',
+  1844→        headers: { 'Content-Type': 'application/json' },
+  1845→        body: JSON.stringify({ orderId, action }),
+  1846→      })
+  1847→      const d = await res.json()
+  1848→      if (d.error) throw new Error(d.error)
+  1849→      toast({ title: 'Action completed', description: d.message })
+  1850→      setReviewDialog(null)
+  1851→      load()
+  1852→    } catch (e: any) {
+  1853→      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+  1854→    } finally {
+  1855→      setActing(false)
+  1856→    }
+  1857→  }
+  1858→
+  1859→  return (
+  1860→    <div className="space-y-3">
+  1861→      <div className="flex items-center gap-2">
+  1862→        <Select value={statusFilter} onValueChange={setStatusFilter}>
+  1863→          <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+  1864→          <SelectContent>
+  1865→            <SelectItem value="PENDING_REVIEW">⏳ Pending Review</SelectItem>
+  1866→            <SelectItem value="PAYMENT_RECEIVED">✅ Payment Received</SelectItem>
+  1867→            <SelectItem value="CANCELED">❌ Rejected/Canceled</SelectItem>
+  1868→            <SelectItem value="COMPLETED">✓ Completed</SelectItem>
+  1869→          </SelectContent>
+  1870→        </Select>
+  1871→        <Button variant="outline" size="sm" onClick={load}>
+  1872→          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
+  1873→        </Button>
+  1874→        {statusFilter === 'PENDING_REVIEW' && orders.length > 0 && (
+  1875→          <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 ml-auto">
+  1876→            {orders.length} pending
+  1877→          </Badge>
+  1878→        )}
+  1879→      </div>
+  1880→
+  1881→      {loading ? (
+  1882→        <div className="text-center py-8 text-muted-foreground text-xs">No data</div>
+  1883→      ) : orders.length === 0 ? (
+  1884→        <div className="text-center py-12">
+  1885→          <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+  1886→          <p className="text-muted-foreground">No orders with status "{statusFilter}"</p>
+  1887→        </div>
+  1888→      ) : (
+  1889→        <div className="space-y-2">
+  1890→          {orders.map(o => (
+  1891→            <div key={o.id} className="bg-card border border-border rounded-lg p-4">
+  1892→              <div className="flex flex-wrap items-start justify-between gap-3">
+  1893→                {/* Left: order info */}
+  1894→                <div className="flex-1 min-w-[200px]">
+  1895→                  <div className="flex items-center gap-2 mb-2">
+  1896→                    <Badge variant="secondary" className={
+  1897→                      o.status === 'PENDING_REVIEW' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+  1898→                      o.status === 'PAYMENT_RECEIVED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  1899→                      o.status === 'PAID' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  1900→                      o.status === 'CANCELED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+  1901→                      'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+  1902→                    }>{o.status}</Badge>
+  1903→                    <span className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</span>
+  1904→                  </div>
+  1905→                  <div className="grid grid-cols-2 gap-2 text-sm">
+  1906→                    <div>
+  1907→                      <span className="text-xs text-muted-foreground">Buyer (User):</span>
+  1908→                      <div className="font-medium">{o.buyer.name}</div>
+  1909→                      <div className="text-xs text-muted-foreground">{o.buyer.email}</div>
+  1910→                    </div>
+  1911→                    <div>
+  1912→                      <span className="text-xs text-muted-foreground">Seller (Ad by):</span>
+  1913→                      <div className="font-medium">{o.adPersonName || o.seller.name}</div>
+  1914→                      <div className="text-xs text-muted-foreground">{o.seller.email}</div>
+  1915→                    </div>
+  1916→                  </div>
+  1917→                  <div className="mt-2 flex flex-wrap gap-4 text-sm">
+  1918→                    <div>
+  1919→                      <span className="text-xs text-muted-foreground">Trade:</span>{' '}
+  1920→                      <span className="font-medium">{formatQty(o.amount)} {o.asset}</span>
+  1921→                      {' '}for{' '}
+  1922→                      <span className="font-medium tabular-nums">{formatPrice(o.total)} {o.fiatCurrency}</span>
+  1923→                    </div>
+  1924→                    <div>
+  1925→                      <span className="text-xs text-muted-foreground">Method:</span>{' '}
+  1926→                      <span className="font-medium">{o.paymentMethod}</span>
+  1927→                    </div>
+  1928→                  </div>
+  1929→                </div>
+  1930→
+  1931→                {/* Right: screenshot thumbnail + actions */}
+  1932→                <div className="flex flex-col items-end gap-2">
+  1933→                  {o.paymentScreenshot ? (
+  1934→                    <img
+  1935→                      src={o.paymentScreenshot}
+  1936→                      alt="Payment proof"
+  1937→                      className="w-32 h-20 object-cover rounded-lg border-2 border-border cursor-pointer hover:border-primary"
+  1938→                      onClick={() => setReviewDialog(o)}
+  1939→                    />
+  1940→                  ) : (
+  1941→                    <div className="w-32 h-20 flex items-center justify-center border-2 border-dashed border-border rounded-lg text-xs text-muted-foreground">
+  1942→                      No screenshot
+  1943→                    </div>
+  1944→                  )}
+  1945→                  {(o.status === 'PENDING_REVIEW' || o.status === 'PAYMENT_RECEIVED') && (
+  1946→                    <div className="flex gap-1">
+  1947→                      <Button
+  1948→                        size="sm"
+  1949→                        className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white"
+  1950→                        onClick={() => act(o.id, 'approve')}
+  1951→                      >
+  1952→                        <CheckCircle2 className="h-3 w-3 mr-1" />
+  1953→                        {o.status === 'PAYMENT_RECEIVED' ? 'Approve & Release' : (o.sellerPaymentMethod ? 'Finish' : 'Approve')}
+  1954→                      </Button>
+  1955→                      <Button
+  1956→                        size="sm"
+  1957→                        variant="outline"
+  1958→                        className="h-7 text-xs border-red-500 text-red-500 hover:bg-red-500/10"
+  1959→                        onClick={() => act(o.id, 'reject')}
+  1960→                      >
+  1961→                        <XCircle className="h-3 w-3 mr-1" /> Reject
+  1962→                      </Button>
+  1963→                    </div>
+  1964→                  )}
+  1965→                  <Button
+  1966→                    variant="ghost"
+  1967→                    size="sm"
+  1968→                    className="h-7 text-xs"
+  1969→                    onClick={() => setReviewDialog(o)}
+  1970→                  >
+  1971→                    <FileText className="h-3 w-3 mr-1" /> View Details
+  1972→                  </Button>
+  1973→                </div>
+  1974→              </div>
+  1975→            </div>
+  1976→          ))}
+  1977→        </div>
+  1978→      )}
+  1979→
+  1980→      {/* Review dialog with full screenshot */}
+  1981→      {reviewDialog && (
+  1982→        <Dialog open onOpenChange={() => setReviewDialog(null)}>
+  1983→          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+  1984→            <DialogHeader>
+  1985→              <DialogTitle className="flex items-center gap-2">
+  1986→                <FileText className="h-5 w-5" />
+  1987→                Payment Review — {reviewDialog.buyer.name}
+  1988→              </DialogTitle>
+  1989→              <DialogDescription>
+  1990→                Order #{reviewDialog.id.slice(-8).toUpperCase()} · {formatDateTime(reviewDialog.createdAt)}
+  1991→              </DialogDescription>
+  1992→            </DialogHeader>
+  1993→
+  1994→            <div className="space-y-4">
+  1995→              {/* Order details */}
+  1996→              <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+  1997→                <div><span className="text-muted-foreground">Buyer (User):</span> <span className="font-medium">{reviewDialog.buyer.name}</span></div>
+  1998→                <div><span className="text-muted-foreground">Seller (Ad by):</span> <span className="font-medium">{reviewDialog.adPersonName || reviewDialog.seller.name}</span></div>
+  1999→                <div><span className="text-muted-foreground">Asset:</span> <span className="font-medium">{formatQty(reviewDialog.amount)} {reviewDialog.asset}</span></div>
+  2000→                <div><span className="text-muted-foreground">Total:</span> <span className="font-medium tabular-nums">{formatPrice(reviewDialog.total)} {reviewDialog.fiatCurrency}</span></div>
+
+[showing lines 1-2000 of 3869; use offset=2001 with limit to continue reading]
