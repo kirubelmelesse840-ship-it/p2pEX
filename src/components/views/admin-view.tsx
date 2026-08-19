@@ -66,9 +66,9 @@ export function AdminView() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <ShieldAlert className="h-12 w-12 mx-auto text-red-500 mb-4" />
-        <h2 className="text-xl font-bold mb-2">Admin Access Required</h2>
+        <h2 className="text-xl font-bold mb-2">Manager Access Required</h2>
         <p className="text-sm text-muted-foreground mb-6">
-          You don't have permission to view this page. Only admin users can access the control panel.
+          You don't have permission to view this page. Only authorized managers can access the control panel.
         </p>
         <Button onClick={() => setView('home')}>Back to Home</Button>
       </div>
@@ -84,7 +84,7 @@ export function AdminView() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            Admin Panel
+            Control Panel
           </h1>
           <p className="text-sm text-muted-foreground">
             Logged in as <span className="font-medium text-foreground">{user.name}</span> ({user.email})
@@ -93,7 +93,7 @@ export function AdminView() {
         <div className="flex items-center gap-2">
           <AdminNotifications />
           <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400">
-            <Shield className="h-3 w-3 mr-1" /> ADMIN
+            <Shield className="h-3 w-3 mr-1" /> MANAGER
           </Badge>
         </div>
       </div>
@@ -308,7 +308,7 @@ function DashboardTab() {
           icon={<Shield className="h-5 w-5" />}
           label="KYC Pending"
           value={s.users.kycPending}
-          sub={`${s.users.admins} admins`}
+          sub={`${s.users.admins} managers`}
           color="text-orange-500"
         />
       </div>
@@ -1064,7 +1064,7 @@ function WalletAdjustDialog({ user, onClose, onSuccess }: any) {
           </div>
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs text-yellow-700 dark:text-yellow-400">
             <AlertTriangle className="h-3 w-3 inline mr-1" />
-            This action will be logged as an admin transaction visible to the user.
+            This action will be logged as a manager transaction visible to the user.
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -1733,7 +1733,7 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
             <Plus className="h-5 w-5" /> Create P2P Advertisement
           </DialogTitle>
           <DialogDescription>
-            Post a new P2P buy/sell ad as the admin
+            Post a new P2P buy/sell ad as the manager
           </DialogDescription>
         </DialogHeader>
 
@@ -2379,7 +2379,7 @@ function SettingsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ToggleRow
             label="Maintenance Mode"
-            description="Disables all user trading. Only admins can access the platform."
+            description="Disables all user trading. Only managers can access the platform."
             value={settings.maintenanceMode === 'true'}
             onChange={(v) => update('maintenanceMode', v ? 'true' : 'false')}
             icon={<Power className="h-4 w-4" />}

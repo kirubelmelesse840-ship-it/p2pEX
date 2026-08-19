@@ -192,7 +192,7 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
               </div>
               <div className="text-xs text-muted-foreground">
                 {status === 'APPROVED' && `Approved on ${kycData?.kycReviewedAt ? formatDateTime(kycData.kycReviewedAt) : 'N/A'}`}
-                {status === 'PENDING' && `Submitted on ${kycData?.kycSubmittedAt ? formatDateTime(kycData.kycSubmittedAt) : 'N/A'} · Waiting for admin review`}
+                {status === 'PENDING' && `Submitted on ${kycData?.kycSubmittedAt ? formatDateTime(kycData.kycSubmittedAt) : 'N/A'} · Waiting for review`}
                 {status === 'REJECTED' && `Rejected: ${kycData?.kycRejectionReason || 'Did not meet requirements'}`}
                 {status === 'NONE' && 'Submit your documents below to start verification'}
               </div>
@@ -377,7 +377,7 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
 
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 text-xs text-yellow-700 dark:text-yellow-400">
               <AlertCircle className="h-3 w-3 inline mr-1" />
-              Your verification will be reviewed by our admin team. You'll be notified once approved.
+              Your verification will be reviewed by our verification team. You'll be notified once approved.
             </div>
 
             <DialogFooter>

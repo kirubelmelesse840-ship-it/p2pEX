@@ -257,11 +257,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Admin Status</span>
+                  <span className="text-xs text-muted-foreground">Account Type</span>
                   {user.isAdmin ? (
-                    <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">Administrator</Badge>
+                    <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">Verified Manager</Badge>
                   ) : (
-                    <Badge variant="secondary">Standard User</Badge>
+                    <Badge variant="secondary">Standard</Badge>
                   )}
                 </div>
               </div>

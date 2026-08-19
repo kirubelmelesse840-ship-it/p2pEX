@@ -853,11 +853,6 @@ function UserProfilePanel({ symbol, user }: { symbol: string; user: any }) {
               <Shield className="h-3 w-3" /> Unverified
             </span>
           )}
-          {user.isAdmin && (
-            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400">
-              <Shield className="h-3 w-3" /> Admin
-            </span>
-          )}
         </div>
       </div>
 

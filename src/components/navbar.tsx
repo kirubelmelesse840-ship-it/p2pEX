@@ -147,7 +147,6 @@ export function Navbar() {
         >
           <img src="/logo.png" alt="P2PEX" className="h-8 w-8 object-contain rounded-full" />
           <span className="text-lg font-bold hidden sm:inline">P2PEX</span>
-          {isAdmin && <Badge variant="default" className="bg-red-500/15 text-red-600 dark:text-red-400 ml-1">ADMIN</Badge>}
         </button>
 
         {/* Desktop nav — hidden for admins */}
@@ -273,8 +272,7 @@ export function Navbar() {
               {user.isAdmin && (
                 <DropdownMenuItem onClick={() => setView('admin')} className="text-red-600 dark:text-red-400">
                   <Shield className="mr-2 h-4 w-4" />
-                  Admin Panel
-                  <Badge className="ml-auto text-[10px] bg-red-500/15 text-red-600 dark:text-red-400">ADMIN</Badge>
+                  Control Panel
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
@@ -411,7 +409,7 @@ function AuthButtons() {
       setUser(data.user)
       toast({
         title: data.isNewUser ? 'Google account connected!' : 'Welcome back!',
-        description: `Logged in as ${data.user.name} (${data.user.email})${data.user.isAdmin ? ' · Admin' : ''}`,
+        description: `Logged in as ${data.user.name} (${data.user.email})`,
       })
       setShowAuth(null)
       setShowGoogle(false)
