@@ -29,7 +29,7 @@ import { SupportChatDialog } from '@/components/support-chat-dialog'
 import {
   Search, Menu, Sun, Moon, Wallet, LogOut, Settings,
   TrendingUp, Users, Home, ChevronDown, Bitcoin, Shield, Mail, Plus, CheckCircle2, Eye, EyeOff, Bell, Send,
-  Headphones, Copy, Megaphone, AlertCircle, Clock,
+  Headphones, Copy, Megaphone, AlertCircle, Clock, X,
 } from 'lucide-react'
 
 // Google "G" logo (multi-color, matches Google's official brand)
@@ -938,26 +938,36 @@ function UserNotificationBell() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] top-full mt-2 max-h-[70vh] sm:max-h-[520px] overflow-y-auto bg-card border-2 border-primary/40 rounded-xl shadow-2xl z-[200] overflow-hidden glow-card">
-            {/* Header with gradient */}
-            <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white">
-                  <Bell className="h-3.5 w-3.5" />
+          <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
+          <div className="fixed left-2 right-2 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] max-h-[80vh] sm:max-h-[520px] overflow-y-auto bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card">
+            {/* Header with gradient — now with a close button */}
+            <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
+                  <Bell className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-bold">Notifications</span>
+                <span className="text-base font-bold truncate">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">
                     {unreadCount} new
                   </span>
                 )}
               </div>
-              {unreadCount > 0 && (
-                <button className="text-xs text-primary hover:underline font-medium" onClick={markAllRead}>
-                  Mark all read
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {unreadCount > 0 && (
+                  <button className="text-xs text-primary hover:underline font-medium whitespace-nowrap" onClick={markAllRead}>
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                  aria-label="Close notifications"
+                  title="Close"
+                >
+                  <X className="h-5 w-5" />
                 </button>
-              )}
+              </div>
             </div>
 
             {notifications.length === 0 ? (
