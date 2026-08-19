@@ -84,6 +84,7 @@
     "z-ai-web-dev-sdk": "^0.0.18",
     "zod": "^4.0.2",
     "zustand": "^5.0.6",
+    "@netlify/plugin-nextjs": "5.15.13",
     "typescript": "^5",
     "@types/node": "^20.11.0",
     "@types/react": "^19",
@@ -95,7 +96,6 @@
     "eslint-config-next": "^16.1.1"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.10.0",
     "bun-types": "^1.3.4"
   }
 }
