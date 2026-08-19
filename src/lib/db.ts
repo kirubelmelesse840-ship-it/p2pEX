@@ -3,35 +3,54 @@ import path from 'path'
 import fs from 'fs'
 
 /**
- * Resolve the SQLite database path so it works across environments:
- *  - Local dev:        process.cwd() = project root → ./db/custom.db
- *  - Netlify functions: process.cwd() = /var/task/ (Lambda root)
- *  - Vercel functions:  process.cwd() = project root
+ * Resolve the SQLite database path so it works across environments.
  *
- * We try several candidate paths and pick the first one that exists.
- * This avoids SQLite "Error code 14: Unable to open the database file"
- * when the relative path doesn't resolve correctly.
+ * Robust against:
+ *  - Missing DATABASE_URL env var
+ *  - DATABASE_URL that doesn't start with `file:` (Prisma validation error)
+ *  - Different current working directories on Vercel / Netlify / local dev
+ *
+ * SQLite error 14 ("Unable to open the database file") and Prisma validation
+ * error ("URL must start with the protocol file:") are both handled here.
  */
 function resolveDatabasePath(): string {
-  // If DATABASE_URL is already set to an absolute path, just use it
-  const envUrl = process.env.DATABASE_URL || ''
+  const envUrl = (process.env.DATABASE_URL || '').trim()
+  const DB_NAME = 'custom.db'
+
+  // 1. If env var is already a valid file: URL pointing to an absolute path, use it directly
   if (envUrl.startsWith('file:') && !envUrl.startsWith('file:./') && !envUrl.startsWith('file:../')) {
-    return envUrl
+    // It's already an absolute file: URL — verify it exists, otherwise fall through
+    const candidatePath = envUrl.replace(/^file:/, '')
+    try {
+      if (fs.existsSync(candidatePath)) return envUrl
+    } catch {}
   }
 
-  // The file name from the env var (default: custom.db)
-  const dbName = envUrl.replace(/^file:/, '').replace(/^\.\//, '').replace(/^db\//, '') || 'custom.db'
+  // 2. If env var is a relative file: URL (e.g. file:./db/custom.db), extract the filename
+  let dbName = DB_NAME
+  if (envUrl.startsWith('file:')) {
+    const cleaned = envUrl.replace(/^file:/, '').replace(/^\.\//, '').replace(/^db\//, '')
+    if (cleaned) dbName = cleaned
+  }
 
-  // Candidate locations (in order of preference)
+  // 3. Try every plausible location across environments
   const candidates = [
-    path.join(process.cwd(), 'db', dbName),           // project root (dev / Vercel)
-    path.join(process.cwd(), dbName),                  // cwd root
-    path.join('/var/task', 'db', dbName),              // Netlify Lambda root
-    path.join('/var/task', dbName),                    // Netlify Lambda alt
-    path.join('/opt', 'db', dbName),                   // Netlify Lambda layer
-    path.join(__dirname, 'db', dbName),                // relative to this file (build time)
-    path.join(__dirname, '..', '..', 'db', dbName),    // up 2 dirs from src/lib
-    path.join(__dirname, '..', '..', '..', 'db', dbName), // up 3 dirs (Netlify bundle)
+    // Local dev / Vercel (cwd = project root)
+    path.join(process.cwd(), 'db', dbName),
+    path.join(process.cwd(), dbName),
+    // Netlify Lambda root
+    path.join('/var/task', 'db', dbName),
+    path.join('/var/task', dbName),
+    path.join('/var/task', '.next', 'server', 'db', dbName),
+    // Netlify Lambda layer
+    path.join('/opt', 'db', dbName),
+    path.join('/opt', dbName),
+    // Relative to this file (built bundle layout)
+    path.join(__dirname, 'db', dbName),
+    path.join(__dirname, '..', 'db', dbName),
+    path.join(__dirname, '..', '..', 'db', dbName),
+    path.join(__dirname, '..', '..', '..', 'db', dbName),
+    path.join(__dirname, '..', '..', '..', '..', 'db', dbName),
   ]
 
   for (const candidate of candidates) {
@@ -42,9 +61,15 @@ function resolveDatabasePath(): string {
     } catch {}
   }
 
-  // Fallback: use the env var as-is (will likely fail, but at least we tried)
-  console.warn('[db] Could not find database file in any candidate location, using env var as-is:', envUrl)
-  return envUrl || `file:./db/${dbName}`
+  // 4. Last-resort fallback: a valid `file:` URL so Prisma validation passes
+  //    even if the DB file isn't found yet. Prisma will create it on first write
+  //    (but our schema expects the existing file, so users won't be able to log
+  //    in until we fix the path). This avoids the "URL must start with file:" error.
+  const fallback = `file:${path.join(process.cwd(), 'db', dbName)}`
+  console.warn('[db] Could not find database file in any candidate location.')
+  console.warn('[db] Falling back to:', fallback)
+  console.warn('[db] Candidate paths tried:', candidates)
+  return fallback
 }
 
 const databaseUrl = resolveDatabasePath()

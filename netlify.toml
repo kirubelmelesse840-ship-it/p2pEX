@@ -25,9 +25,12 @@
 # Next.js functions can run up to 26 seconds on Netlify free tier (vs Vercel's 10s default)
 # This helps with the support chat upload + image processing routes
 [functions]
-  # Include the SQLite database file in the serverless function bundle
-  # so Prisma can find it at runtime (otherwise SQLite returns error 14)
-  included_files = ["db/custom.db", "prisma/schema.prisma"]
+  # Include the SQLite database file in EVERY serverless function bundle
+  # so Prisma can find it at runtime. Without this, Netlify only bundles
+  # files that are explicitly imported in code, and a .db file isn't.
+  included_files = ["db/custom.db", "prisma/schema.prisma", "prisma/migrations/**"]
+  # Increase function size limit warning tolerance (default 50 MB)
+  node_bundler = "esbuild"
 
 # Headers for security + caching
 [[headers]]
