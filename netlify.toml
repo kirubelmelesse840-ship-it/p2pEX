@@ -2,9 +2,9 @@
 # Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  # Let Netlify auto-detect the framework (Next.js)
-  # We use the official Next.js plugin instead of overriding publish directory
-  command = "npm run build"
+  # Generate Prisma client (with new SQLite provider) before building Next.js
+  # `postinstall` hook in package.json also runs `prisma generate` — but we double up here for safety
+  command = "npx prisma generate && npm run build"
   # Don't set publish directory — the Next.js plugin handles it
   # This is required for Next.js 13+ app router with SSR/ISR
 
@@ -15,6 +15,9 @@
   NODE_OPTIONS = "--openssl-legacy-provider"
   # Skip Prisma engine type check (some engines aren't needed for SQLite)
   PRISMA_ENGINES_MIRROR_API_BASE = "https://binaries.prisma.sh"
+  # Database URL — relative path so it works on Netlify's build environment
+  # Points to the SQLite file committed in the repo (db/custom.db)
+  DATABASE_URL = "file:./db/custom.db"
 
 # Required for Next.js on Netlify — auto-installs the Next.js runtime adapter
 [[plugins]]
