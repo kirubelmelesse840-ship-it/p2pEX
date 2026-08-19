@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // "standalone" was needed for Vercel — Netlify uses @netlify/plugin-nextjs
+  // which handles output on its own. We keep it off for Netlify compatibility.
+  // (If you ever go back to Vercel, uncomment this line)
+  // output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },

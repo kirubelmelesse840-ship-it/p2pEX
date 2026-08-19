@@ -1,0 +1,54 @@
+# Netlify configuration for P2PEX Next.js app
+# Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Let Netlify auto-detect the framework (Next.js)
+  # We use the official Next.js plugin instead of overriding publish directory
+  command = "npm run build"
+  # Don't set publish directory — the Next.js plugin handles it
+  # This is required for Next.js 13+ app router with SSR/ISR
+
+[build.environment]
+  # Pin Node version (matches Vercel default)
+  NODE_VERSION = "20"
+  # Use legacy OpenSSL provider for Node 17+ compatibility with older packages
+  NODE_OPTIONS = "--openssl-legacy-provider"
+  # Skip Prisma engine type check (some engines aren't needed for SQLite)
+  PRISMA_ENGINES_MIRROR_API_BASE = "https://binaries.prisma.sh"
+
+# Required for Next.js on Netlify — auto-installs the Next.js runtime adapter
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Next.js functions can run up to 26 seconds on Netlify free tier (vs Vercel's 10s default)
+# This helps with the support chat upload + image processing routes
+[functions]
+  # Increase timeout for long-running API routes (voice messages, image uploads, etc.)
+  # Netlify free tier max is 10s, Pro is 26s, but we set 10s as safe default
+  included_bundles = ["@netlify/plugin-nextjs"]
+
+# Headers for security + caching
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=(), interest-cohort=()"
+
+# Cache static assets aggressively
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+# Redirect rule — Next.js plugin handles most routing, but ensure root works
+[[redirects]]
+  from = "/home"
+  to = "/"
+  status = 301
