@@ -308,8 +308,8 @@ button:active:not(:disabled) {
 }
 
 /* ============================================================
-   BOLD COLORFUL DESIGN SYSTEM (applied globally to all pages)
-   Cards have strong colored gradient overlays + visible glow
+   BOLD COLOR BLOCK DESIGN SYSTEM
+   Cards have STRONG solid color tint + tighter (less spread) glow
    ============================================================ */
 
 @keyframes aurora-shift {
@@ -318,92 +318,91 @@ button:active:not(:disabled) {
   100% { background-position: -3% 2%, 102% -2%, 45% 102%, 102% 95%; }
 }
 
-/* Universal BOLD card treatment — strong color tint + visible glow */
+/* Universal BOLD card treatment — strong solid color + tight glow */
 .bg-card,
 [data-slot="card"] {
   position: relative;
-  border: 1px solid color-mix(in oklch, var(--primary) 25%, var(--border)) !important;
-  background:
-    linear-gradient(135deg,
-      color-mix(in oklch, var(--primary) 10%, var(--card)),
-      color-mix(in oklch, var(--primary) 4%, var(--card) 95%)) !important;
-  box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.10) inset,
-    0 10px 30px -10px rgba(0, 0, 0, 0.5),
-    0 0 0 1px color-mix(in oklch, var(--primary) 30%, transparent),
-    0 0 30px -6px color-mix(in oklch, var(--primary) 50%, transparent) !important;
-  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
-}
-.bg-card:hover,
-[data-slot="card"]:hover {
-  border-color: color-mix(in oklch, var(--primary) 70%, var(--border)) !important;
+  border: 1.5px solid color-mix(in oklch, var(--primary) 40%, var(--border)) !important;
   background:
     linear-gradient(135deg,
       color-mix(in oklch, var(--primary) 18%, var(--card)),
       color-mix(in oklch, var(--primary) 8%, var(--card) 92%)) !important;
   box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.14) inset,
-    0 18px 40px -10px rgba(0, 0, 0, 0.6),
-    0 0 0 1px color-mix(in oklch, var(--primary) 55%, transparent),
-    0 0 44px -4px color-mix(in oklch, var(--primary) 80%, transparent) !important;
-  transform: translateY(-3px);
+    0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in oklch, var(--primary) 25%, transparent),
+    0 0 8px -2px color-mix(in oklch, var(--primary) 25%, transparent) !important;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.bg-card:hover,
+[data-slot="card"]:hover {
+  border-color: color-mix(in oklch, var(--primary) 80%, var(--border)) !important;
+  background:
+    linear-gradient(135deg,
+      color-mix(in oklch, var(--primary) 25%, var(--card)),
+      color-mix(in oklch, var(--primary) 12%, var(--card) 88%)) !important;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.16) inset,
+    0 6px 16px -4px rgba(0, 0, 0, 0.5),
+    0 0 0 1.5px color-mix(in oklch, var(--primary) 55%, transparent),
+    0 0 12px -2px color-mix(in oklch, var(--primary) 40%, transparent) !important;
+  transform: translateY(-2px);
 }
 
-/* Muted inner panels — colored tint + glow */
+/* Muted inner panels — solid color tint, minimal glow */
 .bg-muted\/30, .bg-muted\/40, .bg-muted\/50 {
   background: linear-gradient(135deg,
-    color-mix(in oklch, var(--primary) 8%, var(--muted)),
-    color-mix(in oklch, var(--primary) 3%, var(--muted) 92%)) !important;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-              0 0 16px -4px color-mix(in oklch, var(--primary) 30%, transparent) !important;
-  border: 1px solid color-mix(in oklch, var(--primary) 20%, transparent) !important;
+    color-mix(in oklch, var(--primary) 14%, var(--muted)),
+    color-mix(in oklch, var(--primary) 6%, var(--muted) 90%)) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid color-mix(in oklch, var(--primary) 30%, transparent) !important;
 }
 
 /* ============================================================
-   GLOW UTILITY CLASSES — explicit color variants with BOLD backgrounds
-   Each one has both a colored gradient background AND a strong glow
+   GLOW UTILITY CLASSES — BOLD solid color blocks + tight glow
+   Less glow halo, more saturated color
    ============================================================ */
 .glow-card {
   background: linear-gradient(135deg,
-    color-mix(in oklch, var(--primary) 14%, var(--card)),
-    color-mix(in oklch, var(--primary) 5%, var(--card) 92%)) !important;
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 45%, transparent), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 40px -2px color-mix(in oklch, var(--primary) 75%, transparent) !important;
+    color-mix(in oklch, var(--primary) 22%, var(--card)),
+    color-mix(in oklch, var(--primary) 10%, var(--card) 90%)) !important;
+  box-shadow: 0 0 0 1.5px color-mix(in oklch, var(--primary) 55%, transparent), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px color-mix(in oklch, var(--primary) 40%, transparent) !important;
 }
 .glow-card-blue {
   background: linear-gradient(135deg,
-    rgba(59,130,246,0.18),
-    rgba(59,130,246,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(59,130,246,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(59,130,246,0.70) !important;
+    rgba(59,130,246,0.28),
+    rgba(59,130,246,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(59,130,246,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(59,130,246,0.45) !important;
 }
 .glow-card-green {
   background: linear-gradient(135deg,
-    rgba(16,185,129,0.18),
-    rgba(16,185,129,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(16,185,129,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(16,185,129,0.70) !important;
+    rgba(16,185,129,0.28),
+    rgba(16,185,129,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(16,185,129,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(16,185,129,0.45) !important;
 }
 .glow-card-amber {
   background: linear-gradient(135deg,
-    rgba(245,158,11,0.18),
-    rgba(245,158,11,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(245,158,11,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(245,158,11,0.70) !important;
+    rgba(245,158,11,0.28),
+    rgba(245,158,11,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(245,158,11,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(245,158,11,0.45) !important;
 }
 .glow-card-purple {
   background: linear-gradient(135deg,
-    rgba(168,85,247,0.18),
-    rgba(168,85,247,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(168,85,247,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(168,85,247,0.70) !important;
+    rgba(168,85,247,0.28),
+    rgba(168,85,247,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(168,85,247,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(168,85,247,0.45) !important;
 }
 .glow-card-red {
   background: linear-gradient(135deg,
-    rgba(239,68,68,0.18),
-    rgba(239,68,68,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(239,68,68,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(239,68,68,0.70) !important;
+    rgba(239,68,68,0.28),
+    rgba(239,68,68,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(239,68,68,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(239,68,68,0.45) !important;
 }
 .glow-card-pink {
   background: linear-gradient(135deg,
-    rgba(236,72,153,0.18),
-    rgba(236,72,153,0.05)) !important;
-  box-shadow: 0 0 0 1px rgba(236,72,153,0.50), 0 10px 30px -8px rgba(0,0,0,0.5), 0 0 44px -2px rgba(236,72,153,0.70) !important;
+    rgba(236,72,153,0.28),
+    rgba(236,72,153,0.10)) !important;
+  box-shadow: 0 0 0 1.5px rgba(236,72,153,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 10px -2px rgba(236,72,153,0.45) !important;
 }
 
 /* Glowing gradient borders for highlighted elements */
@@ -412,38 +411,34 @@ button:active:not(:disabled) {
   background:
     linear-gradient(var(--card), var(--card)) padding-box,
     linear-gradient(135deg,
-      rgba(59,130,246,0.55),
-      rgba(168,85,247,0.45),
-      rgba(245,158,11,0.45),
-      rgba(16,185,129,0.55)) border-box;
-  border: 1px solid transparent !important;
-  box-shadow: 0 0 22px -6px rgba(168,85,247,0.35), 0 8px 24px -10px rgba(0,0,0,0.4);
+      rgba(59,130,246,0.65),
+      rgba(168,85,247,0.55),
+      rgba(245,158,11,0.55),
+      rgba(16,185,129,0.65)) border-box;
+  border: 2px solid transparent !important;
+  box-shadow: 0 4px 12px -4px rgba(0,0,0,0.4);
 }
 
 /* Active nav pill (used by admin nav grid) */
 .nav-pill {
   position: relative;
-  border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+  border: 1.5px solid color-mix(in oklch, var(--border) 60%, transparent);
   background: color-mix(in oklch, var(--card) 90%, transparent);
   transition: all 0.2s ease;
 }
 .nav-pill:hover {
-  border-color: color-mix(in oklch, var(--primary) 50%, transparent);
-  background: color-mix(in oklch, var(--primary) 8%, var(--card));
-  box-shadow: 0 0 18px -4px color-mix(in oklch, var(--primary) 60%, transparent);
+  border-color: color-mix(in oklch, var(--primary) 60%, transparent);
+  background: color-mix(in oklch, var(--primary) 14%, var(--card));
   transform: translateY(-1px);
 }
 .nav-pill[data-active="true"] {
-  border-color: color-mix(in oklch, var(--primary) 65%, transparent);
-  background: color-mix(in oklch, var(--primary) 14%, var(--card));
-  box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--primary) 40%, transparent),
-    0 0 22px -4px color-mix(in oklch, var(--primary) 65%, transparent);
+  border: 2px solid color-mix(in oklch, var(--primary) 75%, transparent);
+  background: color-mix(in oklch, var(--primary) 22%, var(--card));
 }
 
-/* Animated pulse glow for important CTAs / alerts */
+/* Animated pulse glow for important CTAs / alerts — tighter, less spread */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.45), 0 0 18px -4px rgba(245,158,11,0.5); }
-  50%      { box-shadow: 0 0 0 6px rgba(245,158,11,0), 0 0 26px -2px rgba(245,158,11,0.7); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.30); }
+  50%      { box-shadow: 0 0 0 4px rgba(245,158,11,0); }
 }
-.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }

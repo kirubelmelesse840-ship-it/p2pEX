@@ -199,12 +199,12 @@ function NavSection({ title, icon, children }: { title: string; icon: React.Reac
 const TILE_COLORS: Record<string, {
   bg: string; border: string; iconBg: string; iconColor: string; activeBg: string; glow: string
 }> = {
-  purple: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', iconBg: 'bg-purple-500/20', iconColor: 'text-purple-500', activeBg: 'bg-purple-500/25', glow: 'glow-card-purple' },
-  blue:   { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   iconBg: 'bg-blue-500/20',   iconColor: 'text-blue-500',   activeBg: 'bg-blue-500/25',   glow: 'glow-card-blue' },
-  green:  { bg: 'bg-green-500/10',  border: 'border-green-500/30',  iconBg: 'bg-green-500/20',  iconColor: 'text-green-500',  activeBg: 'bg-green-500/25',  glow: 'glow-card-green' },
-  amber:  { bg: 'bg-amber-500/10', border: 'border-amber-500/30',  iconBg: 'bg-amber-500/20',  iconColor: 'text-amber-500',  activeBg: 'bg-amber-500/25',  glow: 'glow-card-amber' },
-  red:    { bg: 'bg-red-500/10',    border: 'border-red-500/30',    iconBg: 'bg-red-500/20',    iconColor: 'text-red-500',    activeBg: 'bg-red-500/25',    glow: 'glow-card-red' },
-  pink:   { bg: 'bg-pink-500/10',   border: 'border-pink-500/30',   iconBg: 'bg-pink-500/20',   iconColor: 'text-pink-500',   activeBg: 'bg-pink-500/25',   glow: 'glow-card-pink' },
+  purple: { bg: 'bg-purple-500/20', border: 'border-purple-500/50', iconBg: 'bg-purple-500/30', iconColor: 'text-purple-600 dark:text-purple-400', activeBg: 'bg-purple-500/40', glow: 'glow-card-purple' },
+  blue:   { bg: 'bg-blue-500/20',   border: 'border-blue-500/50',   iconBg: 'bg-blue-500/30',   iconColor: 'text-blue-600 dark:text-blue-400',   activeBg: 'bg-blue-500/40',   glow: 'glow-card-blue' },
+  green:  { bg: 'bg-green-500/20',  border: 'border-green-500/50',  iconBg: 'bg-green-500/30',  iconColor: 'text-green-600 dark:text-green-400',  activeBg: 'bg-green-500/40',  glow: 'glow-card-green' },
+  amber:  { bg: 'bg-amber-500/20',  border: 'border-amber-500/50',  iconBg: 'bg-amber-500/30',  iconColor: 'text-amber-600 dark:text-amber-400',  activeBg: 'bg-amber-500/40',  glow: 'glow-card-amber' },
+  red:    { bg: 'bg-red-500/20',    border: 'border-red-500/50',    iconBg: 'bg-red-500/30',    iconColor: 'text-red-600 dark:text-red-400',     activeBg: 'bg-red-500/40',    glow: 'glow-card-red' },
+  pink:   { bg: 'bg-pink-500/20',   border: 'border-pink-500/50',   iconBg: 'bg-pink-500/30',   iconColor: 'text-pink-600 dark:text-pink-400',   activeBg: 'bg-pink-500/40',   glow: 'glow-card-pink' },
 }
 
 function NavTile({
@@ -2806,7 +2806,7 @@ function NotificationsTab() {
             <label className="text-xs font-medium text-muted-foreground">Select User</label>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
               <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a user" /></SelectTrigger>
-              <SelectContent className="max-h-[200px]">
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 {users.map(u => (
                   <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
                 ))}
@@ -3509,8 +3509,8 @@ function SupportTab() {
   const fd = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 h-[600px] sm:h-[70vh]">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
         {/* Conversation list */}
         <div className={`border-r border-border flex flex-col min-h-0 ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-border flex items-center justify-between flex-shrink-0">
@@ -3521,7 +3521,7 @@ function SupportTab() {
               <RefreshCw className="h-3 w-3" /> Refresh
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="overflow-y-auto max-h-[60vh] min-h-[200px]">
             {conversations.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">
                 <Headphones className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -3554,9 +3554,9 @@ function SupportTab() {
         </div>
 
         {/* Chat area */}
-        <div className={`md:col-span-2 flex flex-col min-h-0 ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`md:col-span-2 flex flex-col min-h-[400px] ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
           {!selectedUserId ? (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
               <div className="text-center">
                 <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Select a conversation to start chatting</p>
@@ -3584,7 +3584,7 @@ function SupportTab() {
                 </Button>
               </div>
 
-              <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+              <div ref={scroll} className="overflow-y-auto max-h-[60vh] min-h-[300px] p-3 space-y-2">
                 {messages.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
