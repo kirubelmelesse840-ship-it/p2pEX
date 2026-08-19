@@ -939,7 +939,7 @@ function UserNotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 top-full mt-2 max-h-[60vh] sm:max-h-[420px] overflow-y-auto bg-card border border-border rounded-xl shadow-2xl z-[200] overflow-hidden">
+          <div className="fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] top-full mt-2 max-h-[70vh] sm:max-h-[520px] overflow-y-auto bg-card border-2 border-primary/40 rounded-xl shadow-2xl z-[200] overflow-hidden glow-card">
             {/* Header with gradient */}
             <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -961,7 +961,7 @@ function UserNotificationBell() {
             </div>
 
             {notifications.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="p-10 text-center">
                 <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
                   <Bell className="h-8 w-8 text-muted-foreground/50" />
                 </div>
@@ -973,11 +973,11 @@ function UserNotificationBell() {
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={`p-3 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
+                    className={`p-4 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
                     onClick={() => { if (!n.isRead) markRead(n.id) }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full ${
+                      <div className={`flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full ${
                         n.type === 'success' ? 'bg-green-500/15 text-green-500' :
                         n.type === 'warning' ? 'bg-yellow-500/15 text-yellow-500' :
                         n.type === 'announcement' ? 'bg-purple-500/15 text-purple-500' :
@@ -990,7 +990,7 @@ function UserNotificationBell() {
                           <span className="text-sm font-semibold truncate">{n.title}</span>
                           {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</p>
                         <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
                           <Clock className="h-2.5 w-2.5" />
                           {formatTimeAgo(n.createdAt)}

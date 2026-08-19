@@ -63,21 +63,21 @@ export function SupportChatDialog({ open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-md max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col glow-card-amber">
           <DialogTitle className="sr-only">Support Chat</DialogTitle>
           <div className="flex items-center gap-2 p-3 border-b border-border bg-gradient-to-r from-yellow-500/10 to-orange-500/10 flex-shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white"><Headphones className="h-4 w-4" /></div>
-            <div className="flex-1"><p className="font-medium text-sm">P2PEX Support</p><p className="text-xs text-green-500">● Online</p></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white"><Headphones className="h-5 w-5" /></div>
+            <div className="flex-1"><p className="font-medium text-base">P2PEX Support</p><p className="text-xs text-green-500">● Online</p></div>
             <button onClick={onClose} className="p-1.5 rounded hover:bg-muted"><X className="h-5 w-5" /></button>
           </div>
-          <div ref={scroll} className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0" style={{ minHeight: '150px' }}>
+          <div ref={scroll} className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0" style={{ minHeight: '400px', maxHeight: '65vh' }}>
             {messages.length === 0 ? (<div className="text-center py-8 text-muted-foreground"><Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" /><p className="text-sm font-medium">No messages yet</p><p className="text-xs">Send a message, image, voice, or video</p></div>) : messages.map(m => (
               <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl p-2.5 ${m.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                  {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap">{m.message}</p>}
-                  {m.type === 'image' && m.imageData && <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-32 cursor-pointer" onClick={() => setViewer(m.imageData)} />}
+                <div className={`max-w-[75%] rounded-2xl p-3 ${m.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">{m.message}</p>}
+                  {m.type === 'image' && m.imageData && <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-48 cursor-pointer" onClick={() => setViewer(m.imageData)} />}
                   {m.type === 'voice' && m.voiceData && <button onClick={() => play(m.voiceData, m.id)} className="flex items-center gap-2 p-1.5 w-full">{playing === m.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}<span className="text-xs">Voice</span></button>}
-                  {m.type === 'video' && m.videoData && <video src={m.videoData} controls className="rounded-lg max-w-full max-h-32" />}
+                  {m.type === 'video' && m.videoData && <video src={m.videoData} controls className="rounded-lg max-w-full max-h-48" />}
                   <p className={`text-[10px] mt-1 ${m.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{fd(m.createdAt)}</p>
                 </div>
               </div>
@@ -91,7 +91,7 @@ export function SupportChatDialog({ open, onClose }: Props) {
               <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0"><ImageIcon className="h-5 w-5" /></button>
               <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted flex-shrink-0 ${recording ? 'text-red-500' : ''}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}</button>
               <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0"><Video className="h-5 w-5" /></button>
-              <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }} placeholder={recording ? 'Recording...' : 'Type...'} className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-background text-sm" disabled={busy || recording} />
+              <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }} placeholder={recording ? 'Recording...' : 'Type a message...'} className="flex-1 min-w-0 h-10 px-3 rounded-lg border border-border bg-background text-sm" disabled={busy || recording} />
               <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 flex-shrink-0"><Send className="h-5 w-5" /></button>
             </div>
           </div>
