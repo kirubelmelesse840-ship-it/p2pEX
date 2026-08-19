@@ -54,13 +54,13 @@ export async function POST(req: NextRequest) {
         status: 'PENDING',
         confirmations: 0,
         requiredConfirmations: 1,
-        note: `Deposit request via ${network} — awaiting admin approval`,
+        note: `Deposit request via ${network} — awaiting review`,
       },
     })
 
     return NextResponse.json({
       transaction: tx,
-      message: 'Deposit request submitted. Your balance will be credited after admin approval.',
+      message: 'Deposit request submitted. Your balance will be credited after review.',
     })
   } catch (e: any) {
     console.error('[wallet/deposit]', e)

@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         fee,
         network,
         toAddress: address,
-        note: memo || `Withdrawal to ${address.slice(0, 10)}... via ${network} — awaiting admin approval`,
+        note: memo || `Withdrawal to ${address.slice(0, 10)}... via ${network} — awaiting review`,
         status: 'PENDING',
         confirmations: 0,
         requiredConfirmations: 1,
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       transaction: tx,
-      message: 'Withdrawal request submitted. Funds are locked pending admin approval.',
+      message: 'Withdrawal request submitted. Funds are locked pending review.',
     })
   } catch (e: any) {
     console.error('[wallet/send]', e)

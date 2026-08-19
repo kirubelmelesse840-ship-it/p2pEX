@@ -526,7 +526,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
 
   // Helper to render a payment detail field with a copy button
   const copyField = (label: string, value: string) => (
-    <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-blue-500/20">
+    <div className="flex items-center justify-between p-2 bg-card rounded-lg border border-blue-500/20 glow-card-blue">
       <div className="flex-1 min-w-0">
         <span className="text-xs text-muted-foreground block">{label}</span>
         <span className="font-mono font-bold text-foreground text-sm break-all">{value}</span>
@@ -649,9 +649,9 @@ function TradeDialog({ listing, onClose, onSuccess }: {
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Prominent warning — transaction not complete until admin confirms */}
+          {/* Prominent warning — transaction not complete until verified */}
           {!isBuying && (
-            <div className="bg-orange-500/10 border-2 border-orange-500/40 rounded-lg p-3">
+            <div className="bg-orange-500/10 border-2 border-orange-500/40 rounded-xl p-3 glow-card-amber">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
@@ -667,7 +667,7 @@ function TradeDialog({ listing, onClose, onSuccess }: {
           )}
 
           {/* Price info */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
+          <div className={`bg-muted/30 rounded-xl p-3 space-y-1 text-sm glow-card ${isBuying ? 'glow-card-green' : 'glow-card-amber'}`}>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Price</span>
               <span className="font-medium tabular-nums">{formatPrice(listing.price)} {listing.fiatCurrency}</span>
@@ -925,7 +925,7 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
 
   return (
     <div
-      className="bg-card border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer"
+      className={`bg-card border border-border rounded-xl p-3 hover:bg-muted/30 cursor-pointer glow-card ${order.myRole === 'BUYER' ? 'glow-card-green' : 'glow-card-amber'}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between gap-3">
@@ -1016,7 +1016,12 @@ function OrderDialog({ order, onClose, onSuccess }: {
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>P2P Order #{order.id.slice(-8).toUpperCase()}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <span className={`inline-flex items-center justify-center h-8 w-8 rounded-lg ${order.myRole === 'BUYER' ? 'bg-green-500/15 text-green-500' : 'bg-amber-500/15 text-amber-500'}`}>
+              {order.myRole === 'BUYER' ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
+            </span>
+            P2P Order #{order.id.slice(-8).toUpperCase()}
+          </DialogTitle>
           <DialogDescription>
             {order.myRole === 'BUYER' ? 'You are buying' : 'You are selling'} {order.asset} for {order.fiatCurrency}
           </DialogDescription>
@@ -1024,12 +1029,12 @@ function OrderDialog({ order, onClose, onSuccess }: {
 
         <div className="space-y-3">
           {/* Status */}
-          <div className={`text-center py-3 rounded-lg ${cfg.color}`}>
+          <div className={`text-center py-3 rounded-xl ${cfg.color} ${order.myRole === 'BUYER' ? 'glow-card-green' : 'glow-card-amber'}`}>
             <p className="font-medium">{cfg.label}</p>
           </div>
 
           {/* Order details */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
+          <div className="bg-muted/30 rounded-xl p-3 space-y-1 text-sm glow-card">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Counterparty</span>
               <span className="font-medium">{order.myRole === 'BUYER' ? order.sellerName : order.buyerName}</span>

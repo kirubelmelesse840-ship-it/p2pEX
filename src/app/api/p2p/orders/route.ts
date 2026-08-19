@@ -150,17 +150,17 @@ export async function POST(req: NextRequest) {
 
     // Send notifications to both buyer and seller — tell them to wait patiently
     const buyerMsg = listing.side === 'SELL'
-      ? `Your buy order for ${amount} ${listing.asset} has been submitted. The admin is checking both sides. Please wait patiently — your ${listing.asset} will be credited automatically once approved.`
-      : `A seller has accepted your buy ad for ${amount} ${listing.asset}. The admin is checking both sides. Please wait patiently for approval.`
+      ? `Your buy order for ${amount} ${listing.asset} has been submitted. Our team is verifying both sides. Please wait patiently — your ${listing.asset} will be credited automatically once approved.`
+      : `A seller has accepted your buy ad for ${amount} ${listing.asset}. Our team is verifying both sides. Please wait patiently for approval.`
     const sellerMsg = listing.side === 'SELL'
-      ? `${user.name} has placed a buy order for ${amount} ${listing.asset}. The admin is checking both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`
-      : `Your sell order for ${amount} ${listing.asset} has been submitted. The admin is checking both sides. Please wait patiently — your ${listing.asset} will be transferred to the buyer once approved.`
+      ? `${user.name} has placed a buy order for ${amount} ${listing.asset}. Our team is verifying both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`
+      : `Your sell order for ${amount} ${listing.asset} has been submitted. Our team is verifying both sides. Please wait patiently — your ${listing.asset} will be transferred to the buyer once approved.`
 
     try {
       await db.adminNotification.create({
         data: {
           userId: buyerId,
-          title: '⏳ Order Under Admin Review',
+          title: '⏳ Order Under Review',
           message: buyerMsg,
           type: 'info',
           isRead: false,
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       await db.adminNotification.create({
         data: {
           userId: sellerId,
-          title: '⏳ Order Under Admin Review',
+          title: '⏳ Order Under Review',
           message: sellerMsg,
           type: 'info',
           isRead: false,
@@ -184,14 +184,14 @@ export async function POST(req: NextRequest) {
       const { sendPushToUser } = await import('@/lib/push')
       await Promise.allSettled([
         sendPushToUser(buyerId, {
-          title: '⏳ Order Under Admin Review',
-          body: `The admin is checking both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`,
+          title: '⏳ Order Under Review',
+          body: `Our team is verifying both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`,
           url: '/',
           tag: `p2p-order-${order.id}`,
         }),
         sendPushToUser(sellerId, {
-          title: '⏳ Order Under Admin Review',
-          body: `The admin is checking both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`,
+          title: '⏳ Order Under Review',
+          body: `Our team is verifying both sides. Please wait patiently — your ${listing.asset} will be transferred once approved.`,
           url: '/',
           tag: `p2p-order-${order.id}`,
         }),

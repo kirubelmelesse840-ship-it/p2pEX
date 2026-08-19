@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
           data: {
             userId: order.buyerId,
             title: '✅ Seller Confirmed Payment',
-            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. The admin is now reviewing and will release your crypto shortly.`,
+            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. Our team is now reviewing and will release your crypto shortly.`,
             type: 'success',
             isRead: false,
           },
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
           data: {
             userId: order.buyerId,
             title: '✅ Seller Confirmed Payment',
-            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. The admin is now reviewing and will release your crypto shortly.`,
+            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. Our team is now reviewing and will release your crypto shortly.`,
             type: 'success',
             isRead: false,
           },

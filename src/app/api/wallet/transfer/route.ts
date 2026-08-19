@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       transaction: senderTx,
-      message: `Transfer request submitted. ${amount} ${asset} is locked pending admin approval. Recipient: ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email}).`,
+      message: `Transfer request submitted. ${amount} ${asset} is locked pending review. Recipient: ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email}).`,
     })
   } catch (e: any) {
     console.error('[wallet/transfer]', e)

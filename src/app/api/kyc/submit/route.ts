@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: 'KYC submitted successfully. An admin will review your application shortly.',
+      message: 'KYC submitted successfully. Your application will be reviewed shortly.',
       kycStatus: 'PENDING',
     })
   } catch (e: any) {
