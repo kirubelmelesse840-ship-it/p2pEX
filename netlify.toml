@@ -25,8 +25,9 @@
 # Next.js functions can run up to 26 seconds on Netlify free tier (vs Vercel's 10s default)
 # This helps with the support chat upload + image processing routes
 [functions]
-  # Increase timeout for long-running API routes (voice messages, image uploads, etc.)
-  # Netlify free tier max is 10s, Pro is 26s, but we set 10s as safe default
+  # Include the SQLite database file in the serverless function bundle
+  # so Prisma can find it at runtime (otherwise SQLite returns error 14)
+  included_files = ["db/custom.db", "prisma/schema.prisma"]
 
 # Headers for security + caching
 [[headers]]
