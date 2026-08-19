@@ -3,7 +3,10 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+  // For SQLite, only the "native" target is needed — the other targets
+  // (rhel-openssl-3.0.x, debian-openssl-3.0.x) were for the old Postgres
+  // setup on Vercel and were causing Prisma's download to fail on Netlify.
+  binaryTargets = ["native"]
 }
 
 datasource db {

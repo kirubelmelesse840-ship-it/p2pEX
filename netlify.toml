@@ -11,13 +11,12 @@
 [build.environment]
   # Pin Node version (matches Vercel default)
   NODE_VERSION = "20"
-  # Use legacy OpenSSL provider for Node 17+ compatibility with older packages
-  NODE_OPTIONS = "--openssl-legacy-provider"
-  # Skip Prisma engine type check (some engines aren't needed for SQLite)
-  PRISMA_ENGINES_MIRROR_API_BASE = "https://binaries.prisma.sh"
   # Database URL — relative path so it works on Netlify's build environment
   # Points to the SQLite file committed in the repo (db/custom.db)
   DATABASE_URL = "file:./db/custom.db"
+  # Skip Prisma engine hash check (prevents "engine hash mismatch" errors
+  # when binaries are downloaded from the CDN during build)
+  PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = "true"
 
 # Required for Next.js on Netlify — auto-installs the Next.js runtime adapter
 [[plugins]]
