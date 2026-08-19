@@ -5,9 +5,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPassword, createSession } from '@/lib/auth'
 
+// Prevent static generation — this route must run as a serverless function
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+export const maxDuration = 26
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { email, password } = body
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
@@ -25,7 +31,7 @@ export async function POST(req: NextRequest) {
     })
     response.cookies.set('session_token', session.token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
@@ -33,6 +39,9 @@ export async function POST(req: NextRequest) {
     return response
   } catch (e: any) {
     console.error('[login]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    return NextResponse.json(
+      { error: e.message || 'Internal error', stack: process.env.NODE_ENV === 'production' ? undefined : e.stack },
+      { status: 500 }
+    )
   }
 }

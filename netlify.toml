@@ -29,8 +29,11 @@
   # so Prisma can find it at runtime. Without this, Netlify only bundles
   # files that are explicitly imported in code, and a .db file isn't.
   included_files = ["db/custom.db", "prisma/schema.prisma", "prisma/migrations/**"]
-  # Increase function size limit warning tolerance (default 50 MB)
+  # Use esbuild for faster bundling
   node_bundler = "esbuild"
+  # Increase timeout to max (26s) — DB copy + Prisma cold start can be slow
+  # Without this, login times out and returns HTML instead of JSON
+  timeout = 26
 
 # Headers for security + caching
 [[headers]]
