@@ -10,6 +10,11 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // PgBouncer (Supabase pooler) doesn't support prepared statements,
+  // so Prisma falls back to "relationMode = prisma" which uses
+  // referential integrity checks in JS instead of DB constraints.
+  // This fixes "prepared statement already exists" (42P05) errors.
+  relationMode = "prisma"
 }
 
 // ============ USERS ============
