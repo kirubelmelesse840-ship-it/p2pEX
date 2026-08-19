@@ -25,7 +25,6 @@
 [functions]
   # Increase timeout for long-running API routes (voice messages, image uploads, etc.)
   # Netlify free tier max is 10s, Pro is 26s, but we set 10s as safe default
-  included_bundles = ["@netlify/plugin-nextjs"]
 
 # Headers for security + caching
 [[headers]]
