@@ -2,8 +2,7 @@
 # Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  # Generate Prisma client (with new SQLite provider) before building Next.js
-  # `postinstall` hook in package.json also runs `prisma generate` — but we double up here for safety
+  # Generate Prisma client (with Postgres provider) before building Next.js
   command = "npx prisma generate && npm run build"
   # Don't set publish directory — the Next.js plugin handles it
   # This is required for Next.js 13+ app router with SSR/ISR
@@ -11,28 +10,20 @@
 [build.environment]
   # Pin Node version (matches Vercel default)
   NODE_VERSION = "20"
-  # Database URL — relative path so it works on Netlify's build environment
-  # Points to the SQLite file committed in the repo (db/custom.db)
-  DATABASE_URL = "file:./db/custom.db"
-  # Skip Prisma engine hash check (prevents "engine hash mismatch" errors
-  # when binaries are downloaded from the CDN during build)
-  PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = "true"
+  # The DATABASE_URL must be set in Netlify UI (Site settings → Environment variables)
+  # It should point to your Supabase Postgres instance, like:
+  # postgresql://postgres.XXXX:password@aws-0-region.pooler.supabase.com:6543/postgres
+  # DO NOT set DATABASE_URL here — set it in the Netlify UI as a sensitive variable.
 
 # Required for Next.js on Netlify — auto-installs the Next.js runtime adapter
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Next.js functions can run up to 26 seconds on Netlify free tier (vs Vercel's 10s default)
-# This helps with the support chat upload + image processing routes
+# Serverless function settings — Postgres doesn't need bundled DB files
 [functions]
-  # Include the SQLite database file in EVERY serverless function bundle
-  # so Prisma can find it at runtime. Without this, Netlify only bundles
-  # files that are explicitly imported in code, and a .db file isn't.
-  included_files = ["db/custom.db", "prisma/schema.prisma", "prisma/migrations/**"]
-  # Use esbuild for faster bundling
   node_bundler = "esbuild"
-  # Keep these Prisma binaries external (don't bundle them)
-  external_node_modules = ["@prisma/client", "@prisma/engine-core", "bcrypt"]
+  # Keep Prisma client external (don't bundle it — it has native binaries)
+  external_node_modules = ["@prisma/client", "@prisma/engine-core"]
 
 # Function timeout (max 26s on free tier) — set in Netlify UI:
 # Site settings → Functions → Function timeout → 26
