@@ -98,44 +98,44 @@ export function AdminView() {
         </div>
       </div>
 
-      {/* Categorized navigation grid — replaces horizontal scroll tabs */}
-      <nav className="mb-5 space-y-3">
-        {/* Overview */}
-        <NavGroup label="Overview" icon={<BarChart3 className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'dashboard'} onClick={() => setTab('dashboard')} icon={<BarChart3 className="h-4 w-4" />} label="Dashboard" />
-        </NavGroup>
+      {/* Tile-based dashboard navigation — big colorful cards, vertical sections */}
+      <div className="mb-6 space-y-5">
+        {/* Overview section */}
+        <NavSection title="Overview" icon={<BarChart3 className="h-4 w-4" />}>
+          <NavTile active={tab === 'dashboard'} onClick={() => setTab('dashboard')} icon={<BarChart3 className="h-5 w-5" />} label="Dashboard" desc="Stats & charts" color="purple" />
+        </NavSection>
 
-        {/* User Management */}
-        <NavGroup label="User Management" icon={<Users className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'users'} onClick={() => setTab('users')} icon={<Users className="h-4 w-4" />} label="Users" badge={counts.kyc} />
-          <NavPill active={tab === 'user-details'} onClick={() => setTab('user-details')} icon={<Search className="h-4 w-4" />} label="User Details" />
-        </NavGroup>
+        {/* User Management section */}
+        <NavSection title="User Management" icon={<Users className="h-4 w-4" />}>
+          <NavTile active={tab === 'users'} onClick={() => setTab('users')} icon={<Users className="h-5 w-5" />} label="Users" desc="All accounts" badge={counts.kyc} color="blue" />
+          <NavTile active={tab === 'user-details'} onClick={() => setTab('user-details')} icon={<Search className="h-5 w-5" />} label="User Details" desc="Search & inspect" color="blue" />
+        </NavSection>
 
-        {/* Trading */}
-        <NavGroup label="Trading" icon={<TrendingUp className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'pairs'} onClick={() => setTab('pairs')} icon={<TrendingUp className="h-4 w-4" />} label="Pairs" />
-          <NavPill active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Activity className="h-4 w-4" />} label="Orders" />
-          <NavPill active={tab === 'transactions'} onClick={() => setTab('transactions')} icon={<DollarSign className="h-4 w-4" />} label="Transactions" />
-        </NavGroup>
+        {/* Trading section */}
+        <NavSection title="Trading" icon={<TrendingUp className="h-4 w-4" />}>
+          <NavTile active={tab === 'pairs'} onClick={() => setTab('pairs')} icon={<TrendingUp className="h-5 w-5" />} label="Pairs" desc="Trading pairs" color="green" />
+          <NavTile active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Activity className="h-5 w-5" />} label="Orders" desc="Open orders" color="green" />
+          <NavTile active={tab === 'transactions'} onClick={() => setTab('transactions')} icon={<DollarSign className="h-5 w-5" />} label="Transactions" desc="All tx history" color="green" />
+        </NavSection>
 
-        {/* P2P */}
-        <NavGroup label="P2P & Approvals" icon={<Shield className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'p2p'} onClick={() => setTab('p2p')} icon={<Shield className="h-4 w-4" />} label="P2P Ads" />
-          <NavPill active={tab === 'payment-review'} onClick={() => setTab('payment-review')} icon={<Clock className="h-4 w-4" />} label="P2P Approvals" badge={counts.payments} />
-          <NavPill active={tab === 'dw-approvals'} onClick={() => setTab('dw-approvals')} icon={<ArrowDownToLine className="h-4 w-4" />} label="D/W Approvals" badge={counts.dw} />
-        </NavGroup>
+        {/* P2P & Approvals section */}
+        <NavSection title="P2P & Approvals" icon={<Shield className="h-4 w-4" />}>
+          <NavTile active={tab === 'p2p'} onClick={() => setTab('p2p')} icon={<Shield className="h-5 w-5" />} label="P2P Ads" desc="Listings" color="amber" />
+          <NavTile active={tab === 'payment-review'} onClick={() => setTab('payment-review')} icon={<Clock className="h-5 w-5" />} label="P2P Approvals" desc="Pending reviews" badge={counts.payments} color="amber" />
+          <NavTile active={tab === 'dw-approvals'} onClick={() => setTab('dw-approvals')} icon={<ArrowDownToLine className="h-5 w-5" />} label="D/W Approvals" desc="Deposit / Withdraw" badge={counts.dw} color="amber" />
+        </NavSection>
 
-        {/* Communication */}
-        <NavGroup label="Communication" icon={<Send className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'notifications'} onClick={() => setTab('notifications')} icon={<Send className="h-4 w-4" />} label="Notifications" />
-          <NavPill active={tab === 'support'} onClick={() => setTab('support')} icon={<Headphones className="h-4 w-4" />} label="Support" />
-        </NavGroup>
+        {/* Communication section */}
+        <NavSection title="Communication" icon={<Send className="h-4 w-4" />}>
+          <NavTile active={tab === 'notifications'} onClick={() => setTab('notifications')} icon={<Send className="h-5 w-5" />} label="Notifications" desc="Broadcast" color="pink" />
+          <NavTile active={tab === 'support'} onClick={() => setTab('support')} icon={<Headphones className="h-5 w-5" />} label="Support" desc="Live chat" color="pink" />
+        </NavSection>
 
-        {/* System */}
-        <NavGroup label="System" icon={<Settings className="h-3.5 w-3.5" />}>
-          <NavPill active={tab === 'settings'} onClick={() => setTab('settings')} icon={<Settings className="h-4 w-4" />} label="Settings" />
-        </NavGroup>
-      </nav>
+        {/* System section */}
+        <NavSection title="System" icon={<Settings className="h-4 w-4" />}>
+          <NavTile active={tab === 'settings'} onClick={() => setTab('settings')} icon={<Settings className="h-5 w-5" />} label="Settings" desc="Platform config" color="red" />
+        </NavSection>
+      </div>
 
       <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}>
         <DashboardTab />
@@ -177,47 +177,72 @@ export function AdminView() {
   )
 }
 
-// Navigation group container — vertical label + grid of pills
-function NavGroup({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+// Navigation section — vertical title + grid of big tiles
+function NavSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1">
-          {icon}
-          {label}
+      <div className="flex items-center gap-2 mb-2 px-0.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
+          <span className="text-primary">{icon}</span>
+          {title}
         </span>
-        <div className="flex-1 h-px bg-gradient-to-r from-border/60 via-border/30 to-transparent" />
+        <div className="flex-1 h-px bg-gradient-to-r from-primary/40 via-border/40 to-transparent" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {children}
       </div>
     </div>
   )
 }
 
-// Single nav pill button — glowing active state
-function NavPill({
-  active, onClick, icon, label, badge,
+// Big colorful tile button — looks like dashboard cards, NOT horizontal pills
+const TILE_COLORS: Record<string, {
+  bg: string; border: string; iconBg: string; iconColor: string; activeBg: string; glow: string
+}> = {
+  purple: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', iconBg: 'bg-purple-500/20', iconColor: 'text-purple-500', activeBg: 'bg-purple-500/25', glow: 'glow-card-purple' },
+  blue:   { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   iconBg: 'bg-blue-500/20',   iconColor: 'text-blue-500',   activeBg: 'bg-blue-500/25',   glow: 'glow-card-blue' },
+  green:  { bg: 'bg-green-500/10',  border: 'border-green-500/30',  iconBg: 'bg-green-500/20',  iconColor: 'text-green-500',  activeBg: 'bg-green-500/25',  glow: 'glow-card-green' },
+  amber:  { bg: 'bg-amber-500/10', border: 'border-amber-500/30',  iconBg: 'bg-amber-500/20',  iconColor: 'text-amber-500',  activeBg: 'bg-amber-500/25',  glow: 'glow-card-amber' },
+  red:    { bg: 'bg-red-500/10',    border: 'border-red-500/30',    iconBg: 'bg-red-500/20',    iconColor: 'text-red-500',    activeBg: 'bg-red-500/25',    glow: 'glow-card-red' },
+  pink:   { bg: 'bg-pink-500/10',   border: 'border-pink-500/30',   iconBg: 'bg-pink-500/20',   iconColor: 'text-pink-500',   activeBg: 'bg-pink-500/25',   glow: 'glow-card-pink' },
+}
+
+function NavTile({
+  active, onClick, icon, label, desc, badge, color = 'blue',
 }: {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
+  desc: string
   badge?: number
+  color?: keyof typeof TILE_COLORS | string
 }) {
+  const c = TILE_COLORS[color] || TILE_COLORS.blue
   return (
     <button
       type="button"
       onClick={onClick}
-      data-active={active ? 'true' : 'false'}
-      className={`nav-pill rounded-lg px-3 py-2.5 flex items-center gap-2 text-sm font-medium text-left w-full ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+      className={`relative text-left rounded-xl p-4 border-2 transition-all duration-200 ${c.bg} ${c.border} ${active ? `${c.activeBg} ${c.glow} scale-[1.02]` : 'hover:scale-[1.02] hover:' + c.activeBg}`}
     >
-      <span className="flex-shrink-0">{icon}</span>
-      <span className="flex-1 truncate">{label}</span>
-      {badge !== undefined && badge > 0 && (
-        <span className="ml-auto text-[10px] font-bold bg-red-500 text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center notif-badge-pulse">
-          {badge > 9 ? '9+' : badge}
+      <div className="flex items-start justify-between mb-2">
+        <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${c.iconBg} ${c.iconColor}`}>
+          {icon}
         </span>
+        {badge !== undefined && badge > 0 && (
+          <span className="text-[10px] font-bold bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center notif-badge-pulse">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        )}
+      </div>
+      <div className="font-bold text-sm mb-0.5">{label}</div>
+      <div className="text-[11px] text-muted-foreground">{desc}</div>
+      {active && (
+        <div className="absolute top-2 right-2">
+          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-foreground/10 text-foreground/80">
+            Active
+          </span>
+        </div>
       )}
     </button>
   )
@@ -445,21 +470,24 @@ function MetricCard({ icon, label, value, sub, color }: {
   sub?: string
   color?: string
 }) {
-  // Pick a glow color variant based on the icon color prop
-  const glowClass =
-    color?.includes('blue') ? 'glow-card-blue' :
-    color?.includes('green') ? 'glow-card-green' :
-    color?.includes('yellow') ? 'glow-card-amber' :
-    color?.includes('orange') ? 'glow-card-amber' :
-    color?.includes('red') ? 'glow-card-red' :
-    color?.includes('purple') ? 'glow-card-purple' :
-    'glow-card'
+  // Pick BOLD color variant — colored background + glow
+  const colorKey =
+    color?.includes('blue') ? 'blue' :
+    color?.includes('green') ? 'green' :
+    color?.includes('yellow') ? 'amber' :
+    color?.includes('orange') ? 'amber' :
+    color?.includes('red') ? 'red' :
+    color?.includes('purple') ? 'purple' :
+    'blue'
+  const c = TILE_COLORS[colorKey] || TILE_COLORS.blue
 
   return (
-    <div className={`bg-card border border-border rounded-xl p-4 ${glowClass}`}>
+    <div className={`rounded-xl p-4 border-2 ${c.bg} ${c.border} ${c.glow} transition-all duration-200 hover:scale-[1.02]`}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
-        <span className={color}>{icon}</span>
+        <span className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">{label}</span>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${c.iconBg} ${c.iconColor}`}>
+          {icon}
+        </span>
       </div>
       <div className="text-2xl font-bold tabular-nums">{value}</div>
       {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
@@ -469,7 +497,7 @@ function MetricCard({ icon, label, value, sub, color }: {
 
 function SmallStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-muted/30 rounded-xl p-3 text-center glow-card">
+    <div className="bg-muted/30 rounded-xl p-3 text-center glow-card border border-primary/20">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-bold tabular-nums">{value}</div>
     </div>
