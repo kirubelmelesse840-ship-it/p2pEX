@@ -13,10 +13,12 @@ export const maxDuration = 26
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { email, password } = body
+    let { email, password } = body
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
+    // Normalize email — case-insensitive login (signup also normalizes to lowercase)
+    email = String(email).toLowerCase().trim()
     const user = await db.user.findUnique({ where: { email } })
     if (!user || !user.isActive) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
