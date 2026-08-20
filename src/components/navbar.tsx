@@ -942,17 +942,16 @@ function UserNotificationBell() {
           <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
 
           {/* Notification panel
-              POSITIONING (per user request):
-              - Anchored just below the navbar (top-14 = 56px, exactly where navbar ends)
-              - Bottom edge stops just above the "Start Trading" button
-                (which is roughly at 60% of viewport height on mobile)
-              - This places it within the hero section area only —
-                the home page's hero text + buttons below remain visible & accessible
-              - Same horizontal width as the rest of the page (left-3 right-3 = 12px margins,
-                matches container's px-3)
+              SIZING (matches the hero section "Trade Crypto with Confidence"):
+              - Width: same as the hero card (left-3 right-3 = 12px margins, matches container px-3)
+              - Top: anchored just below the navbar (top-14 = 56px)
+              - Height: matches the hero section height
+                Hero section ≈ navbar(56px) + py-6(24px top padding) + content(~240px) + py-6(24px bottom) = ~344px on mobile
+                We use top-[3.5rem] and max-h-[18rem] (≈288px) which approximates the hero card height
               - Internally scrollable so all notifications are accessible
+              - Close button always visible at top right
           */}
-          <div className="fixed left-3 right-3 top-14 bottom-[40vh] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+          <div className="fixed left-3 right-3 top-[3.5rem] h-[18rem] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] sm:h-auto sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-2xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
             {/* Header — fixed at top, doesn't scroll */}
             <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
