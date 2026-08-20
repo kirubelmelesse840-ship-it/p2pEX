@@ -938,9 +938,16 @@ function UserNotificationBell() {
 
       {open && (
         <>
+          {/* Invisible backdrop — tapping outside closes the panel */}
           <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
-          <div className="fixed left-2 right-2 top-14 bottom-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[80vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
-            {/* Header with gradient — fixed at top, doesn't scroll */}
+
+          {/* Notification panel
+              - Mobile: full width (left-2 right-2), positioned just below navbar (top-14),
+                max height stops above where the "Spot Trading" section typically appears
+              - Desktop (sm:): dropdown on right side, anchored to navbar bottom
+          */}
+          <div className="fixed left-2 right-2 top-[3.75rem] max-h-[55vh] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+            {/* Header — fixed at top, doesn't scroll */}
             <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
@@ -959,6 +966,7 @@ function UserNotificationBell() {
                     Mark all read
                   </button>
                 )}
+                {/* Close button — always visible at top right */}
                 <button
                   onClick={() => setOpen(false)}
                   className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition"
@@ -970,7 +978,7 @@ function UserNotificationBell() {
               </div>
             </div>
 
-            {/* Scrollable notifications area — auto-resizes to content, stays within bounds */}
+            {/* Vertically scrollable notifications area */}
             <div className="overflow-y-auto flex-1 min-h-0 overscroll-contain">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center">
