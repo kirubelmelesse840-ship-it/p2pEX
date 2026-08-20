@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         status: 'COMPLETED',
         confirmations: 1,
         requiredConfirmations: 1,
-        note: `P2P trade #${order.id.slice(-8)} — bought ${order.amount} ${order.asset} for ${order.total} ${order.fiatCurrency} via ${order.paymentMethod} (approved by admin)`,
+        note: `P2P trade #${order.id.slice(-8)} — bought ${order.amount} ${order.asset} for ${order.total} ${order.fiatCurrency} via ${order.paymentMethod} (approved by our team)`,
       },
     })
     await db.transaction.create({
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
         status: 'COMPLETED',
         confirmations: 1,
         requiredConfirmations: 1,
-        note: `P2P trade #${order.id.slice(-8)} — sold ${order.amount} ${order.asset} for ${order.total} ${order.fiatCurrency} via ${order.paymentMethod} (approved by admin)`,
+        note: `P2P trade #${order.id.slice(-8)} — sold ${order.amount} ${order.asset} for ${order.total} ${order.fiatCurrency} via ${order.paymentMethod} (approved by our team)`,
       },
     })
 
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId: order.buyerId,
           title: '❌ P2P Order Rejected',
-          message: `Your buy order for ${order.amount} ${order.asset} was rejected by admin.`,
+          message: `Your buy order for ${order.amount} ${order.asset} was rejected by our team.`,
           type: 'warning',
           isRead: false,
         },
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId: order.sellerId,
           title: '❌ P2P Order Rejected',
-          message: `Your sell order for ${order.amount} ${order.asset} was rejected by admin. Your crypto has been returned to your wallet.`,
+          message: `Your sell order for ${order.amount} ${order.asset} was rejected by our team. Your crypto has been returned to your wallet.`,
           type: 'warning',
           isRead: false,
         },

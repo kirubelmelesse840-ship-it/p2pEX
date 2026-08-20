@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       let wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
       if (!wallet) wallet = await db.wallet.create({ data: { userId: tx.userId, asset: tx.asset, assetName: tx.asset, balance: 0, available: 0, locked: 0, depositAddress: 'internal' } })
       await db.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: tx.amount }, available: { increment: tx.amount } } })
-      await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by admin', confirmations: tx.requiredConfirmations } })
+      await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by our team', confirmations: tx.requiredConfirmations } })
 
     } else if (tx.type === 'WITHDRAW') {
       // Deduct the locked funds from the wallet — locked decreases AND balance decreases
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       if (wallet) {
         await db.wallet.update({ where: { id: wallet.id }, data: { locked: { decrement: total }, balance: { decrement: total } } })
       }
-      await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by admin', confirmations: 1 } })
+      await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by our team', confirmations: 1 } })
 
     } else if (tx.type === 'INTERNAL_TRANSFER') {
       // toAddress format: "user:000001 (Name)" or legacy "user:000001"
@@ -85,20 +85,20 @@ export async function POST(req: NextRequest) {
   if (action === 'reject') {
     if (tx.type === 'DEPOSIT') {
       // No balance was ever changed for deposits — just mark as rejected
-      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by admin' } })
+      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by our team' } })
 
     } else if (tx.type === 'WITHDRAW') {
       // Withdrawals locked amount+fee — return them to available
       const total = tx.amount + tx.fee
       const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
       if (wallet) await db.wallet.update({ where: { id: wallet.id }, data: { locked: { decrement: total }, available: { increment: total } } })
-      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by admin' } })
+      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by our team' } })
 
     } else if (tx.type === 'INTERNAL_TRANSFER') {
       // Internal transfer locked amount — return it to available
       const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
       if (wallet) await db.wallet.update({ where: { id: wallet.id }, data: { locked: { decrement: tx.amount }, available: { increment: tx.amount } } })
-      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by admin' } })
+      await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by our team' } })
     }
 
     try { await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Rejected`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset} was rejected.`, type: 'warning', isRead: false } }) } catch {}
