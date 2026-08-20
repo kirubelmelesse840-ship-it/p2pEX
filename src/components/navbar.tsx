@@ -939,8 +939,8 @@ function UserNotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
-          <div className="fixed left-2 right-2 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] max-h-[85vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
-            {/* Header with gradient — now with a close button (sticky, doesn't scroll) */}
+          <div className="fixed left-2 right-2 top-14 bottom-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[80vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+            {/* Header with gradient — fixed at top, doesn't scroll */}
             <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
@@ -970,8 +970,8 @@ function UserNotificationBell() {
               </div>
             </div>
 
-            {/* Scrollable notifications area — auto-resizes to content, max 85vh */}
-            <div className="overflow-y-auto flex-1 min-h-0">
+            {/* Scrollable notifications area — auto-resizes to content, stays within bounds */}
+            <div className="overflow-y-auto flex-1 min-h-0 overscroll-contain">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center">
                   <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
@@ -1002,7 +1002,7 @@ function UserNotificationBell() {
                             <span className="text-sm font-semibold truncate">{n.title}</span>
                             {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</p>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-wrap break-words">{n.message}</p>
                           <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
                             <Clock className="h-2.5 w-2.5" />
                             {formatTimeAgo(n.createdAt)}
