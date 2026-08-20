@@ -939,9 +939,9 @@ function UserNotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
-          <div className="fixed left-2 right-2 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] max-h-[80vh] sm:max-h-[520px] overflow-y-auto bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card">
-            {/* Header with gradient — now with a close button */}
-            <div className="sticky top-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
+          <div className="fixed left-2 right-2 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] max-h-[85vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+            {/* Header with gradient — now with a close button (sticky, doesn't scroll) */}
+            <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
                   <Bell className="h-4 w-4" />
@@ -970,47 +970,50 @@ function UserNotificationBell() {
               </div>
             </div>
 
-            {notifications.length === 0 ? (
-              <div className="p-10 text-center">
-                <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
-                  <Bell className="h-8 w-8 text-muted-foreground/50" />
+            {/* Scrollable notifications area — auto-resizes to content, max 85vh */}
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {notifications.length === 0 ? (
+                <div className="p-10 text-center">
+                  <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
+                    <Bell className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No notifications</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">No notifications</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border/30">
-                {notifications.map(n => (
-                  <div
-                    key={n.id}
-                    className={`p-4 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
-                    onClick={() => { if (!n.isRead) markRead(n.id) }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full ${
-                        n.type === 'success' ? 'bg-green-500/15 text-green-500' :
-                        n.type === 'warning' ? 'bg-yellow-500/15 text-yellow-500' :
-                        n.type === 'announcement' ? 'bg-purple-500/15 text-purple-500' :
-                        'bg-blue-500/15 text-blue-500'
-                      }`}>
-                        {iconForType(n.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold truncate">{n.title}</span>
-                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {notifications.map(n => (
+                    <div
+                      key={n.id}
+                      className={`p-4 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
+                      onClick={() => { if (!n.isRead) markRead(n.id) }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full ${
+                          n.type === 'success' ? 'bg-green-500/15 text-green-500' :
+                          n.type === 'warning' ? 'bg-yellow-500/15 text-yellow-500' :
+                          n.type === 'announcement' ? 'bg-purple-500/15 text-purple-500' :
+                          'bg-blue-500/15 text-blue-500'
+                        }`}>
+                          {iconForType(n.type)}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</p>
-                        <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5" />
-                          {formatTimeAgo(n.createdAt)}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold truncate">{n.title}</span>
+                            {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</p>
+                          <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
+                            <Clock className="h-2.5 w-2.5" />
+                            {formatTimeAgo(n.createdAt)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
