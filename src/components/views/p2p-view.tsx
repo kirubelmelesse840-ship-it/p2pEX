@@ -59,6 +59,22 @@ interface P2POrder {
   sellerName: string
   createdAt: string
   completedAt?: string | null
+  // Real transaction details — used to show the actual payment info
+  // to both sides (buyer needs to know where to send money;
+  // seller needs to verify the payment went to their account)
+  sellerPaymentMethod?: string | null
+  sellerAccountNumber?: string | null
+  sellerAccountName?: string | null
+  // The listing's stored payment details (phone, account, email, etc.)
+  // Used when the ad poster (admin/manager) is selling and has pre-set payment info
+  listing?: {
+    side: string
+    paymentMethods: string[]
+    paymentDetails?: Record<string, {
+      phone?: string; name?: string; account?: string; email?: string
+      iban?: string; cashtag?: string; network?: string; address?: string
+    }> | null
+  } | null
 }
 
 const PAYMENT_METHODS = [
@@ -1056,10 +1072,143 @@ function OrderDialog({ order, onClose, onSuccess }: {
               <span>{order.paymentMethod}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-muted-foreground">Order ID</span>
+              <span className="text-xs font-mono">#{order.id.slice(-12).toUpperCase()}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Created</span>
               <span className="text-xs">{formatDateTime(order.createdAt)}</span>
             </div>
           </div>
+
+          {/* REAL TRANSACTION DETAILS — shown to both sides so they can verify the actual payment
+              - BUYER sees where to send the money (so they can complete the payment)
+              - SELLER sees their own payment info (so they can verify the payment arrived)
+          */}
+          {(() => {
+            // Build the list of payment fields to display
+            // 1. Check seller-provided payment info (when buyer is buying from a seller ad)
+            const sellerPaymentMethod = order.sellerPaymentMethod
+            const sellerAccountNumber = order.sellerAccountNumber
+            const sellerAccountName = order.sellerAccountName
+
+            // 2. Check the listing's pre-set payment details (when admin/manager is selling)
+            const listingPaymentDetails = order.listing?.paymentDetails
+            const listingMethods = order.listing?.paymentMethods
+            const listingFirstMethod = listingMethods && listingMethods.length > 0 ? listingMethods[0] : null
+            const listingPd = listingFirstMethod && listingPaymentDetails
+              ? listingPaymentDetails[listingFirstMethod]
+              : null
+
+            // Combine all available payment details into a list of (label, value) pairs
+            const paymentFields: { label: string; value: string; copy?: boolean }[] = []
+
+            if (sellerAccountName) {
+              paymentFields.push({ label: 'Account Holder Name', value: sellerAccountName, copy: true })
+            }
+            if (sellerAccountNumber) {
+              paymentFields.push({ label: 'Account Number / Phone', value: sellerAccountNumber, copy: true })
+            }
+            if (sellerPaymentMethod) {
+              paymentFields.push({ label: 'Payment Method', value: sellerPaymentMethod })
+            }
+
+            // If we have listing payment details, show those fields too
+            if (listingPd) {
+              if (listingPd.name && !sellerAccountName) {
+                paymentFields.push({ label: 'Account Holder Name', value: listingPd.name, copy: true })
+              }
+              if (listingPd.phone && !sellerAccountNumber) {
+                paymentFields.push({ label: 'Phone Number', value: listingPd.phone, copy: true })
+              }
+              if (listingPd.account && !sellerAccountNumber) {
+                paymentFields.push({ label: 'Account Number', value: listingPd.account, copy: true })
+              }
+              if (listingPd.email) {
+                paymentFields.push({ label: 'Email', value: listingPd.email, copy: true })
+              }
+              if (listingPd.iban) {
+                paymentFields.push({ label: 'IBAN', value: listingPd.iban, copy: true })
+              }
+              if (listingPd.cashtag) {
+                paymentFields.push({ label: 'Cash App Tag', value: listingPd.cashtag, copy: true })
+              }
+              if (listingPd.network) {
+                paymentFields.push({ label: 'Network', value: listingPd.network })
+              }
+              if (listingPd.address) {
+                paymentFields.push({ label: 'Wallet Address', value: listingPd.address, copy: true })
+              }
+            }
+
+            if (paymentFields.length === 0) return null
+
+            const copyToClipboard = (text: string, label: string) => {
+              if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                  // Show a small toast or visual feedback
+                  const btn = document.getElementById(`copy-btn-${label}`)
+                  if (btn) {
+                    const original = btn.innerHTML
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                    setTimeout(() => { btn.innerHTML = original }, 1500)
+                  }
+                }).catch(() => {})
+              }
+            }
+
+            return (
+              <div className={`rounded-xl p-3 border-2 space-y-2 ${
+                order.myRole === 'BUYER'
+                  ? 'bg-green-500/10 border-green-500/40 glow-card-green'
+                  : 'bg-amber-500/10 border-amber-500/40 glow-card-amber'
+              }`}>
+                <div className="flex items-center gap-2 pb-1 border-b border-current/10">
+                  {order.myRole === 'BUYER' ? (
+                    <ArrowDownToLine className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <ArrowUpFromLine className="h-4 w-4 text-amber-500" />
+                  )}
+                  <span className="text-sm font-bold">
+                    {order.myRole === 'BUYER' ? 'Send Payment To:' : 'Your Receive Account:'}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {paymentFields.map((field, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground text-xs">{field.label}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono font-medium text-xs truncate">{field.value}</span>
+                        {field.copy && (
+                          <button
+                            id={`copy-btn-${field.label}`}
+                            type="button"
+                            onClick={() => copyToClipboard(field.value, field.label)}
+                            className="flex-shrink-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                            title={`Copy ${field.label}`}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {order.myRole === 'BUYER' && (
+                  <div className="pt-2 mt-2 border-t border-current/10 text-xs text-muted-foreground">
+                    Send <strong className="text-green-600 dark:text-green-400">{formatPrice(order.total)} {order.fiatCurrency}</strong> to the account above, then tap "I've Paid".
+                  </div>
+                )}
+                {order.myRole === 'SELLER' && (
+                  <div className="pt-2 mt-2 border-t border-current/10 text-xs text-muted-foreground">
+                    Verify the payment arrived in this account before confirming.
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Action buttons based on role + status */}
           {order.status === 'PENDING_REVIEW' && order.myRole === 'SELLER' && (
