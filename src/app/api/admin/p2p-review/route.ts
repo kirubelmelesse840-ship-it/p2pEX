@@ -17,9 +17,9 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'desc' },
     take: 100,
     include: {
-      buyer: { select: { id: true, name: true, email: true } },
-      seller: { select: { id: true, name: true, email: true } },
-      listing: { select: { asset: true, fiatCurrency: true, paymentMethods: true, paymentDetails: true } },
+      buyer: { select: { id: true, userId: true, username: true, name: true, email: true, kycVerified: true, kycLevel: true } },
+      seller: { select: { id: true, userId: true, username: true, name: true, email: true, kycVerified: true, kycLevel: true } },
+      listing: { select: { side: true, asset: true, fiatCurrency: true, paymentMethods: true, paymentDetails: true } },
     },
   })
 
@@ -35,6 +35,10 @@ export async function GET(req: NextRequest) {
           adPersonName = details[firstMethod].name || null
         }
       } catch {}
+      // Determine trade direction:
+      // - listing.side === 'SELL' → ad poster is SELLING crypto → buyer pays FIAT (this is a BUY order from user's perspective)
+      // - listing.side === 'BUY'  → ad poster is BUYING crypto → counterparty sends CRYPTO (this is a SELL order from user's perspective)
+      const tradeDirection = o.listing.side === 'SELL' ? 'BUY' : 'SELL'
       return {
         id: o.id,
         asset: o.asset,
@@ -52,6 +56,8 @@ export async function GET(req: NextRequest) {
         buyer: o.buyer,
         seller: o.seller,
         adPersonName, // The merchant name from the ad (e.g. "Kirubel", "Melesech")
+        tradeDirection, // "BUY" or "SELL" — what the buyer is doing
+        listingSide: o.listing.side, // raw listing side for debugging
       }
     }),
   })

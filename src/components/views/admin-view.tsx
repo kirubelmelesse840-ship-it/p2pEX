@@ -1971,7 +1971,17 @@ function PaymentReviewTab() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {/* Left: order info */}
                 <div className="flex-1 min-w-[200px]">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {/* BUY/SELL direction badge — green for BUY (user buying crypto), blue for SELL (user selling crypto) */}
+                    {o.tradeDirection && (
+                      <Badge className={
+                        o.tradeDirection === 'BUY'
+                          ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                          : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                      }>
+                        {o.tradeDirection === 'BUY' ? '↓ BUY' : '↑ SELL'}
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className={
                       o.status === 'PENDING_REVIEW' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
                       o.status === 'PAYMENT_RECEIVED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
@@ -1982,15 +1992,35 @@ function PaymentReviewTab() {
                     <span className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-xs text-muted-foreground">Buyer (User):</span>
-                      <div className="font-medium">{o.buyer.name}</div>
-                      <div className="text-xs text-muted-foreground">{o.buyer.email}</div>
+                    {/* BUYER — full real details (name, userId, username, email, KYC level) */}
+                    <div className="bg-muted/30 rounded-lg p-2 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Buyer (pays fiat)</span>
+                      <div className="font-medium text-sm mt-0.5">{o.buyer.name}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 space-y-0.5">
+                        {o.buyer.userId && <div>ID: <span className="font-mono">{o.buyer.userId}</span></div>}
+                        {o.buyer.username && <div>@{o.buyer.username}</div>}
+                        <div className="truncate">{o.buyer.email}</div>
+                        {o.buyer.kycVerified && (
+                          <div className="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                            <ShieldCheck className="h-2.5 w-2.5" /> KYC L{o.buyer.kycLevel || 0}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground">Seller (Ad by):</span>
-                      <div className="font-medium">{o.adPersonName || o.seller.name}</div>
-                      <div className="text-xs text-muted-foreground">{o.seller.email}</div>
+                    {/* SELLER — full real details */}
+                    <div className="bg-muted/30 rounded-lg p-2 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Seller (sends crypto)</span>
+                      <div className="font-medium text-sm mt-0.5">{o.adPersonName || o.seller.name}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 space-y-0.5">
+                        {o.seller.userId && <div>ID: <span className="font-mono">{o.seller.userId}</span></div>}
+                        {o.seller.username && <div>@{o.seller.username}</div>}
+                        <div className="truncate">{o.seller.email}</div>
+                        {o.seller.kycVerified && (
+                          <div className="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                            <ShieldCheck className="h-2.5 w-2.5" /> KYC L{o.seller.kycLevel || 0}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-4 text-sm">
@@ -2005,6 +2035,23 @@ function PaymentReviewTab() {
                       <span className="font-medium">{o.paymentMethod}</span>
                     </div>
                   </div>
+                  {/* Real payment account info (if seller provided it) */}
+                  {(o.sellerAccountNumber || o.sellerAccountName) && (
+                    <div className="mt-2 bg-blue-500/5 border border-blue-500/20 rounded-lg p-2 text-[11px]">
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Seller's Receive Account</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {o.sellerAccountName && (
+                          <div><span className="text-muted-foreground">Name:</span> <span className="font-mono font-medium">{o.sellerAccountName}</span></div>
+                        )}
+                        {o.sellerAccountNumber && (
+                          <div><span className="text-muted-foreground">Account/Phone:</span> <span className="font-mono font-medium">{o.sellerAccountNumber}</span></div>
+                        )}
+                        {o.sellerPaymentMethod && (
+                          <div><span className="text-muted-foreground">Method:</span> <span className="font-medium">{o.sellerPaymentMethod}</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right: screenshot thumbnail + actions */}
