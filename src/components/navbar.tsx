@@ -942,11 +942,17 @@ function UserNotificationBell() {
           <div className="fixed inset-0 z-[150]" onClick={() => setOpen(false)} />
 
           {/* Notification panel
-              - Mobile: full width (left-2 right-2), positioned just below navbar (top-14),
-                max height stops above where the "Spot Trading" section typically appears
-              - Desktop (sm:): dropdown on right side, anchored to navbar bottom
+              POSITIONING (per user request):
+              - Anchored just below the navbar (top-14 = 56px, exactly where navbar ends)
+              - Bottom edge stops just above the "Start Trading" button
+                (which is roughly at 60% of viewport height on mobile)
+              - This places it within the hero section area only —
+                the home page's hero text + buttons below remain visible & accessible
+              - Same horizontal width as the rest of the page (left-3 right-3 = 12px margins,
+                matches container's px-3)
+              - Internally scrollable so all notifications are accessible
           */}
-          <div className="fixed left-2 right-2 top-[3.75rem] max-h-[55vh] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+          <div className="fixed left-3 right-3 top-14 bottom-[40vh] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:bottom-auto sm:w-[28rem] md:w-[32rem] sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
             {/* Header — fixed at top, doesn't scroll */}
             <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
