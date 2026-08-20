@@ -951,14 +951,14 @@ function UserNotificationBell() {
               - Internally scrollable so all notifications are accessible
               - Close button always visible at top right
           */}
-          <div className="fixed left-3 right-3 top-[3.5rem] h-[18rem] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] sm:h-auto sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-2xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
+          <div className="fixed left-3 right-3 top-[5rem] h-[18rem] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[28rem] md:w-[32rem] sm:h-auto sm:max-h-[60vh] bg-card border-2 border-primary/50 rounded-2xl shadow-2xl z-[200] glow-card flex flex-col overflow-hidden">
             {/* Header — fixed at top, doesn't scroll */}
-            <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-3 flex items-center justify-between gap-2">
+            <div className="flex-shrink-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-b border-border px-4 py-2.5 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
-                  <Bell className="h-4 w-4" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex-shrink-0">
+                  <Bell className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-base font-bold truncate">Notifications</span>
+                <span className="text-sm font-bold truncate">Notifications</span>
                 {unreadCount > 0 && (
                   <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">
                     {unreadCount} new
@@ -974,11 +974,11 @@ function UserNotificationBell() {
                 {/* Close button — always visible at top right */}
                 <button
                   onClick={() => setOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                  className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition"
                   aria-label="Close notifications"
                   title="Close"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -986,23 +986,23 @@ function UserNotificationBell() {
             {/* Vertically scrollable notifications area */}
             <div className="overflow-y-auto flex-1 min-h-0 overscroll-contain">
               {notifications.length === 0 ? (
-                <div className="p-10 text-center">
-                  <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
-                    <Bell className="h-8 w-8 text-muted-foreground/50" />
+                <div className="p-8 text-center">
+                  <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-full bg-muted/50 mb-3">
+                    <Bell className="h-7 w-7 text-muted-foreground/50" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">No notifications</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
+                  <p className="text-xs font-medium text-muted-foreground">No notifications</p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-1">You're all caught up!</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border/30">
                   {notifications.map(n => (
                     <div
                       key={n.id}
-                      className={`p-4 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
+                      className={`p-3 hover:bg-muted/30 transition cursor-pointer ${!n.isRead ? 'bg-yellow-500/5' : ''}`}
                       onClick={() => { if (!n.isRead) markRead(n.id) }}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full ${
+                      <div className="flex items-start gap-2.5">
+                        <div className={`flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full ${
                           n.type === 'success' ? 'bg-green-500/15 text-green-500' :
                           n.type === 'warning' ? 'bg-yellow-500/15 text-yellow-500' :
                           n.type === 'announcement' ? 'bg-purple-500/15 text-purple-500' :
@@ -1012,11 +1012,11 @@ function UserNotificationBell() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold truncate">{n.title}</span>
-                            {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
+                            <span className="text-xs font-semibold truncate">{n.title}</span>
+                            {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />}
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-wrap break-words">{n.message}</p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug whitespace-pre-wrap break-words">{n.message}</p>
+                          <p className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
                             <Clock className="h-2.5 w-2.5" />
                             {formatTimeAgo(n.createdAt)}
                           </p>
