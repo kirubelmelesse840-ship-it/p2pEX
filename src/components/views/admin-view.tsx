@@ -523,19 +523,23 @@ function UsersTab() {
   const [docDialog, setDocDialog] = useState<any>(null)
 
   const load = useCallback(async () => {
-    // Only show loading spinner on the FIRST load (not on every 5s refresh)
+    // Only show loading spinner on the FIRST load (not on every refresh tap)
     if (users.length === 0) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (kycFilter !== 'all') params.set('kyc', kycFilter)
-      const res = await fetch(`/api/admin/users?${params}`)
+      // Add a timeout so the Refresh button doesn't spin forever if the API is slow
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const res = await fetch(`/api/admin/users?${params}`, { signal: controller.signal })
+      clearTimeout(timeoutId)
       // Handle empty response body (happens when function cold-starts or times out)
       const text = await res.text()
       if (!text) {
-        // Empty response — keep existing data, don't show error on subsequent polls
-        if (users.length === 0) toast({ title: 'Failed to load users', description: 'Server returned empty response', variant: 'destructive' })
+        // Empty response — keep existing data, don't show error on subsequent refreshes
+        if (users.length === 0) toast({ title: 'Failed to load users', description: 'Server returned empty response. Tap Refresh to try again.', variant: 'destructive' })
         return
       }
       const d = JSON.parse(text)
@@ -544,9 +548,9 @@ function UsersTab() {
       setTotal(d.total || 0)
     } catch (e: any) {
       // Only show error toast on first load (when we have no data to show)
-      // On subsequent polls, silently keep the existing data — avoids spamming the user with errors
+      // On subsequent refreshes, silently keep the existing data — avoids spamming the user with errors
       if (users.length === 0) {
-        toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+        toast({ title: 'Failed to load users', description: e.message || 'Network error', variant: 'destructive' })
       }
     } finally {
       setLoading(false)

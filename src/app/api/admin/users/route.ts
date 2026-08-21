@@ -75,7 +75,6 @@ export async function GET(req: NextRequest) {
         _count: {
           select: {
             orders: true,
-            trades: { where: { OR: [{ buyerId: undefined }, { sellerId: undefined }] } },
             transactions: true,
             wallets: true,
             p2pListings: true,
