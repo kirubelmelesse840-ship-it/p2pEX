@@ -530,9 +530,9 @@ function UsersTab() {
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (kycFilter !== 'all') params.set('kyc', kycFilter)
-      // Add a timeout so the Refresh button doesn't spin forever if the API is slow
+      // Long timeout — Netlify serverless cold starts can take 20-30 seconds
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
       const res = await fetch(`/api/admin/users?${params}`, { signal: controller.signal })
       clearTimeout(timeoutId)
       // Handle empty response body (happens when function cold-starts or times out)
@@ -547,10 +547,14 @@ function UsersTab() {
       setUsers(d.users || [])
       setTotal(d.total || 0)
     } catch (e: any) {
+      // Provide a friendly error message for abort errors
+      const errorMsg = e?.name === 'AbortError'
+        ? 'Request timed out (server took too long). Tap Refresh to try again.'
+        : (e.message || 'Network error')
       // Only show error toast on first load (when we have no data to show)
       // On subsequent refreshes, silently keep the existing data — avoids spamming the user with errors
       if (users.length === 0) {
-        toast({ title: 'Failed to load users', description: e.message || 'Network error', variant: 'destructive' })
+        toast({ title: 'Failed to load users', description: errorMsg, variant: 'destructive' })
       }
     } finally {
       setLoading(false)
