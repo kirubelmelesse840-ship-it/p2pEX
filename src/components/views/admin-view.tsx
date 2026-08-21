@@ -57,9 +57,7 @@ export function AdminView() {
         })
       } catch {}
     }
-    loadCounts()
-    const t = setInterval(loadCounts, 5000)
-    return () => clearInterval(t)
+    loadCounts() // Load once on mount — no auto-refresh
   }, [])
 
   if (!user?.isAdmin) {
@@ -256,19 +254,18 @@ function DashboardTab() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    // Manual refresh button should feel instant — show cached data immediately, then update
+    const cached = sessionStorage.getItem('admin-stats')
+    if (cached && !data) {
+      try { setData(JSON.parse(cached)) } catch {}
+    }
     try {
-      // Show cached data immediately (instant load)
-      const cached = sessionStorage.getItem('admin-stats')
-      if (cached && !data) {
-        try { setData(JSON.parse(cached)) } catch {}
-      }
-
       const res = await fetch('/api/admin/stats')
       // Handle empty response body (happens when function cold-starts or times out)
       const text = await res.text()
       if (!text) {
         // Empty response — keep existing data, don't overwrite with an error
-        if (!data) setError('Server returned empty response. Will retry…')
+        if (!data) setError('Server returned empty response. Tap Refresh to try again.')
         return
       }
       const d = JSON.parse(text)
@@ -282,13 +279,12 @@ function DashboardTab() {
       if (!data) setError(e.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [data])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000) // Refresh every 5 seconds — sweet spot for real-time without overwhelming the API
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh (admin taps Refresh button manually)
   }, [load])
 
   if (!data) {
@@ -558,9 +554,7 @@ function UsersTab() {
   }, [search, statusFilter, kycFilter, toast, users.length])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -1195,9 +1189,7 @@ function PairsTab() {
   }, [toast])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const toggleActive = async (pair: any) => {
@@ -1395,9 +1387,7 @@ function P2PTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -1944,9 +1934,7 @@ function PaymentReviewTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -2250,9 +2238,7 @@ function OrdersTab() {
   }, [statusFilter, symbolFilter])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   return (
@@ -2358,9 +2344,7 @@ function TransactionsTab() {
   }, [typeFilter, statusFilter])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   return (
@@ -2463,9 +2447,7 @@ function SettingsTab() {
   }, [toast])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const save = async () => {
@@ -2670,9 +2652,7 @@ function AdminNotifications() {
   }, [])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const deleteNotification = async (id: string, e: React.MouseEvent) => {
@@ -3016,9 +2996,7 @@ function UserDetailsTab() {
   }, [toast])
 
   useEffect(() => {
-    loadUsers()
-    const t = setInterval(loadUsers, 5000)
-    return () => clearInterval(t)
+    loadUsers() // Load once on mount — no auto-refresh
   }, [loadUsers])
 
   // Filter by name, email, ID, username
@@ -3427,18 +3405,14 @@ function SupportTab() {
     } catch {}
   }, [selectedUserId])
 
-  // Polling
+  // Load once on mount — no auto-refresh (admin uses Refresh button)
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 3000)
-    return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 3000)
-      return () => clearInterval(t2)
     } else {
       setMessages([])
     }
@@ -3794,9 +3768,7 @@ function DepositWithdrawApprovalsTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    load() // Load once on mount — no auto-refresh
   }, [load])
 
   const act = async (tx: any, action: 'approve' | 'reject') => {
