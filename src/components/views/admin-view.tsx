@@ -58,7 +58,7 @@ export function AdminView() {
       } catch {}
     }
     loadCounts()
-    const t = setInterval(loadCounts, 2000)
+    const t = setInterval(loadCounts, 5000)
     return () => clearInterval(t)
   }, [])
 
@@ -264,22 +264,30 @@ function DashboardTab() {
       }
 
       const res = await fetch('/api/admin/stats')
-      const d = await res.json()
+      // Handle empty response body (happens when function cold-starts or times out)
+      const text = await res.text()
+      if (!text) {
+        // Empty response — keep existing data, don't overwrite with an error
+        if (!data) setError('Server returned empty response. Will retry…')
+        return
+      }
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setData(d)
       setError(null)
       sessionStorage.setItem('admin-stats', JSON.stringify(d))
     } catch (e: any) {
       console.error('[admin dashboard]', e)
-      setError(e.message || 'Failed to load dashboard')
+      // Only set error if we don't have any data yet — otherwise keep showing the cached data
+      if (!data) setError(e.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [data])
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000) // Refresh every 2 seconds for near real-time updates
+    const t = setInterval(load, 5000) // Refresh every 5 seconds — sweet spot for real-time without overwhelming the API
     return () => clearInterval(t)
   }, [load])
 
@@ -519,27 +527,39 @@ function UsersTab() {
   const [docDialog, setDocDialog] = useState<any>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
+    // Only show loading spinner on the FIRST load (not on every 5s refresh)
+    if (users.length === 0) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (kycFilter !== 'all') params.set('kyc', kycFilter)
       const res = await fetch(`/api/admin/users?${params}`)
-      const d = await res.json()
+      // Handle empty response body (happens when function cold-starts or times out)
+      const text = await res.text()
+      if (!text) {
+        // Empty response — keep existing data, don't show error on subsequent polls
+        if (users.length === 0) toast({ title: 'Failed to load users', description: 'Server returned empty response', variant: 'destructive' })
+        return
+      }
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setUsers(d.users || [])
       setTotal(d.total || 0)
     } catch (e: any) {
-      toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+      // Only show error toast on first load (when we have no data to show)
+      // On subsequent polls, silently keep the existing data — avoids spamming the user with errors
+      if (users.length === 0) {
+        toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+      }
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, kycFilter, toast])
+  }, [search, statusFilter, kycFilter, toast, users.length])
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1176,7 +1196,7 @@ function PairsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1376,7 +1396,7 @@ function P2PTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1925,7 +1945,7 @@ function PaymentReviewTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2231,7 +2251,7 @@ function OrdersTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2339,7 +2359,7 @@ function TransactionsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2444,7 +2464,7 @@ function SettingsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2651,7 +2671,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2997,7 +3017,7 @@ function UserDetailsTab() {
 
   useEffect(() => {
     loadUsers()
-    const t = setInterval(loadUsers, 2000)
+    const t = setInterval(loadUsers, 5000)
     return () => clearInterval(t)
   }, [loadUsers])
 
@@ -3775,7 +3795,7 @@ function DepositWithdrawApprovalsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
