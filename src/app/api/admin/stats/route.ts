@@ -58,10 +58,21 @@ export async function GET(req: NextRequest) {
     ])
 
     // Compute totals from wallets (in-memory, no DB)
-    const prices: Record<string, number> = {
+    // Fetch real prices from TradingPair table
+    const tradingPairs = await db.tradingPair.findMany({ select: { baseAsset: true, lastPrice: true } })
+    const prices: Record<string, number> = { USDT: 1, USDC: 1 }
+    for (const pair of tradingPairs) {
+      if (pair.lastPrice && !prices[pair.baseAsset]) {
+        prices[pair.baseAsset] = pair.lastPrice
+      }
+    }
+    // Fallback defaults for assets not in TradingPair
+    const fallbackPrices: Record<string, number> = {
       BTC: 67500, ETH: 3450, BNB: 585, SOL: 165, XRP: 0.62, ADA: 0.45,
       DOGE: 0.16, AVAX: 38, LINK: 18.5, DOT: 7.2, MATIC: 0.72, LTC: 85,
-      USDT: 1, USDC: 1,
+    }
+    for (const [asset, price] of Object.entries(fallbackPrices)) {
+      if (!prices[asset]) prices[asset] = price
     }
     const totalUsdValue = wallets.reduce((sum, w) => sum + (w.balance || 0) * (prices[w.asset] || 0), 0)
     const totalLockedValue = wallets.reduce((sum, w) => sum + (w.locked || 0) * (prices[w.asset] || 0), 0)

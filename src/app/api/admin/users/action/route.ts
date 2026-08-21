@@ -59,16 +59,17 @@ export async function POST(req: NextRequest) {
         break
       case 'verifyKyc':
         // Admin approves KYC - sets verified + status to APPROVED
+        const kycLevel = Math.min(Math.max(parseInt(payload.level) || 1, 1), 2)
         updateData = {
           kycVerified: true,
-          kycLevel: Math.min(Math.max(parseInt(payload.level) || 1, 1), 2),
+          kycLevel,
           kycStatus: 'APPROVED',
           kycReviewedAt: new Date(),
           kycRejectionReason: null,
         }
-        message = `User ${target.email} KYC approved (L${updateData.kycLevel})`
         // Credit the 10 USDT welcome bonus ONLY when KYC is approved
         // (only if not already credited — check if a welcome bonus transaction exists)
+        let bonusFailed = false
         if (!target.kycVerified) {
           try {
             const existingBonus = await db.transaction.findFirst({
@@ -77,12 +78,15 @@ export async function POST(req: NextRequest) {
             if (!existingBonus) {
               const { creditWelcomeBonus } = await import('@/lib/welcome-bonus')
               await creditWelcomeBonus(target.id)
-              message += ' — 10 USDT welcome bonus credited'
             }
           } catch (e: any) {
-            console.error('[admin/users/action] welcome bonus failed:', e?.message)
+            console.error('[welcome bonus] failed:', e)
+            bonusFailed = true
           }
         }
+        message = bonusFailed
+          ? `User KYC approved (L${kycLevel}) — ⚠️ welcome bonus failed to credit`
+          : `User KYC approved (L${kycLevel})`
         break
       case 'rejectKyc':
         // Admin rejects KYC
@@ -101,7 +105,7 @@ export async function POST(req: NextRequest) {
         updateData = {
           kycVerified: false,
           kycLevel: 0,
-          kycStatus: 'NONE',
+          kycStatus: 'REJECTED',
           kycSubmittedAt: null,
           kycReviewedAt: new Date(),
           kycRejectionReason: 'Verification revoked by admin — please resubmit',
@@ -131,6 +135,14 @@ export async function POST(req: NextRequest) {
         message = `User ${target.email} KYC completely reset`
         break
       case 'deleteUser':
+        // Check for related orders/trades to avoid FK constraint errors
+        const [orderCount, tradeCount] = await Promise.all([
+          db.order.count({ where: { userId: userId } }),
+          db.trade.count({ where: { OR: [{ buyerId: userId }, { sellerId: userId }] } }),
+        ])
+        if (orderCount > 0 || tradeCount > 0) {
+          return NextResponse.json({ error: `Cannot delete: user has ${orderCount} orders and ${tradeCount} trades. Ban instead.` }, { status: 400 })
+        }
         await db.user.delete({ where: { id: userId } })
         return NextResponse.json({ ok: true, message: `User ${target.email} deleted` })
       default:

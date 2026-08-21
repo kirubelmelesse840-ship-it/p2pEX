@@ -12,10 +12,11 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) return NextResponse.json({ error: 'Payment method required' }, { status: 400 })
     if (side === 'SELL') {
       let wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: admin.id, asset } } })
-      if (!wallet || wallet.available < amount) {
-        const credit = amount * 2
-        if (wallet) await db.wallet.update({ where: { id: wallet.id }, data: { available: { increment: credit }, balance: { increment: credit } } })
-        else wallet = await db.wallet.create({ data: { userId: admin.id, asset, assetName: asset, balance: credit, available: credit, locked: 0, depositAddress: 'internal-admin' } })
+      if (!wallet) {
+        return NextResponse.json({ error: `You don't have a ${asset} wallet. Please create one first or add funds.` }, { status: 400 })
+      }
+      if (wallet.available < amount) {
+        return NextResponse.json({ error: `Insufficient ${asset} balance. Available: ${wallet.available}, Required: ${amount}` }, { status: 400 })
       }
       await db.wallet.update({ where: { id: wallet.id }, data: { available: { decrement: amount }, locked: { increment: amount } } })
     }

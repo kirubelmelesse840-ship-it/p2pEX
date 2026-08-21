@@ -53,12 +53,12 @@ export async function POST(req: NextRequest) {
         amount,
         fee: 0,
         network: 'ADMIN',
-        fromAddress: action === 'credit' ? `admin:${admin.email}` : undefined,
-        toAddress: action === 'debit' ? `admin:${admin.email}` : undefined,
-        note: `Admin ${action} by ${admin.email}`,
         status: 'COMPLETED',
         confirmations: 1,
         requiredConfirmations: 1,
+        ...(action === 'credit' ? { fromAddress: `admin:${admin.email}` } : {}),
+        ...(action === 'debit' ? { toAddress: `admin:${admin.email}` } : {}),
+        note: `Admin ${action} by ${admin.email}`,
       },
     })
 

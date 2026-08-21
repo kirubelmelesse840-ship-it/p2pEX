@@ -9,7 +9,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { db } from '@/lib/db'
-import webpush from 'web-push'
 
 export async function POST(req: NextRequest) {
 // AUTO-TRY-CATCH
@@ -42,6 +41,7 @@ export async function POST(req: NextRequest) {
       const subject = process.env.VAPID_SUBJECT || 'mailto:support@p2pex.com'
 
       if (publicKey && privateKey) {
+        const webpush = (await import('web-push')).default
         webpush.setVapidDetails(subject, publicKey, privateKey)
 
         // Get all push subscriptions
@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error }, { status })
 
     const notifications = await db.adminNotification.findMany({
+      where: { userId: null },
       orderBy: { createdAt: 'desc' },
       take: 50,
     })

@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       if (typeof terms === 'string') updateData.terms = terms
 
       // Update paymentDetails — set name & account/phone/address for each method
-      const methods: string[] = JSON.parse(listing.paymentMethods)
+      let methods: string[] = []
+      try { methods = JSON.parse(listing.paymentMethods) } catch { methods = [] }
       const existingDetails: Record<string, any> = listing.paymentDetails ? JSON.parse(listing.paymentDetails) : {}
       const newDetails: Record<string, any> = {}
       for (const m of methods) {
@@ -87,23 +88,16 @@ export async function POST(req: NextRequest) {
     }
     if (action === 'cancel') {
       // If SELL listing with available amount, refund the seller's locked asset
-      if (listing.side === 'SELL' && listing.available > 0) {
-        const wallet = await db.wallet.findUnique({
-          where: { userId_asset: { userId: listing.userId, asset: listing.asset } },
-        })
-        if (wallet) {
-          await db.wallet.update({
-            where: { id: wallet.id },
-            data: {
-              locked: { decrement: listing.available },
-              available: { increment: listing.available },
-            },
+      const wallet = listing.side === 'SELL' && listing.available > 0
+        ? await db.wallet.findUnique({
+            where: { userId_asset: { userId: listing.userId, asset: listing.asset } },
           })
+        : null
+      await db.$transaction(async (tx) => {
+        if (wallet) {
+          await tx.wallet.update({ where: { id: wallet.id }, data: { locked: { decrement: listing.amount }, available: { increment: listing.amount } } })
         }
-      }
-      await db.p2PListing.update({
-        where: { id: listingId },
-        data: { status: 'CANCELED', available: 0 },
+        await tx.p2PListing.update({ where: { id: listingId }, data: { status: 'CANCELED' } })
       })
       return NextResponse.json({ ok: true, message: `Listing ${listing.id.slice(-6)} canceled and refunded` })
     }

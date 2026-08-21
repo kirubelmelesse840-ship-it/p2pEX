@@ -1199,7 +1199,9 @@ function PairsTab() {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/pairs')
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setPairs(d.pairs || [])
     } catch (e: any) {
@@ -1324,6 +1326,13 @@ function AddPairDialog({ onClose, onSuccess }: any) {
   const [lastPrice, setLastPrice] = useState('1')
   const [loading, setLoading] = useState(false)
 
+  const ASSET_NAMES: Record<string, string> = {
+    BTC: 'Bitcoin', ETH: 'Ethereum', USDT: 'Tether', USDC: 'USD Coin',
+    BNB: 'BNB', SOL: 'Solana', XRP: 'XRP', ADA: 'Cardano',
+    DOGE: 'Dogecoin', AVAX: 'Avalanche', LINK: 'Chainlink', DOT: 'Polkadot',
+    MATIC: 'Polygon', LTC: 'Litecoin', ETB: 'Ethiopian Birr',
+  }
+
   const submit = async () => {
     setLoading(true)
     try {
@@ -1331,7 +1340,14 @@ function AddPairDialog({ onClose, onSuccess }: any) {
       const res = await fetch('/api/admin/pairs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, baseAsset, quoteAsset, lastPrice: parseFloat(lastPrice) }),
+        body: JSON.stringify({
+          symbol,
+          baseAsset,
+          quoteAsset,
+          lastPrice: parseFloat(lastPrice),
+          baseAssetName: ASSET_NAMES[baseAsset] || baseAsset,
+          quoteAssetName: ASSET_NAMES[quoteAsset] || quoteAsset,
+        }),
       })
       const d = await res.json()
       if (d.error) throw new Error(d.error)
@@ -1397,7 +1413,9 @@ function P2PTab() {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/listings?status=${statusFilter}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setListings(d.listings || [])
     } catch (e: any) {
@@ -1944,7 +1962,9 @@ function PaymentReviewTab() {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/p2p-review?status=${statusFilter}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setOrders(d.orders || [])
     } catch (e: any) {
@@ -1988,8 +2008,9 @@ function PaymentReviewTab() {
           <SelectContent>
             <SelectItem value="PENDING_REVIEW">⏳ Pending Review</SelectItem>
             <SelectItem value="PAYMENT_RECEIVED">✅ Payment Received</SelectItem>
-            <SelectItem value="CANCELED">❌ Rejected/Canceled</SelectItem>
+            <SelectItem value="PAID">✅ Paid</SelectItem>
             <SelectItem value="COMPLETED">✓ Completed</SelectItem>
+            <SelectItem value="CANCELED">❌ Canceled</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={load}>
@@ -2248,7 +2269,9 @@ function OrdersTab() {
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (symbolFilter !== 'all') params.set('symbol', symbolFilter)
       const res = await fetch(`/api/admin/orders?${params}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setOrders(d.orders || [])
     } catch (e) {
@@ -2320,7 +2343,7 @@ function OrdersTab() {
                   <td className="px-3 py-3 text-xs text-muted-foreground">{o.type}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatPrice(o.price)}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatQty(o.quantity)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">{((o.filledQty / o.quantity) * 100).toFixed(0)}%</td>
+                  <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell">{o.quantity > 0 ? ((o.filledQty / o.quantity) * 100).toFixed(0) : 0}%</td>
                   <td className="px-3 py-3 text-center">
                     <Badge variant="secondary" className={
                       o.status === 'FILLED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
@@ -2354,7 +2377,9 @@ function TransactionsTab() {
       if (typeFilter !== 'all') params.set('type', typeFilter)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       const res = await fetch(`/api/admin/transactions?${params}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setTxs(d.transactions || [])
     } catch (e) {
@@ -2384,9 +2409,11 @@ function TransactionsTab() {
           <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="pending">⏳ Pending</SelectItem>
+            <SelectItem value="completed">✓ Completed</SelectItem>
+            <SelectItem value="confirmed">✓ Confirmed</SelectItem>
+            <SelectItem value="rejected">❌ Rejected</SelectItem>
+            <SelectItem value="failed">❌ Failed</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={load}>
@@ -2455,9 +2482,12 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
+    setLoading(true)
     try {
       const res = await fetch('/api/admin/settings')
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setSettings(d.settings || {})
     } catch (e: any) {
@@ -2665,11 +2695,15 @@ function AdminNotifications() {
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/notifications')
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) return
       setNotifications(d.notifications || [])
       setHighCount(d.highPriorityCount || 0)
-    } catch {}
+    } catch (e) {
+      console.error('[admin notifications]', e)
+    }
   }, [])
 
   useEffect(() => {
@@ -3006,7 +3040,9 @@ function UserDetailsTab() {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/users?limit=100')
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setUsers((d.users || []).filter((u: any) => !u.isAdmin))
     } catch (e: any) {
@@ -3774,7 +3810,9 @@ function DepositWithdrawApprovalsTab() {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/transactions?status=${statusFilter}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       // Filter to only DEPOSIT, WITHDRAW, INTERNAL_TRANSFER types
       const filtered = (d.transactions || []).filter((t: any) =>

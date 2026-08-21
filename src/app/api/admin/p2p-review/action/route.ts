@@ -16,6 +16,15 @@ export async function POST(req: NextRequest) {
 // AUTO-TRY-CATCH
   try {
 
+    const getDepositAddress = (asset: string) => {
+      const random = Math.random().toString(36).slice(2, 34).toUpperCase()
+      if (asset === 'BTC') return 'bc1' + random.toLowerCase()
+      if (asset === 'ETH' || asset === 'USDT' || asset === 'USDC') return '0x' + random.toLowerCase().slice(0, 40)
+      if (asset === 'BNB') return '0x' + random.toLowerCase().slice(0, 40)
+      if (asset === 'SOL') return random.toLowerCase()
+      return 'T' + random // Default TRC20-style
+    }
+
     const { user: admin, error, status } = await requireAdmin(req as unknown as Request)
     if (error) return NextResponse.json({ error }, { status })
 
@@ -56,9 +65,17 @@ export async function POST(req: NextRequest) {
             balance: 0,
             available: 0,
             locked: 0,
-            depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
+            depositAddress: getDepositAddress(order.asset),
           },
         })
+      }
+
+      // Precondition check: verify seller has enough locked balance before transferring
+      const sellerWalletCheck = await db.wallet.findUnique({
+        where: { userId_asset: { userId: order.sellerId, asset: order.asset } },
+      })
+      if (!sellerWalletCheck || sellerWalletCheck.locked < order.amount) {
+        return NextResponse.json({ error: `Seller has insufficient locked ${order.asset} (locked: ${sellerWalletCheck?.locked || 0}, required: ${order.amount})` }, { status: 400 })
       }
 
       // Atomic transfer: deduct from seller's locked+balance, add to buyer's available+balance

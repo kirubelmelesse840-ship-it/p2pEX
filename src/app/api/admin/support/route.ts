@@ -29,39 +29,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ messages })
     }
 
-    const conversations = await db.supportMessage.groupBy({
-      by: ['userId'],
-      _max: { createdAt: true },
-      _count: true,
+    // Fetch all support messages, group by userId in JS
+    const allMessages = await db.supportMessage.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+      include: {
+        user: { select: { id: true, name: true, email: true, userId: true, username: true } },
+      },
     })
-
-    const result = []
-    for (const conv of conversations) {
-      const u = await db.user.findUnique({
-        where: { id: conv.userId },
-        select: { id: true, userId: true, name: true, email: true, username: true },
-      })
-      const lastMsg = await db.supportMessage.findFirst({
-        where: { userId: conv.userId },
-        orderBy: { createdAt: 'desc' },
-      })
-      const unreadCount = await db.supportMessage.count({
-        where: { userId: conv.userId, sender: 'user', isRead: false },
-      })
-      if (u) {
-        result.push({
-          user: u,
-          lastMessage: lastMsg?.type === 'image' ? '[Image]' : lastMsg?.type === 'voice' ? '[Voice]' : lastMsg?.type === 'video' ? '[Video]' : lastMsg?.message || '',
-          lastSender: lastMsg?.sender || '',
-          lastTime: lastMsg?.createdAt || new Date(),
-          messageCount: conv._count,
-          unreadCount,
+    // Group by userId
+    const convMap = new Map()
+    for (const msg of allMessages) {
+      const userId = msg.userId
+      if (!convMap.has(userId)) {
+        convMap.set(userId, {
+          userId,
+          user: msg.user,
+          lastMessage: msg.type === 'text' ? msg.message : msg.type === 'image' ? '[Image]' : msg.type === 'voice' ? '[Voice]' : msg.type === 'video' ? '[Video]' : '[Message]',
+          lastSender: msg.sender,
+          lastTime: msg.createdAt,
+          messageCount: 1,
+          unreadCount: 0,
         })
+      } else {
+        const conv = convMap.get(userId)
+        conv.messageCount++
+        if (msg.sender === 'user' && !msg.isRead) conv.unreadCount++
       }
     }
-
-    result.sort((a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime())
-    return NextResponse.json({ conversations: result })
+    const conversations = Array.from(convMap.values()).sort((a, b) => b.lastTime.getTime() - a.lastTime.getTime())
+    return NextResponse.json({ conversations })
 
   } catch (e: any) {
     console.error('[admin route error]', e)

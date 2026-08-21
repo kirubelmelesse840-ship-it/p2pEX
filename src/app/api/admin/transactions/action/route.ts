@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         let wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
         if (!wallet) wallet = await db.wallet.create({ data: { userId: tx.userId, asset: tx.asset, assetName: tx.asset, balance: 0, available: 0, locked: 0, depositAddress: 'internal' } })
         await db.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: tx.amount }, available: { increment: tx.amount } } })
-        await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by our team', confirmations: tx.requiredConfirmations } })
+        await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Approved by our team', confirmations: 1 } })
 
       } else if (tx.type === 'WITHDRAW') {
         // Deduct the locked funds from the wallet — locked decreases AND balance decreases
@@ -60,23 +60,27 @@ export async function POST(req: NextRequest) {
         const idMatch = tx.toAddress?.match(/user:([^\s)]+)/)
         if (idMatch) {
           const recipientId = idMatch[1]
-          // Look up by userId (numerical) first, fall back to email for legacy records
           let recipient = await db.user.findFirst({ where: { userId: recipientId } })
           if (!recipient) {
-            recipient = await db.user.findUnique({ where: { email: recipientId } })
+            return NextResponse.json({ error: `Recipient not found: ${recipientId}` }, { status: 400 })
           }
-          if (recipient) {
-            let rw = await db.wallet.findUnique({ where: { userId_asset: { userId: recipient.id, asset: tx.asset } } })
-            if (!rw) rw = await db.wallet.create({ data: { userId: recipient.id, asset: tx.asset, assetName: tx.asset, balance: 0, available: 0, locked: 0, depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase() } })
+          // Look up sender wallet before the transaction (needed for atomic debit)
+          const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
+          await db.$transaction(async (prismaTx) => {
             // Credit recipient
-            await db.wallet.update({ where: { id: rw.id }, data: { balance: { increment: tx.amount }, available: { increment: tx.amount } } })
-            await db.transaction.create({ data: { userId: recipient.id, asset: tx.asset, type: 'INTERNAL_TRANSFER', amount: tx.amount, fee: 0, network: 'P2PEX', fromAddress: `user:${tx.user.userId || tx.user.email} (${tx.user.name})`, note: `Transfer from ${tx.user.name} — approved`, status: 'COMPLETED', confirmations: 1, requiredConfirmations: 1 } })
+            let recipientWallet = await prismaTx.wallet.findUnique({ where: { userId_asset: { userId: recipient.id, asset: tx.asset } } })
+            if (!recipientWallet) recipientWallet = await prismaTx.wallet.create({ data: { userId: recipient.id, asset: tx.asset, assetName: tx.asset, balance: 0, available: 0, locked: 0, depositAddress: 'internal' } })
+            await prismaTx.wallet.update({ where: { id: recipientWallet.id }, data: { balance: { increment: tx.amount }, available: { increment: tx.amount } } })
+            await prismaTx.transaction.create({ data: { userId: recipient.id, asset: tx.asset, type: 'INTERNAL_TRANSFER', amount: tx.amount, fee: 0, network: 'P2PEX', fromAddress: `user:${tx.user.userId || tx.user.email} (${tx.user.name})`, toAddress: 'internal', note: `Transfer from ${tx.user.name} — approved`, status: 'COMPLETED', confirmations: 1, requiredConfirmations: 1 } })
+            // Debit sender (already locked)
+            if (wallet) await prismaTx.wallet.update({ where: { id: wallet.id }, data: { locked: { decrement: tx.amount }, balance: { decrement: tx.amount } } })
+          })
+        } else {
+          // No recipient match — still debit the sender's locked funds so the funds don't get stuck
+          const senderWallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
+          if (senderWallet) {
+            await db.wallet.update({ where: { id: senderWallet.id }, data: { locked: { decrement: tx.amount }, balance: { decrement: tx.amount } } })
           }
-        }
-        // Deduct the locked funds from sender — locked decreases AND balance decreases
-        const senderWallet = await db.wallet.findUnique({ where: { userId_asset: { userId: tx.userId, asset: tx.asset } } })
-        if (senderWallet) {
-          await db.wallet.update({ where: { id: senderWallet.id }, data: { locked: { decrement: tx.amount }, balance: { decrement: tx.amount } } })
         }
         await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Transfer approved', confirmations: 1 } })
       }
@@ -104,7 +108,8 @@ export async function POST(req: NextRequest) {
         await db.transaction.update({ where: { id: transactionId }, data: { status: 'REJECTED', note: 'Rejected by our team' } })
       }
 
-      try { await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Rejected`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset} was rejected.`, type: 'warning', isRead: false } }) } catch {}
+      const feeNote = tx.type === 'WITHDRAW' && tx.fee > 0 ? ` (including fee of ${tx.fee} ${tx.asset})` : ''
+      try { await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Rejected`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset}${feeNote} was rejected.`, type: 'warning', isRead: false } }) } catch {}
       return NextResponse.json({ ok: true, message: `${tx.type} rejected` })
     }
 

@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
       if (openOrders > 0) {
         return NextResponse.json({ error: `Cannot delete: ${openOrders} open orders exist` }, { status: 400 })
       }
+      const tradeCount = await db.trade.count({ where: { symbol: pair.symbol } })
+      if (tradeCount > 0) {
+        return NextResponse.json({ error: `Cannot delete: ${tradeCount} trades reference this pair. Deactivate instead.` }, { status: 400 })
+      }
       await db.tradingPair.delete({ where: { id: pairId } })
       return NextResponse.json({ ok: true, message: `Pair ${pair.symbol} deleted` })
     }
