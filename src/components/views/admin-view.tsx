@@ -58,7 +58,7 @@ export function AdminView() {
       } catch {}
     }
     loadCounts()
-    const t = setInterval(loadCounts, 60000)
+    const t = setInterval(loadCounts, 5000)
     return () => clearInterval(t)
   }, [])
 
@@ -277,9 +277,9 @@ function DashboardTab() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
   useEffect(() => {
-    const t = setInterval(load, 60000) // 30 seconds
+    load()
+    const t = setInterval(load, 5000) // Refresh every 5 seconds for near real-time updates
     return () => clearInterval(t)
   }, [load])
 
@@ -537,7 +537,11 @@ function UsersTab() {
     }
   }, [search, statusFilter, kycFilter, toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const [acting, setActing] = useState(false)
   const act = async (userId: string, action: string, payload?: any) => {
@@ -1170,7 +1174,11 @@ function PairsTab() {
     }
   }, [toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const toggleActive = async (pair: any) => {
     try {
@@ -1366,7 +1374,11 @@ function P2PTab() {
     }
   }, [statusFilter, toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const [acting, setActing] = useState(false)
   const act = async (listingId: string, action: string) => {
@@ -1911,7 +1923,11 @@ function PaymentReviewTab() {
     }
   }, [statusFilter, toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const [acting, setActing] = useState(false)
   const act = async (orderId: string, action: string) => {
@@ -2213,7 +2229,11 @@ function OrdersTab() {
     }
   }, [statusFilter, symbolFilter])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   return (
     <div className="space-y-3">
@@ -2317,7 +2337,11 @@ function TransactionsTab() {
     }
   }, [typeFilter, statusFilter])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   return (
     <div className="space-y-3">
@@ -2418,7 +2442,11 @@ function SettingsTab() {
     }
   }, [toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const save = async () => {
     setSaving(true)
@@ -2623,7 +2651,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 60000)
+    const t = setInterval(load, 5000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2967,7 +2995,11 @@ function UserDetailsTab() {
     }
   }, [toast])
 
-  useEffect(() => { loadUsers() }, [loadUsers])
+  useEffect(() => {
+    loadUsers()
+    const t = setInterval(loadUsers, 5000)
+    return () => clearInterval(t)
+  }, [loadUsers])
 
   // Filter by name, email, ID, username
   const filtered = users.filter(u => {
@@ -3741,7 +3773,11 @@ function DepositWithdrawApprovalsTab() {
     }
   }, [statusFilter, toast])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [load])
 
   const act = async (tx: any, action: 'approve' | 'reject') => {
     if (acting) return // Prevent duplicate actions

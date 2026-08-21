@@ -491,6 +491,100 @@ export function WalletView() {
                   <span className="text-xs">{formatDateTime(txDetail.createdAt)}</span>
                 </div>
               </div>
+
+              {/* Address details — show the recipient address for withdrawals, sender for deposits,
+                  and counterparty addresses for internal transfers / P2P */}
+              {(txDetail.toAddress || txDetail.fromAddress) && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2 text-sm">
+                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                    {isInternal
+                      ? (isIncoming ? '👤 Sender Address' : '👤 Recipient Address')
+                      : txDetail.type === 'DEPOSIT' ? '👤 Sender Address'
+                      : '👤 Recipient Address'}
+                  </p>
+                  {/* For withdrawals: show the address the user sent funds TO */}
+                  {/* For deposits: show the address the funds came FROM */}
+                  {/* For internal transfers: show the counterparty's address */}
+                  {(() => {
+                    const address = isInternal
+                      ? (isIncoming ? txDetail.fromAddress : txDetail.toAddress)
+                      : txDetail.type === 'DEPOSIT' ? txDetail.fromAddress : txDetail.toAddress
+                    const name = isInternal
+                      ? (isIncoming ? txDetail.fromName : txDetail.toName)
+                      : txDetail.type === 'DEPOSIT' ? txDetail.fromName : txDetail.toName
+                    if (!address) return null
+                    return (
+                      <>
+                        {name && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{isIncoming ? 'From:' : 'To:'}</span>
+                            <span className="font-medium">{name}</span>
+                          </div>
+                        )}
+                        <div className="bg-card border border-border rounded p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+                              {isIncoming ? 'Sender Address' : 'Recipient Address'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                  navigator.clipboard.writeText(address).then(() => {}).catch(() => {})
+                                }
+                              }}
+                              className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                              title="Copy address"
+                            >
+                              <Copy className="h-3 w-3" /> Copy
+                            </button>
+                          </div>
+                          <p className="font-mono text-xs mt-1 break-all">{address}</p>
+                        </div>
+                        {/* Show network info if it's a withdrawal with a network like TRC20/BEP20/ERC20 */}
+                        {txDetail.network && txDetail.network !== 'P2P' && txDetail.type !== 'DEPOSIT' && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">Network:</span>
+                            <span className="font-medium">{txDetail.network}</span>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              )}
+
+              {/* Transaction hash (txHash) — shown if available */}
+              {txDetail.txHash && txDetail.txHash !== `p2p-${txDetail.id}` && (
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Transaction Hash</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                          navigator.clipboard.writeText(txDetail.txHash!).then(() => {}).catch(() => {})
+                        }
+                      }}
+                      className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                      title="Copy transaction hash"
+                    >
+                      <Copy className="h-3 w-3" /> Copy
+                    </button>
+                  </div>
+                  <p className="font-mono text-xs break-all">{txDetail.txHash}</p>
+                </div>
+              )}
+
+              {/* Note (if present) */}
+              {txDetail.note && (
+                <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Note: </span>
+                  {txDetail.note}
+                </div>
+              )}
             </div>
             <Button variant="outline" className="w-full" onClick={() => setTxDetail(null)}>Close</Button>
           </DialogContent>
