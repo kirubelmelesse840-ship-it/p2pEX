@@ -58,7 +58,7 @@ export function AdminView() {
       } catch {}
     }
     loadCounts()
-    const t = setInterval(loadCounts, 5000)
+    const t = setInterval(loadCounts, 2000)
     return () => clearInterval(t)
   }, [])
 
@@ -279,7 +279,7 @@ function DashboardTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000) // Refresh every 5 seconds for near real-time updates
+    const t = setInterval(load, 2000) // Refresh every 2 seconds for near real-time updates
     return () => clearInterval(t)
   }, [load])
 
@@ -539,7 +539,7 @@ function UsersTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1176,7 +1176,7 @@ function PairsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1376,7 +1376,7 @@ function P2PTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -1925,7 +1925,7 @@ function PaymentReviewTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2231,7 +2231,7 @@ function OrdersTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2339,7 +2339,7 @@ function TransactionsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2444,7 +2444,7 @@ function SettingsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2651,7 +2651,7 @@ function AdminNotifications() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 
@@ -2997,7 +2997,7 @@ function UserDetailsTab() {
 
   useEffect(() => {
     loadUsers()
-    const t = setInterval(loadUsers, 5000)
+    const t = setInterval(loadUsers, 2000)
     return () => clearInterval(t)
   }, [loadUsers])
 
@@ -3410,14 +3410,14 @@ function SupportTab() {
   // Polling
   useEffect(() => {
     loadConversations()
-    const t1 = setInterval(loadConversations, 10000)
+    const t1 = setInterval(loadConversations, 3000)
     return () => clearInterval(t1)
   }, [loadConversations])
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages()
-      const t2 = setInterval(loadMessages, 10000)
+      const t2 = setInterval(loadMessages, 3000)
       return () => clearInterval(t2)
     } else {
       setMessages([])
@@ -3775,7 +3775,7 @@ function DepositWithdrawApprovalsTab() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 2000)
     return () => clearInterval(t)
   }, [load])
 

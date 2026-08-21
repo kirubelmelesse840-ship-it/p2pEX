@@ -63,7 +63,10 @@ export function SupportChatDialog({ open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col glow-card-amber">
+        <DialogContent 
+          className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col border-2 border-amber-500/50" 
+          style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.50), rgba(245,158,11,0.22))', boxShadow: '0 0 0 1px rgba(245,158,11,0.60), 0 4px 12px -4px rgba(0,0,0,0.4), 0 0 12px -2px rgba(245,158,11,0.45)' }}
+        >
           <DialogTitle className="sr-only">Support Chat</DialogTitle>
           <div className="flex items-center gap-2 p-3 border-b border-border bg-gradient-to-r from-yellow-500/10 to-orange-500/10 flex-shrink-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white"><Headphones className="h-5 w-5" /></div>
