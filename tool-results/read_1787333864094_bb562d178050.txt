@@ -1,0 +1,532 @@
+  3500→        rd.readAsDataURL(b)
+  3501→        if (stream.current) {
+  3502→          stream.current.getTracks().forEach(t => t.stop())
+  3503→          stream.current = null
+  3504→        }
+  3505→      }
+  3506→      r.start(1000)
+  3507→      setRecording(true)
+  3508→      setRecTime(0)
+  3509→      timer.current = setInterval(() => setRecTime(p => {
+  3510→        if (p >= 60) { stopRec(); return 60 }
+  3511→        return p + 1
+  3512→      }), 1000)
+  3513→    } catch {
+  3514→      toast({ title: 'Mic denied', description: 'Allow microphone access', variant: 'destructive' })
+  3515→    }
+  3516→  }
+  3517→
+  3518→  const stopRec = () => {
+  3519→    if (mr.current?.state === 'recording') mr.current.stop()
+  3520→    setRecording(false)
+  3521→    if (timer.current) { clearInterval(timer.current); timer.current = null }
+  3522→  }
+  3523→
+  3524→  const cancelRec = () => {
+  3525→    if (mr.current?.state === 'recording') {
+  3526→      mr.current.onstop = null
+  3527→      mr.current.stop()
+  3528→    }
+  3529→    setRecording(false)
+  3530→    setRecTime(0)
+  3531→    if (timer.current) { clearInterval(timer.current); timer.current = null }
+  3532→    if (stream.current) {
+  3533→      stream.current.getTracks().forEach(t => t.stop())
+  3534→      stream.current = null
+  3535→    }
+  3536→  }
+  3537→
+  3538→  const onImg = (f: File) => {
+  3539→    const r = new FileReader()
+  3540→    r.onload = () => {
+  3541→      const b = r.result as string
+  3542→      const img = new Image()
+  3543→      img.onload = () => {
+  3544→        const c = document.createElement('canvas')
+  3545→        const m = 600
+  3546→        let { width: w, height: h } = img
+  3547→        if (w > h && w > m) { h = h * m / w; w = m } else if (h > m) { w = w * m / h; h = m }
+  3548→        c.width = w; c.height = h
+  3549→        c.getContext('2d')?.drawImage(img, 0, 0, w, h)
+  3550→        send('image', { imageData: c.toDataURL('image/jpeg', 0.6), message: f.name })
+  3551→      }
+  3552→      img.src = b
+  3553→    }
+  3554→    r.readAsDataURL(f)
+  3555→  }
+  3556→
+  3557→  const onVid = (f: File) => {
+  3558→    if (f.size > 3e6) {
+  3559→      toast({ title: 'Too large', description: 'Under 3MB', variant: 'destructive' })
+  3560→      return
+  3561→    }
+  3562→    const r = new FileReader()
+  3563→    r.onload = () => send('video', { videoData: r.result as string, message: f.name })
+  3564→    r.readAsDataURL(f)
+  3565→  }
+  3566→
+  3567→  const play = (d: string, id: string) => {
+  3568→    if (playing === id) {
+  3569→      audio.current?.pause()
+  3570→      setPlaying(null)
+  3571→      return
+  3572→    }
+  3573→    if (audio.current) audio.current.pause()
+  3574→    try {
+  3575→      const b = d.includes(',') ? d.split(',')[1] : d
+  3576→      const m = d.match(/data:(.*?);/)?.[1] || 'audio/webm'
+  3577→      const bs = atob(b)
+  3578→      const ab = new ArrayBuffer(bs.length)
+  3579→      const ia = new Uint8Array(ab)
+  3580→      for (let i = 0; i < bs.length; i++) ia[i] = bs.charCodeAt(i)
+  3581→      audio.current = new Audio(URL.createObjectURL(new Blob([ab], { type: m })))
+  3582→      audio.current.onended = () => setPlaying(null)
+  3583→      audio.current.onerror = () => setPlaying(null)
+  3584→      audio.current.play().catch(() => setPlaying(null))
+  3585→      setPlaying(id)
+  3586→    } catch {}
+  3587→  }
+  3588→
+  3589→  const ft = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+  3590→  const fd = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  3591→
+  3592→  return (
+  3593→    <div className="bg-card border border-border rounded-xl overflow-hidden">
+  3594→      <div className="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
+  3595→        {/* Conversation list */}
+  3596→        <div className={`border-r border-border flex flex-col min-h-0 ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
+  3597→          <div className="p-3 border-b border-border flex items-center justify-between flex-shrink-0">
+  3598→            <span className="font-semibold text-sm flex items-center gap-1.5">
+  3599→              <Headphones className="h-4 w-4" /> Conversations ({conversations.length})
+  3600→            </span>
+  3601→            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={loadConversations}>
+  3602→              <RefreshCw className="h-3 w-3" /> Refresh
+  3603→            </Button>
+  3604→          </div>
+  3605→          <div className="overflow-y-auto max-h-[60vh] min-h-[200px]">
+  3606→            {conversations.length === 0 ? (
+  3607→              <div className="p-6 text-center text-xs text-muted-foreground">
+  3608→                <Headphones className="h-8 w-8 mx-auto mb-2 opacity-30" />
+  3609→                No conversations yet
+  3610→              </div>
+  3611→            ) : conversations.map(c => (
+  3612→              <button
+  3613→                key={c.userId}
+  3614→                onClick={() => setSelectedUserId(c.userId)}
+  3615→                className={`w-full text-left p-3 border-b border-border/40 hover:bg-muted/30 transition ${selectedUserId === c.userId ? 'bg-muted/50' : ''}`}
+  3616→              >
+  3617→                <div className="flex items-start gap-2">
+  3618→                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+  3619→                    {(c.userName || '?').slice(0, 2).toUpperCase()}
+  3620→                  </div>
+  3621→                  <div className="flex-1 min-w-0">
+  3622→                    <div className="flex items-center justify-between gap-1">
+  3623→                      <span className="text-sm font-medium truncate">{c.userName}</span>
+  3624→                      {c.unreadCount > 0 && (
+  3625→                        <Badge className="bg-red-500 text-white text-[10px] h-4 min-w-4 px-1 flex items-center justify-center">{c.unreadCount}</Badge>
+  3626→                      )}
+  3627→                    </div>
+  3628→                    <p className="text-xs text-muted-foreground truncate">{c.lastMessage}</p>
+  3629→                    <p className="text-[10px] text-muted-foreground">{formatDateTime(c.lastTime)}</p>
+  3630→                  </div>
+  3631→                </div>
+  3632→              </button>
+  3633→            ))}
+  3634→          </div>
+  3635→        </div>
+  3636→
+  3637→        {/* Chat area */}
+  3638→        <div className={`md:col-span-2 flex flex-col min-h-[400px] ${selectedUserId ? 'flex' : 'hidden md:flex'}`}>
+  3639→          {!selectedUserId ? (
+  3640→            <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
+  3641→              <div className="text-center">
+  3642→                <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
+  3643→                <p className="text-sm">Select a conversation to start chatting</p>
+  3644→              </div>
+  3645→            </div>
+  3646→          ) : (
+  3647→            <>
+  3648→              <div className="p-3 border-b border-border flex items-center gap-2 flex-shrink-0">
+  3649→                <Button variant="ghost" size="sm" className="h-7 md:hidden text-xs" onClick={() => setSelectedUserId(null)}>
+  3650→                  <ArrowUpRight className="h-3 w-3 rotate-180" /> Back
+  3651→                </Button>
+  3652→                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+  3653→                  {(conversations.find(c => c.userId === selectedUserId)?.userName || '?').slice(0, 2).toUpperCase()}
+  3654→                </div>
+  3655→                <div className="flex-1">
+  3656→                  <p className="text-sm font-medium">
+  3657→                    {conversations.find(c => c.userId === selectedUserId)?.userName || 'User'}
+  3658→                  </p>
+  3659→                  <p className="text-[10px] text-muted-foreground">
+  3660→                    {conversations.find(c => c.userId === selectedUserId)?.userEmail || ''}
+  3661→                  </p>
+  3662→                </div>
+  3663→                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={loadMessages}>
+  3664→                  <RefreshCw className="h-3 w-3" />
+  3665→                </Button>
+  3666→              </div>
+  3667→
+  3668→              <div ref={scroll} className="overflow-y-auto max-h-[60vh] min-h-[300px] p-3 space-y-2">
+  3669→                {messages.length === 0 ? (
+  3670→                  <div className="text-center py-8 text-muted-foreground">
+  3671→                    <Headphones className="h-12 w-12 mx-auto mb-2 opacity-30" />
+  3672→                    <p className="text-sm font-medium">No messages yet</p>
+  3673→                    <p className="text-xs">Send a message to start the conversation</p>
+  3674→                  </div>
+  3675→                ) : messages.map(m => (
+  3676→                  <div key={m.id} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+  3677→                    <div className={`max-w-[80%] rounded-2xl p-2.5 ${m.sender === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+  3678→                      {m.type === 'text' && <p className="text-sm break-words whitespace-pre-wrap">{m.message}</p>}
+  3679→                      {m.type === 'image' && m.imageData && (
+  3680→                        <img src={m.imageData} alt="img" className="rounded-lg max-w-full max-h-40 cursor-pointer" onClick={() => setViewer(m.imageData)} />
+  3681→                      )}
+  3682→                      {m.type === 'voice' && m.voiceData && (
+  3683→                        <button onClick={() => play(m.voiceData, m.id)} className="flex items-center gap-2 p-1.5 w-full">
+  3684→                          {playing === m.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+  3685→                          <span className="text-xs">Voice message</span>
+  3686→                        </button>
+  3687→                      )}
+  3688→                      {m.type === 'video' && m.videoData && (
+  3689→                        <video src={m.videoData} controls className="rounded-lg max-w-full max-h-40" />
+  3690→                      )}
+  3691→                      <p className={`text-[10px] mt-1 ${m.sender === 'admin' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{fd(m.createdAt)}</p>
+  3692→                    </div>
+  3693→                  </div>
+  3694→                ))}
+  3695→              </div>
+  3696→
+  3697→              {recording && (
+  3698→                <div className="flex items-center gap-2 p-2 bg-red-500/10 border-t border-red-500/30 flex-shrink-0">
+  3699→                  <span className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+  3700→                  <span className="text-sm text-red-500 font-medium flex-1">Recording {ft(recTime)}</span>
+  3701→                  <button onClick={cancelRec} className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-muted">Cancel</button>
+  3702→                  <button onClick={stopRec} className="text-xs px-3 py-1 rounded bg-red-500 text-white font-medium">Send</button>
+  3703→                </div>
+  3704→              )}
+  3705→
+  3706→              <div className="border-t border-border p-2 flex-shrink-0 bg-card">
+  3707→                <div className="flex items-center gap-1">
+  3708→                  <input ref={fImg} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImg(e.target.files[0]); e.target.value = '' }} />
+  3709→                  <input ref={fVid} type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onVid(e.target.files[0]); e.target.value = '' }} />
+  3710→                  <button onClick={() => fImg.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0" title="Send image">
+  3711→                    <ImageIcon className="h-5 w-5" />
+  3712→                  </button>
+  3713→                  <button onClick={recording ? stopRec : startRec} disabled={busy} className={`p-2 rounded-lg hover:bg-muted flex-shrink-0 ${recording ? 'text-red-500' : ''}`} title="Record voice">
+  3714→                    {recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+  3715→                  </button>
+  3716→                  <button onClick={() => fVid.current?.click()} disabled={busy || recording} className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 flex-shrink-0" title="Send video">
+  3717→                    <Video className="h-5 w-5" />
+  3718→                  </button>
+  3719→                  <input
+  3720→                    type="text"
+  3721→                    value={text}
+  3722→                    onChange={e => setText(e.target.value)}
+  3723→                    onKeyDown={e => { if (e.key === 'Enter' && !busy && !recording) send('text') }}
+  3724→                    placeholder={recording ? 'Recording...' : 'Type a reply...'}
+  3725→                    className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-background text-sm"
+  3726→                    disabled={busy || recording}
+  3727→                  />
+  3728→                  <button onClick={() => send('text')} disabled={busy || recording || !text.trim()} className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 flex-shrink-0" title="Send">
+  3729→                    <Send className="h-5 w-5" />
+  3730→                  </button>
+  3731→                </div>
+  3732→              </div>
+  3733→            </>
+  3734→          )}
+  3735→        </div>
+  3736→      </div>
+  3737→
+  3738→      {viewer && (
+  3739→        <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4" onClick={() => setViewer(null)}>
+  3740→          <button className="absolute top-4 right-4 text-white p-2 z-10" onClick={() => setViewer(null)}>
+  3741→            <X className="h-8 w-8" />
+  3742→          </button>
+  3743→          <img src={viewer} alt="Full" className="max-w-full max-h-full object-contain" />
+  3744→        </div>
+  3745→      )}
+  3746→    </div>
+  3747→  )
+  3748→}
+  3749→
+  3750→// =================== DEPOSIT/WITHDRAW APPROVALS TAB ===================
+  3751→function DepositWithdrawApprovalsTab() {
+  3752→  const { toast } = useToast()
+  3753→  const [txs, setTxs] = useState<any[]>([])
+  3754→  const [loading, setLoading] = useState(false)
+  3755→  const [refreshing, setRefreshing] = useState(false)
+  3756→  const [statusFilter, setStatusFilter] = useState('pending')
+  3757→  const [confirmDialog, setConfirmDialog] = useState<{ tx: any; action: 'approve' | 'reject' } | null>(null)
+  3758→  const [acting, setActing] = useState(false)
+  3759→
+  3760→  const load = useCallback(async () => {
+  3761→    setLoading(true)
+  3762→    try {
+  3763→      const res = await fetch(`/api/admin/transactions?status=${statusFilter}`)
+  3764→      const d = await res.json()
+  3765→      if (d.error) throw new Error(d.error)
+  3766→      // Filter to only DEPOSIT, WITHDRAW, INTERNAL_TRANSFER types
+  3767→      const filtered = (d.transactions || []).filter((t: any) =>
+  3768→        ['DEPOSIT', 'WITHDRAW', 'INTERNAL_TRANSFER'].includes(t.type)
+  3769→      )
+  3770→      setTxs(filtered)
+  3771→    } catch (e: any) {
+  3772→      toast({ title: 'Failed to load transactions', description: e.message, variant: 'destructive' })
+  3773→    } finally {
+  3774→      setLoading(false)
+  3775→    }
+  3776→  }, [statusFilter, toast])
+  3777→
+  3778→  useEffect(() => {
+  3779→    load() // Load once on mount — no auto-refresh
+  3780→  }, [load])
+  3781→
+  3782→  const act = async (tx: any, action: 'approve' | 'reject') => {
+  3783→    if (acting) return // Prevent duplicate actions
+  3784→    setActing(true)
+  3785→    try {
+  3786→      const res = await fetch('/api/admin/transactions/action', {
+  3787→        method: 'POST',
+  3788→        headers: { 'Content-Type': 'application/json' },
+  3789→        body: JSON.stringify({ transactionId: tx.id, action }),
+  3790→      })
+  3791→      const d = await res.json()
+  3792→      if (d.error) throw new Error(d.error)
+  3793→      toast({ title: action === 'approve' ? 'Transaction approved' : 'Transaction rejected', description: d.message })
+  3794→      setConfirmDialog(null)
+  3795→      load()
+  3796→    } catch (e: any) {
+  3797→      toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+  3798→    } finally {
+  3799→      setActing(false)
+  3800→    }
+  3801→  }
+  3802→
+  3803→  const typeIcon = (type: string) => {
+  3804→    if (type === 'DEPOSIT') return <ArrowDownToLine className="h-3.5 w-3.5 text-green-500" />
+  3805→    if (type === 'WITHDRAW') return <ArrowUpFromLine className="h-3.5 w-3.5 text-red-500" />
+  3806→    if (type === 'INTERNAL_TRANSFER') return <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500" />
+  3807→    return null
+  3808→  }
+  3809→
+  3810→  const formatDetails = (t: any) => {
+  3811→    if (t.type === 'INTERNAL_TRANSFER') {
+  3812→      // toAddress may be "user:000001 (Name)"
+  3813→      const to = t.toAddress || ''
+  3814→      return (
+  3815→        <div className="text-xs">
+  3816→          <div className="text-muted-foreground">To: <span className="font-mono text-foreground">{to}</span></div>
+  3817→        </div>
+  3818→      )
+  3819→    }
+  3820→    if (t.type === 'DEPOSIT') {
+  3821→      return (
+  3822→        <div className="text-xs">
+  3823→          {t.fromAddress && <div className="text-muted-foreground">From: <span className="font-mono text-foreground">{t.fromAddress}</span></div>}
+  3824→          {t.txHash && <div className="text-muted-foreground">TxHash: <span className="font-mono text-foreground truncate inline-block max-w-[120px] align-bottom">{t.txHash}</span></div>}
+  3825→        </div>
+  3826→      )
+  3827→    }
+  3828→    if (t.type === 'WITHDRAW') {
+  3829→      return (
+  3830→        <div className="text-xs">
+  3831→          {t.toAddress && <div className="text-muted-foreground">To: <span className="font-mono text-foreground">{t.toAddress}</span></div>}
+  3832→          {t.txHash && <div className="text-muted-foreground">TxHash: <span className="font-mono text-foreground truncate inline-block max-w-[120px] align-bottom">{t.txHash}</span></div>}
+  3833→        </div>
+  3834→      )
+  3835→    }
+  3836→    return null
+  3837→  }
+  3838→
+  3839→  return (
+  3840→    <div className="space-y-3">
+  3841→      <div className="flex flex-wrap items-center gap-2">
+  3842→        <Select value={statusFilter} onValueChange={setStatusFilter}>
+  3843→          <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+  3844→          <SelectContent>
+  3845→            <SelectItem value="pending">Pending</SelectItem>
+  3846→            <SelectItem value="completed">Completed</SelectItem>
+  3847→            <SelectItem value="rejected">Rejected</SelectItem>
+  3848→            <SelectItem value="all">All</SelectItem>
+  3849→          </SelectContent>
+  3850→        </Select>
+  3851→        <Button variant="outline" size="sm" onClick={load}>
+  3852→          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Refresh
+  3853→        </Button>
+  3854→        {statusFilter === 'pending' && txs.length > 0 && (
+  3855→          <Badge className="ml-auto bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+  3856→            {txs.length} pending approval
+  3857→          </Badge>
+  3858→        )}
+  3859→      </div>
+  3860→
+  3861→      <div className="bg-card border border-border rounded-lg overflow-hidden">
+  3862→        <div className="overflow-x-auto">
+  3863→          <table className="w-full text-sm">
+  3864→            <thead className="bg-muted/40 text-xs text-muted-foreground">
+  3865→              <tr>
+  3866→                <th className="px-3 py-2 text-left font-medium">User</th>
+  3867→                <th className="px-3 py-2 text-left font-medium">Type</th>
+  3868→                <th className="px-3 py-2 text-left font-medium">Asset</th>
+  3869→                <th className="px-3 py-2 text-right font-medium">Amount</th>
+  3870→                <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Network</th>
+  3871→                <th className="px-3 py-2 text-left font-medium hidden md:table-cell">Details</th>
+  3872→                <th className="px-3 py-2 text-center font-medium">Status</th>
+  3873→                <th className="px-3 py-2 text-right font-medium">Actions</th>
+  3874→              </tr>
+  3875→            </thead>
+  3876→            <tbody>
+  3877→              {loading ? (
+  3878→                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground"></td></tr>
+  3879→              ) : txs.length === 0 ? (
+  3880→                <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No transactions</td></tr>
+  3881→              ) : txs.map(t => (
+  3882→                <tr key={t.id} className="border-t border-border/40 hover:bg-muted/30">
+  3883→                  <td className="px-3 py-3">
+  3884→                    <div className="font-medium text-xs">{t.userName}</div>
+  3885→                    <div className="text-[10px] text-muted-foreground">{t.userEmail}</div>
+  3886→                  </td>
+  3887→                  <td className="px-3 py-3">
+  3888→                    <div className="flex items-center gap-1.5">
+  3889→                      {typeIcon(t.type)}
+  3890→                      <Badge variant="secondary" className={
+  3891→                        t.type === 'DEPOSIT' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  3892→                        t.type === 'WITHDRAW' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+  3893→                        'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+  3894→                      }>{t.type.replace('_', ' ')}</Badge>
+  3895→                    </div>
+  3896→                  </td>
+  3897→                  <td className="px-3 py-3 text-xs">{t.asset}</td>
+  3898→                  <td className="px-3 py-3 text-right tabular-nums font-medium">{formatQty(t.amount)}</td>
+  3899→                  <td className="px-3 py-3 text-xs hidden sm:table-cell">{t.network}</td>
+  3900→                  <td className="px-3 py-3 hidden md:table-cell">{formatDetails(t)}</td>
+  3901→                  <td className="px-3 py-3 text-center">
+  3902→                    <Badge variant="secondary" className={
+  3903→                      t.status === 'COMPLETED' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  3904→                      t.status === 'PENDING' ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+  3905→                      t.status === 'REJECTED' || t.status === 'FAILED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+  3906→                      ''
+  3907→                    }>{t.status}</Badge>
+  3908→                  </td>
+  3909→                  <td className="px-3 py-3 text-right">
+  3910→                    {t.status === 'PENDING' ? (
+  3911→                      <div className="flex gap-1 justify-end">
+  3912→                        <Button
+  3913→                          size="sm"
+  3914→                          className="h-7 text-xs bg-green-500 hover:bg-green-600 text-white"
+  3915→                          onClick={() => setConfirmDialog({ tx: t, action: 'approve' })}
+  3916→                        >
+  3917→                          <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+  3918→                        </Button>
+  3919→                        <Button
+  3920→                          size="sm"
+  3921→                          variant="outline"
+  3922→                          className="h-7 text-xs border-red-500 text-red-500 hover:bg-red-500/10"
+  3923→                          onClick={() => setConfirmDialog({ tx: t, action: 'reject' })}
+  3924→                        >
+  3925→                          <XCircle className="h-3 w-3 mr-1" /> Reject
+  3926→                        </Button>
+  3927→                      </div>
+  3928→                    ) : (
+  3929→                      <span className="text-xs text-muted-foreground">—</span>
+  3930→                    )}
+  3931→                  </td>
+  3932→                </tr>
+  3933→              ))}
+  3934→            </tbody>
+  3935→          </table>
+  3936→        </div>
+  3937→      </div>
+  3938→
+  3939→      {/* Confirm dialog */}
+  3940→      {confirmDialog && (
+  3941→        <Dialog open onOpenChange={() => !acting && setConfirmDialog(null)}>
+  3942→          <DialogContent className="max-w-md">
+  3943→            <DialogHeader>
+  3944→              <DialogTitle className="flex items-center gap-2">
+  3945→                {confirmDialog.action === 'approve' ? (
+  3946→                  <><CheckCircle2 className="h-5 w-5 text-green-500" /> Confirm Approval</>
+  3947→                ) : (
+  3948→                  <><XCircle className="h-5 w-5 text-red-500" /> Confirm Rejection</>
+  3949→                )}
+  3950→              </DialogTitle>
+  3951→              <DialogDescription>
+  3952→                {confirmDialog.action === 'approve'
+  3953→                  ? 'Please confirm you want to approve this transaction.'
+  3954→                  : 'Please confirm you want to reject this transaction. Funds will be refunded to the user.'}
+  3955→              </DialogDescription>
+  3956→            </DialogHeader>
+  3957→
+  3958→            <div className="space-y-3">
+  3959→              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+  3960→                <div className="flex items-center justify-between">
+  3961→                  <span className="text-muted-foreground">User:</span>
+  3962→                  <span className="font-medium">{confirmDialog.tx.userName}</span>
+  3963→                </div>
+  3964→                <div className="flex items-center justify-between">
+  3965→                  <span className="text-muted-foreground">Type:</span>
+  3966→                  <Badge variant="secondary" className={
+  3967→                    confirmDialog.tx.type === 'DEPOSIT' ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+  3968→                    confirmDialog.tx.type === 'WITHDRAW' ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+  3969→                    'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+  3970→                  }>{confirmDialog.tx.type.replace('_', ' ')}</Badge>
+  3971→                </div>
+  3972→                <div className="flex items-center justify-between">
+  3973→                  <span className="text-muted-foreground">Amount:</span>
+  3974→                  <span className="font-bold tabular-nums">{formatQty(confirmDialog.tx.amount)} {confirmDialog.tx.asset}</span>
+  3975→                </div>
+  3976→                <div className="flex items-center justify-between">
+  3977→                  <span className="text-muted-foreground">Network:</span>
+  3978→                  <span className="font-medium">{confirmDialog.tx.network}</span>
+  3979→                </div>
+  3980→
+  3981→                {confirmDialog.tx.type === 'INTERNAL_TRANSFER' && (
+  3982→                  <>
+  3983→                    <div className="border-t border-border pt-2 mt-2">
+  3984→                      <div className="flex items-center justify-between">
+  3985→                        <span className="text-muted-foreground">From (Sender):</span>
+  3986→                        <span className="font-medium text-xs">{confirmDialog.tx.userName}</span>
+  3987→                      </div>
+  3988→                      <div className="flex items-center justify-between">
+  3989→                        <span className="text-muted-foreground">To (Recipient):</span>
+  3990→                        <span className="font-mono text-xs">{confirmDialog.tx.toAddress || '—'}</span>
+  3991→                      </div>
+  3992→                    </div>
+  3993→                  </>
+  3994→                )}
+  3995→                {(confirmDialog.tx.type === 'DEPOSIT' || confirmDialog.tx.type === 'WITHDRAW') && confirmDialog.tx.toAddress && (
+  3996→                  <div className="border-t border-border pt-2 mt-2">
+  3997→                    <div className="flex items-center justify-between">
+  3998→                      <span className="text-muted-foreground">{confirmDialog.tx.type === 'DEPOSIT' ? 'From:' : 'To:'}</span>
+  3999→                      <span className="font-mono text-xs break-all">{confirmDialog.tx.toAddress}</span>
+  4000→                    </div>
+  4001→                  </div>
+  4002→                )}
+  4003→              </div>
+  4004→
+  4005→              {confirmDialog.action === 'reject' && (
+  4006→                <div className="bg-red-500/10 border border-red-500/30 rounded p-2 text-xs text-red-700 dark:text-red-400">
+  4007→                  <AlertTriangle className="h-3 w-3 inline mr-1" />
+  4008→                  Rejecting will refund {formatQty(confirmDialog.tx.amount)} {confirmDialog.tx.asset} back to the user's wallet (for withdrawals and internal transfers).
+  4009→                </div>
+  4010→              )}
+  4011→
+  4012→              <DialogFooter>
+  4013→                <Button variant="outline" onClick={() => setConfirmDialog(null)} disabled={acting}>Cancel</Button>
+  4014→                <Button
+  4015→                  className={confirmDialog.action === 'approve' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
+  4016→                  onClick={() => act(confirmDialog.tx, confirmDialog.action)}
+  4017→                  disabled={acting}
+  4018→                >
+  4019→                  {acting ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> :
+  4020→                    confirmDialog.action === 'approve' ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
+  4021→                  {confirmDialog.action === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+  4022→                </Button>
+  4023→              </DialogFooter>
+  4024→            </div>
+  4025→          </DialogContent>
+  4026→        </Dialog>
+  4027→      )}
+  4028→    </div>
+  4029→  )
+  4030→}
+  4031→

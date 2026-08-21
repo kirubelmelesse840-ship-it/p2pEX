@@ -6,7 +6,15 @@ import { NextResponse } from 'next/server'
 import { getSetting } from '@/lib/auth'
 
 export async function GET() {
-  const announcement = await getSetting('announcement', '')
-  const maintenanceMode = (await getSetting('maintenanceMode', 'false')) === 'true'
-  return NextResponse.json({ announcement, maintenanceMode })
+// AUTO-TRY-CATCH
+  try {
+
+    const announcement = await getSetting('announcement', '')
+    const maintenanceMode = (await getSetting('maintenanceMode', 'false')) === 'true'
+    return NextResponse.json({ announcement, maintenanceMode })
+
+  } catch (e: any) {
+    console.error('[admin route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+  }
 }

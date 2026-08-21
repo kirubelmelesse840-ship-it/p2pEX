@@ -41,21 +41,34 @@ export function AdminView() {
 
   useEffect(() => {
     const loadCounts = async () => {
-      try {
-        const [notifRes, payRes, dwRes] = await Promise.all([
-          fetch('/api/admin/notifications'),
-          fetch('/api/admin/p2p-review?status=PENDING_REVIEW'),
-          fetch('/api/admin/transactions?status=pending'),
-        ])
-        const notifData = await notifRes.json()
-        const payData = await payRes.json()
-        const dwData = await dwRes.json().catch(() => ({ transactions: [] }))
-        setCounts({
-          kyc: notifData.highPriorityCount || 0,
-          payments: payData.orders?.length || 0,
-          dw: dwData.transactions?.length || 0,
-        })
-      } catch {}
+      // Use Promise.allSettled so a single failed request doesn't break the others
+      const [notifRes, payRes, dwRes] = await Promise.allSettled([
+        fetch('/api/admin/notifications'),
+        fetch('/api/admin/p2p-review?status=PENDING_REVIEW'),
+        fetch('/api/admin/transactions?status=pending'),
+      ])
+
+      const safeJson = async (result: PromiseSettledResult<Response>) => {
+        if (result.status !== 'fulfilled') return {}
+        const res = result.value
+        try {
+          const text = await res.text()
+          if (!text) return {}
+          return JSON.parse(text)
+        } catch {
+          return {}
+        }
+      }
+
+      const notifData = await safeJson(notifRes)
+      const payData = await safeJson(payRes)
+      const dwData = await safeJson(dwRes)
+
+      setCounts({
+        kyc: notifData?.highPriorityCount || 0,
+        payments: payData?.orders?.length || 0,
+        dw: dwData?.transactions?.length || 0,
+      })
     }
     loadCounts() // Load once on mount — no auto-refresh
   }, [])

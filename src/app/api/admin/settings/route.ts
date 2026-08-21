@@ -25,36 +25,52 @@ const DEFAULTS: Record<string, string> = {
 }
 
 export async function GET(req: NextRequest) {
-  const { error, status } = await requireAdmin(req as unknown as Request)
-  if (error) return NextResponse.json({ error }, { status })
+// AUTO-TRY-CATCH
+  try {
 
-  const rows = await db.setting.findMany({ where: { key: { in: SETTING_KEYS } } })
-  const settings: Record<string, string> = {}
-  for (const k of SETTING_KEYS) {
-    settings[k] = rows.find(r => r.key === k)?.value ?? DEFAULTS[k]
+    const { error, status } = await requireAdmin(req as unknown as Request)
+    if (error) return NextResponse.json({ error }, { status })
+
+    const rows = await db.setting.findMany({ where: { key: { in: SETTING_KEYS } } })
+    const settings: Record<string, string> = {}
+    for (const k of SETTING_KEYS) {
+      settings[k] = rows.find(r => r.key === k)?.value ?? DEFAULTS[k]
+    }
+    return NextResponse.json({ settings })
+
+  } catch (e: any) {
+    console.error('[admin route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
-  return NextResponse.json({ settings })
 }
 
 export async function POST(req: NextRequest) {
-  const { error, status } = await requireAdmin(req as unknown as Request)
-  if (error) return NextResponse.json({ error }, { status })
+// AUTO-TRY-CATCH
+  try {
 
-  const body = await req.json()
-  const updates = body.settings || body
-  const updated: Record<string, string> = {}
+    const { error, status } = await requireAdmin(req as unknown as Request)
+    if (error) return NextResponse.json({ error }, { status })
 
-  for (const key of Object.keys(updates)) {
-    if (SETTING_KEYS.includes(key)) {
-      const value = String(updates[key])
-      await setSetting(key, value)
-      updated[key] = value
+    const body = await req.json()
+    const updates = body.settings || body
+    const updated: Record<string, string> = {}
+
+    for (const key of Object.keys(updates)) {
+      if (SETTING_KEYS.includes(key)) {
+        const value = String(updates[key])
+        await setSetting(key, value)
+        updated[key] = value
+      }
     }
-  }
 
-  return NextResponse.json({
-    ok: true,
-    message: `${Object.keys(updated).length} setting(s) updated`,
-    settings: updated,
-  })
+    return NextResponse.json({
+      ok: true,
+      message: `${Object.keys(updated).length} setting(s) updated`,
+      settings: updated,
+    })
+
+  } catch (e: any) {
+    console.error('[admin route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+  }
 }
