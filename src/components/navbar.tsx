@@ -361,7 +361,24 @@ function AuthButtons() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await res.json()
+      // Handle non-JSON responses (e.g. Netlify 404 "Not Found" HTML, 502 gateway errors)
+      const text = await res.text()
+      if (!text) {
+        throw new Error('Server returned empty response. Please try again.')
+      }
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch {
+        // Response is HTML (e.g. "Not Found" 404 page) — extract status info
+        if (res.status === 404) {
+          throw new Error('API endpoint not found. The site may still be deploying — please wait 2-3 minutes and try again.')
+        }
+        if (res.status === 502 || res.status === 503) {
+          throw new Error('Server is temporarily unavailable. Please try again in a moment.')
+        }
+        throw new Error(`Server error (${res.status}). Please try again.`)
+      }
       if (data.error) throw new Error(data.error)
       setUser(data.user)
       toast({
@@ -385,7 +402,12 @@ function AuthButtons() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'demo@crypex.com', password: 'demo12345' }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      let data: any
+      try { data = JSON.parse(text) } catch {
+        throw new Error(res.status === 404 ? 'API endpoint not found. Please wait 2-3 minutes for deploy to finish.' : `Server error (${res.status}).`)
+      }
       if (data.error) throw new Error(data.error)
       setUser(data.user)
       toast({ title: 'Welcome to Demo!', description: `Logged in as ${data.user.name} with sample balances.` })
