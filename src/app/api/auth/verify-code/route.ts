@@ -11,21 +11,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyCode } from '../send-verification/route'
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const body = await req.json().catch(() => ({}))
-    const { email, code } = body
-    if (!email || !code) {
-      return NextResponse.json({ error: 'Email and code are required' }, { status: 400 })
+
+    try {
+      const body = await req.json().catch(() => ({}))
+      const { email, code } = body
+      if (!email || !code) {
+        return NextResponse.json({ error: 'Email and code are required' }, { status: 400 })
+      }
+
+      const isValid = verifyCode(email, code.toString().trim())
+
+      return NextResponse.json({
+        valid: isValid,
+        message: isValid ? 'Code verified successfully' : 'Invalid or expired code',
+      })
+    } catch (e: any) {
+      console.error('[verify-code]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    const isValid = verifyCode(email, code.toString().trim())
-
-    return NextResponse.json({
-      valid: isValid,
-      message: isValid ? 'Code verified successfully' : 'Invalid or expired code',
-    })
   } catch (e: any) {
-    console.error('[verify-code]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

@@ -18,122 +18,130 @@ import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const user = await getCurrentUser(req as unknown as Request)
-    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const body = await req.json().catch(() => ({}))
-    const { asset, amount, recipient, note } = body
-    if (!asset || !amount || !recipient) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 })
-    }
+    try {
+      const user = await getCurrentUser(req as unknown as Request)
+      if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    // Normalize the recipient identifier — accept numerical userId or @username
-    const raw = String(recipient).trim()
-    if (!raw) {
-      return NextResponse.json({ error: 'Enter a recipient' }, { status: 400 })
-    }
+      const body = await req.json().catch(() => ({}))
+      const { asset, amount, recipient, note } = body
+      if (!asset || !amount || !recipient) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+      }
+      if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+        return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 })
+      }
 
-    // Strip leading "@" if present
-    const usernameForm = raw.startsWith('@') ? raw.slice(1) : raw
-    // A numerical user ID (e.g. "000001") — look up by userId field
-    const isNumericalId = /^\d+$/.test(usernameForm)
+      // Normalize the recipient identifier — accept numerical userId or @username
+      const raw = String(recipient).trim()
+      if (!raw) {
+        return NextResponse.json({ error: 'Enter a recipient' }, { status: 400 })
+      }
 
-    let recipientUser: { id: string; userId: string | null; username: string | null; name: string; email: string } | null = null
-    if (isNumericalId) {
-      recipientUser = await db.user.findFirst({
-        where: { userId: usernameForm },
-        select: { id: true, userId: true, username: true, name: true, email: true },
+      // Strip leading "@" if present
+      const usernameForm = raw.startsWith('@') ? raw.slice(1) : raw
+      // A numerical user ID (e.g. "000001") — look up by userId field
+      const isNumericalId = /^\d+$/.test(usernameForm)
+
+      let recipientUser: { id: string; userId: string | null; username: string | null; name: string; email: string } | null = null
+      if (isNumericalId) {
+        recipientUser = await db.user.findFirst({
+          where: { userId: usernameForm },
+          select: { id: true, userId: true, username: true, name: true, email: true },
+        })
+      } else {
+        // Look up by username (case-insensitive)
+        recipientUser = await db.user.findFirst({
+          where: { username: { equals: usernameForm, mode: 'insensitive' } },
+          select: { id: true, userId: true, username: true, name: true, email: true },
+        })
+      }
+
+      if (!recipientUser) {
+        return NextResponse.json({
+          error: `No user found with ${isNumericalId ? 'ID' : 'username'} ${raw}`,
+        }, { status: 404 })
+      }
+      if (recipientUser.id === user.id) {
+        return NextResponse.json({ error: 'Cannot transfer to yourself' }, { status: 400 })
+      }
+
+      // Find sender wallet
+      const senderWallet = await db.wallet.findUnique({
+        where: { userId_asset: { userId: user.id, asset } },
       })
-    } else {
-      // Look up by username (case-insensitive)
-      recipientUser = await db.user.findFirst({
-        where: { username: { equals: usernameForm, mode: 'insensitive' } },
-        select: { id: true, userId: true, username: true, name: true, email: true },
+      if (!senderWallet) {
+        return NextResponse.json({ error: `You don't have a ${asset} wallet` }, { status: 404 })
+      }
+
+      if (senderWallet.available < amount) {
+        return NextResponse.json({
+          error: `Insufficient balance. Available: ${senderWallet.available} ${asset}`,
+        }, { status: 400 })
+      }
+
+      // Bonus restriction: users can't transfer/withdraw the bonus until they
+      // complete at least 1 P2P order OR deposit at least 10 USDT
+      const [completedP2P, approvedDeposits] = await Promise.all([
+        db.p2POrder.count({ where: { sellerId: user.id, status: 'COMPLETED' } }),
+        db.transaction.aggregate({
+          where: { userId: user.id, type: 'DEPOSIT', status: 'COMPLETED', network: { not: 'WELCOME_BONUS' } },
+          _sum: { amount: true },
+        }),
+      ])
+      const totalDeposited = approvedDeposits._sum.amount || 0
+
+      if (completedP2P === 0 && totalDeposited < 10) {
+        return NextResponse.json({
+          error: `You need to complete at least 1 P2P order or deposit at least 10 USDT before transferring your bonus balance.`,
+        }, { status: 400 })
+      }
+
+      // Lock funds on sender's wallet — move from `available` to `locked`.
+      // Balance (total) is unchanged. The recipient is NOT credited yet.
+      await db.wallet.update({
+        where: { id: senderWallet.id },
+        data: {
+          available: { decrement: amount },
+          locked: { increment: amount },
+        },
       })
-    }
 
-    if (!recipientUser) {
+      // Build a human-readable recipient label for the admin UI
+      const recipientLabel = recipientUser.userId
+        ? `user:${recipientUser.userId} (${recipientUser.name})`
+        : `user:${recipientUser.email}`
+
+      // Create a PENDING transaction for the sender (admin must approve)
+      const senderTx = await db.transaction.create({
+        data: {
+          userId: user.id,
+          asset,
+          type: 'INTERNAL_TRANSFER',
+          amount,
+          fee: 0,
+          network: 'P2PEX',
+          toAddress: recipientLabel,
+          note: note || `Internal transfer to ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email})`,
+          status: 'PENDING',
+          confirmations: 0,
+          requiredConfirmations: 1,
+        },
+      })
+
       return NextResponse.json({
-        error: `No user found with ${isNumericalId ? 'ID' : 'username'} ${raw}`,
-      }, { status: 404 })
-    }
-    if (recipientUser.id === user.id) {
-      return NextResponse.json({ error: 'Cannot transfer to yourself' }, { status: 400 })
-    }
-
-    // Find sender wallet
-    const senderWallet = await db.wallet.findUnique({
-      where: { userId_asset: { userId: user.id, asset } },
-    })
-    if (!senderWallet) {
-      return NextResponse.json({ error: `You don't have a ${asset} wallet` }, { status: 404 })
+        transaction: senderTx,
+        message: `Transfer request submitted. ${amount} ${asset} is locked pending review. Recipient: ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email}).`,
+      })
+    } catch (e: any) {
+      console.error('[wallet/transfer]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    if (senderWallet.available < amount) {
-      return NextResponse.json({
-        error: `Insufficient balance. Available: ${senderWallet.available} ${asset}`,
-      }, { status: 400 })
-    }
-
-    // Bonus restriction: users can't transfer/withdraw the bonus until they
-    // complete at least 1 P2P order OR deposit at least 10 USDT
-    const [completedP2P, approvedDeposits] = await Promise.all([
-      db.p2POrder.count({ where: { sellerId: user.id, status: 'COMPLETED' } }),
-      db.transaction.aggregate({
-        where: { userId: user.id, type: 'DEPOSIT', status: 'COMPLETED', network: { not: 'WELCOME_BONUS' } },
-        _sum: { amount: true },
-      }),
-    ])
-    const totalDeposited = approvedDeposits._sum.amount || 0
-
-    if (completedP2P === 0 && totalDeposited < 10) {
-      return NextResponse.json({
-        error: `You need to complete at least 1 P2P order or deposit at least 10 USDT before transferring your bonus balance.`,
-      }, { status: 400 })
-    }
-
-    // Lock funds on sender's wallet — move from `available` to `locked`.
-    // Balance (total) is unchanged. The recipient is NOT credited yet.
-    await db.wallet.update({
-      where: { id: senderWallet.id },
-      data: {
-        available: { decrement: amount },
-        locked: { increment: amount },
-      },
-    })
-
-    // Build a human-readable recipient label for the admin UI
-    const recipientLabel = recipientUser.userId
-      ? `user:${recipientUser.userId} (${recipientUser.name})`
-      : `user:${recipientUser.email}`
-
-    // Create a PENDING transaction for the sender (admin must approve)
-    const senderTx = await db.transaction.create({
-      data: {
-        userId: user.id,
-        asset,
-        type: 'INTERNAL_TRANSFER',
-        amount,
-        fee: 0,
-        network: 'P2PEX',
-        toAddress: recipientLabel,
-        note: note || `Internal transfer to ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email})`,
-        status: 'PENDING',
-        confirmations: 0,
-        requiredConfirmations: 1,
-      },
-    })
-
-    return NextResponse.json({
-      transaction: senderTx,
-      message: `Transfer request submitted. ${amount} ${asset} is locked pending review. Recipient: ${recipientUser.name} (ID: ${recipientUser.userId || recipientUser.email}).`,
-    })
   } catch (e: any) {
-    console.error('[wallet/transfer]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

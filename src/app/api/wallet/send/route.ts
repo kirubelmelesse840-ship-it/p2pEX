@@ -46,86 +46,94 @@ const WITHDRAW_FEES: Record<string, Record<string, number>> = {
 }
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const user = await getCurrentUser(req as unknown as Request)
-    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const body = await req.json().catch(() => ({}))
-    const { asset, network, address, amount, memo } = body
-    if (!asset || !network || !address || !amount) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 })
-    }
+    try {
+      const user = await getCurrentUser(req as unknown as Request)
+      if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const supported = NETWORKS_BY_ASSET[asset] || []
-    if (!supported.includes(network)) {
-      return NextResponse.json({ error: `Network ${network} not supported for ${asset}` }, { status: 400 })
-    }
+      const body = await req.json().catch(() => ({}))
+      const { asset, network, address, amount, memo } = body
+      if (!asset || !network || !address || !amount) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+      }
+      if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+        return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 })
+      }
 
-    const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: user.id, asset } } })
-    if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
+      const supported = NETWORKS_BY_ASSET[asset] || []
+      if (!supported.includes(network)) {
+        return NextResponse.json({ error: `Network ${network} not supported for ${asset}` }, { status: 400 })
+      }
 
-    const fee = WITHDRAW_FEES[asset]?.[network] || 0
-    const total = amount + fee
+      const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: user.id, asset } } })
+      if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
 
-    if (wallet.available < total) {
+      const fee = WITHDRAW_FEES[asset]?.[network] || 0
+      const total = amount + fee
+
+      if (wallet.available < total) {
+        return NextResponse.json({
+          error: `Insufficient balance. Need ${total} ${asset} (incl. fee ${fee}), available: ${wallet.available}`,
+        }, { status: 400 })
+      }
+
+      // Bonus restriction: users can't withdraw the bonus until they
+      // complete at least 1 P2P order OR deposit at least 10 USDT
+      const [completedP2P, approvedDeposits] = await Promise.all([
+        db.p2POrder.count({ where: { sellerId: user.id, status: 'COMPLETED' } }),
+        db.transaction.aggregate({
+          where: { userId: user.id, type: 'DEPOSIT', status: 'COMPLETED', network: { not: 'WELCOME_BONUS' } },
+          _sum: { amount: true },
+        }),
+      ])
+      const totalDeposited = approvedDeposits._sum.amount || 0
+
+      if (completedP2P === 0 && totalDeposited < 10) {
+        return NextResponse.json({
+          error: `You need to complete at least 1 P2P order or deposit at least 10 USDT before withdrawing your bonus balance.`,
+        }, { status: 400 })
+      }
+
+      // Lock funds: move amount+fee from `available` to `locked`.
+      // Balance (total) is NOT changed yet — the actual deduction happens on admin approval.
+      await db.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          available: { decrement: total },
+          locked: { increment: total },
+        },
+      })
+
+      // Create a PENDING withdrawal transaction
+      const tx = await db.transaction.create({
+        data: {
+          userId: user.id,
+          asset,
+          type: 'WITHDRAW',
+          amount,
+          fee,
+          network,
+          toAddress: address,
+          note: memo || `Withdrawal to ${address.slice(0, 10)}... via ${network} — awaiting review`,
+          status: 'PENDING',
+          confirmations: 0,
+          requiredConfirmations: 1,
+        },
+      })
+
       return NextResponse.json({
-        error: `Insufficient balance. Need ${total} ${asset} (incl. fee ${fee}), available: ${wallet.available}`,
-      }, { status: 400 })
+        transaction: tx,
+        message: 'Withdrawal request submitted. Funds are locked pending review.',
+      })
+    } catch (e: any) {
+      console.error('[wallet/send]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    // Bonus restriction: users can't withdraw the bonus until they
-    // complete at least 1 P2P order OR deposit at least 10 USDT
-    const [completedP2P, approvedDeposits] = await Promise.all([
-      db.p2POrder.count({ where: { sellerId: user.id, status: 'COMPLETED' } }),
-      db.transaction.aggregate({
-        where: { userId: user.id, type: 'DEPOSIT', status: 'COMPLETED', network: { not: 'WELCOME_BONUS' } },
-        _sum: { amount: true },
-      }),
-    ])
-    const totalDeposited = approvedDeposits._sum.amount || 0
-
-    if (completedP2P === 0 && totalDeposited < 10) {
-      return NextResponse.json({
-        error: `You need to complete at least 1 P2P order or deposit at least 10 USDT before withdrawing your bonus balance.`,
-      }, { status: 400 })
-    }
-
-    // Lock funds: move amount+fee from `available` to `locked`.
-    // Balance (total) is NOT changed yet — the actual deduction happens on admin approval.
-    await db.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        available: { decrement: total },
-        locked: { increment: total },
-      },
-    })
-
-    // Create a PENDING withdrawal transaction
-    const tx = await db.transaction.create({
-      data: {
-        userId: user.id,
-        asset,
-        type: 'WITHDRAW',
-        amount,
-        fee,
-        network,
-        toAddress: address,
-        note: memo || `Withdrawal to ${address.slice(0, 10)}... via ${network} — awaiting review`,
-        status: 'PENDING',
-        confirmations: 0,
-        requiredConfirmations: 1,
-      },
-    })
-
-    return NextResponse.json({
-      transaction: tx,
-      message: 'Withdrawal request submitted. Funds are locked pending review.',
-    })
   } catch (e: any) {
-    console.error('[wallet/send]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

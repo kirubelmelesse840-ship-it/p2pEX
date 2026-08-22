@@ -9,111 +9,119 @@ import crypto from 'crypto'
  * Exchanges the authorization code for user info (email, name).
  */
 export async function GET(req: NextRequest) {
-  const code = new URL(req.url).searchParams.get('code')
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`
-
-  if (!code || !clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/?auth_error=google_not_configured', req.url))
-  }
-
+// AUTO-TRY-CATCH
   try {
-    // Exchange code for tokens
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      }),
-    })
 
-    if (!tokenRes.ok) {
-      return NextResponse.redirect(new URL('/?auth_error=token_failed', req.url))
+    const code = new URL(req.url).searchParams.get('code')
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+    const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`
+
+    if (!code || !clientId || !clientSecret) {
+      return NextResponse.redirect(new URL('/?auth_error=google_not_configured', req.url))
     }
 
-    const tokens = await tokenRes.json()
-
-    // Get user info from Google
-    const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    })
-
-    if (!userRes.ok) {
-      return NextResponse.redirect(new URL('/?auth_error=userinfo_failed', req.url))
-    }
-
-    const googleUser = await userRes.json()
-    const email = googleUser.email?.toLowerCase().trim()
-    const name = googleUser.name || googleUser.given_name || email?.split('@')[0] || 'Google User'
-
-    if (!email) {
-      return NextResponse.redirect(new URL('/?auth_error=no_email', req.url))
-    }
-
-    // Find or create the user
-    let user = await db.user.findUnique({ where: { email } })
-
-    if (!user) {
-      const randomPassword = crypto.randomBytes(32).toString('hex')
-      // Auto-generate userId and username (Prisma schema requires these)
-      const userCount = await db.user.count()
-      const newUserId = String(userCount + 1).padStart(6, '0')
-      const baseUsername = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '') || 'user'
-      const newUsername = baseUsername + Math.floor(Math.random() * 9000 + 1000)
-      user = await db.user.create({
-        data: {
-          email,
-          name,
-          userId: newUserId,
-          username: newUsername,
-          passwordHash: hashPassword(randomPassword),
-          kycVerified: false,
-          kycLevel: 0,
-          kycStatus: 'NONE',
-          fiatCurrency: 'USD',
-          isActive: true,
-        },
+    try {
+      // Exchange code for tokens
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
       })
 
-      const defaultAssets = [
-        { symbol: 'BTC', name: 'Bitcoin' }, { symbol: 'ETH', name: 'Ethereum' },
-        { symbol: 'USDT', name: 'Tether' }, { symbol: 'USDC', name: 'USD Coin' },
-        { symbol: 'BNB', name: 'BNB' }, { symbol: 'SOL', name: 'Solana' },
-        { symbol: 'XRP', name: 'XRP' }, { symbol: 'ADA', name: 'Cardano' },
-        { symbol: 'DOGE', name: 'Dogecoin' },
-      ]
-      for (const a of defaultAssets) {
-        await db.wallet.create({
+      if (!tokenRes.ok) {
+        return NextResponse.redirect(new URL('/?auth_error=token_failed', req.url))
+      }
+
+      const tokens = await tokenRes.json()
+
+      // Get user info from Google
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      })
+
+      if (!userRes.ok) {
+        return NextResponse.redirect(new URL('/?auth_error=userinfo_failed', req.url))
+      }
+
+      const googleUser = await userRes.json()
+      const email = googleUser.email?.toLowerCase().trim()
+      const name = googleUser.name || googleUser.given_name || email?.split('@')[0] || 'Google User'
+
+      if (!email) {
+        return NextResponse.redirect(new URL('/?auth_error=no_email', req.url))
+      }
+
+      // Find or create the user
+      let user = await db.user.findUnique({ where: { email } })
+
+      if (!user) {
+        const randomPassword = crypto.randomBytes(32).toString('hex')
+        // Auto-generate userId and username (Prisma schema requires these)
+        const userCount = await db.user.count()
+        const newUserId = String(userCount + 1).padStart(6, '0')
+        const baseUsername = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '') || 'user'
+        const newUsername = baseUsername + Math.floor(Math.random() * 9000 + 1000)
+        user = await db.user.create({
           data: {
-            userId: user.id, asset: a.symbol, assetName: a.name,
-            balance: 0, available: 0, depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
+            email,
+            name,
+            userId: newUserId,
+            username: newUsername,
+            passwordHash: hashPassword(randomPassword),
+            kycVerified: false,
+            kycLevel: 0,
+            kycStatus: 'NONE',
+            fiatCurrency: 'USD',
+            isActive: true,
           },
         })
+
+        const defaultAssets = [
+          { symbol: 'BTC', name: 'Bitcoin' }, { symbol: 'ETH', name: 'Ethereum' },
+          { symbol: 'USDT', name: 'Tether' }, { symbol: 'USDC', name: 'USD Coin' },
+          { symbol: 'BNB', name: 'BNB' }, { symbol: 'SOL', name: 'Solana' },
+          { symbol: 'XRP', name: 'XRP' }, { symbol: 'ADA', name: 'Cardano' },
+          { symbol: 'DOGE', name: 'Dogecoin' },
+        ]
+        for (const a of defaultAssets) {
+          await db.wallet.create({
+            data: {
+              userId: user.id, asset: a.symbol, assetName: a.name,
+              balance: 0, available: 0, depositAddress: 'T' + Math.random().toString(36).slice(2, 34).toUpperCase(),
+            },
+          })
+        }
+      } else if (user.isBanned) {
+        return NextResponse.redirect(new URL('/?auth_error=banned', req.url))
+      } else if (!user.isActive) {
+        return NextResponse.redirect(new URL('/?auth_error=deactivated', req.url))
       }
-    } else if (user.isBanned) {
-      return NextResponse.redirect(new URL('/?auth_error=banned', req.url))
-    } else if (!user.isActive) {
-      return NextResponse.redirect(new URL('/?auth_error=deactivated', req.url))
+
+      const session = await createSession(user.id, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined)
+
+      const response = NextResponse.redirect(new URL('/', req.url))
+      response.cookies.set('session_token', session.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30,
+        path: '/',
+      })
+      return response
+    } catch (e: any) {
+      console.error('[google callback] error:', e)
+      return NextResponse.redirect(new URL('/?auth_error=exception', req.url))
     }
 
-    const session = await createSession(user.id, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined)
-
-    const response = NextResponse.redirect(new URL('/', req.url))
-    response.cookies.set('session_token', session.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    })
-    return response
   } catch (e: any) {
-    console.error('[google callback] error:', e)
-    return NextResponse.redirect(new URL('/?auth_error=exception', req.url))
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }

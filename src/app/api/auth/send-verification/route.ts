@@ -74,94 +74,102 @@ async function getTransporter() {
 }
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const body = await req.json().catch(() => ({}))
-    const { email } = body
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-    }
 
-    const normalizedEmail = email.toLowerCase().trim()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
-    }
+    try {
+      const body = await req.json().catch(() => ({}))
+      const { email } = body
+      if (!email) {
+        return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+      }
 
-    // Rate limit: max 1 code per 60 seconds
-    const existing = verificationCodes.get(normalizedEmail)
-    if (existing && existing.expiresAt - Date.now() > 4 * 60 * 1000) {
-      return NextResponse.json({
-        ok: true,
-        message: 'A verification code was already sent. Please check your email inbox.',
+      const normalizedEmail = email.toLowerCase().trim()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
+      }
+
+      // Rate limit: max 1 code per 60 seconds
+      const existing = verificationCodes.get(normalizedEmail)
+      if (existing && existing.expiresAt - Date.now() > 4 * 60 * 1000) {
+        return NextResponse.json({
+          ok: true,
+          message: 'A verification code was already sent. Please check your email inbox.',
+        })
+      }
+
+      // Generate 6-digit code
+      const code = crypto.randomInt(100000, 999999).toString()
+
+      // Store code
+      verificationCodes.set(normalizedEmail, {
+        code,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
       })
-    }
 
-    // Generate 6-digit code
-    const code = crypto.randomInt(100000, 999999).toString()
+      // Send the email
+      const transport = await getTransporter()
+      if (!transport) {
+        console.log(`[email] (no transport) Verification code for ${normalizedEmail}: ${code}`)
+        return NextResponse.json({
+          ok: true,
+          message: 'Verification code generated. Check server logs if email is not configured.',
+        })
+      }
 
-    // Store code
-    verificationCodes.set(normalizedEmail, {
-      code,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-      attempts: 0,
-    })
+      const { transporter, from, isEthereal } = transport
 
-    // Send the email
-    const transport = await getTransporter()
-    if (!transport) {
-      console.log(`[email] (no transport) Verification code for ${normalizedEmail}: ${code}`)
-      return NextResponse.json({
-        ok: true,
-        message: 'Verification code generated. Check server logs if email is not configured.',
-      })
-    }
-
-    const { transporter, from, isEthereal } = transport
-
-    const info = await transporter.sendMail({
-      from,
-      to: normalizedEmail,
-      subject: 'Your P2PEX Verification Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #ffffff;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">P2PEX</h1>
-            <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Cryptocurrency Exchange</p>
-          </div>
-          <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #111827; margin: 0 0 12px 0; font-size: 20px;">Email Verification</h2>
-            <p style="color: #4b5563; margin: 0 0 20px 0;">You're verifying your email address for your P2PEX account. Use the code below to complete verification:</p>
-            <div style="text-align: center; margin: 24px 0;">
-              <div style="display: inline-block; background: #ffffff; border: 2px solid #f59e0b; padding: 16px 40px; border-radius: 8px; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">
-                ${code}
-              </div>
+      const info = await transporter.sendMail({
+        from,
+        to: normalizedEmail,
+        subject: 'Your P2PEX Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #ffffff;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">P2PEX</h1>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Cryptocurrency Exchange</p>
             </div>
-            <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">This code expires in <strong>5 minutes</strong>.</p>
+            <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+              <h2 style="color: #111827; margin: 0 0 12px 0; font-size: 20px;">Email Verification</h2>
+              <p style="color: #4b5563; margin: 0 0 20px 0;">You're verifying your email address for your P2PEX account. Use the code below to complete verification:</p>
+              <div style="text-align: center; margin: 24px 0;">
+                <div style="display: inline-block; background: #ffffff; border: 2px solid #f59e0b; padding: 16px 40px; border-radius: 8px; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">
+                  ${code}
+                </div>
+              </div>
+              <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">This code expires in <strong>5 minutes</strong>.</p>
+            </div>
+            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">If you didn't request this code, you can safely ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+            <p style="color: #9ca3af; font-size: 11px; text-align: center;">© 2026 P2PEX. All rights reserved.</p>
           </div>
-          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">If you didn't request this code, you can safely ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 11px; text-align: center;">© 2026 P2PEX. All rights reserved.</p>
-        </div>
-      `,
-      text: `Your P2PEX verification code is: ${code}\n\nIt expires in 5 minutes.\n\nIf you didn't request this code, you can safely ignore this email.`,
-    })
+        `,
+        text: `Your P2PEX verification code is: ${code}\n\nIt expires in 5 minutes.\n\nIf you didn't request this code, you can safely ignore this email.`,
+      })
 
-    // Get the preview URL (for Ethereal) or message ID
-    const previewUrl = isEthereal ? nodemailer_getTestMessageUrl(info) : null
+      // Get the preview URL (for Ethereal) or message ID
+      const previewUrl = isEthereal ? nodemailer_getTestMessageUrl(info) : null
 
-    console.log(`[email] Verification code sent to ${normalizedEmail}`)
-    if (previewUrl) {
-      console.log(`[email] Preview URL: ${previewUrl}`)
+      console.log(`[email] Verification code sent to ${normalizedEmail}`)
+      if (previewUrl) {
+        console.log(`[email] Preview URL: ${previewUrl}`)
+      }
+
+      return NextResponse.json({
+        ok: true,
+        message: `A 6-digit verification code has been sent to ${normalizedEmail}. Check your inbox (and spam folder).`,
+        // Only include preview URL if using Ethereal (so user can view the email in browser)
+        previewUrl: previewUrl || undefined,
+      })
+    } catch (e: any) {
+      console.error('[send-verification]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    return NextResponse.json({
-      ok: true,
-      message: `A 6-digit verification code has been sent to ${normalizedEmail}. Check your inbox (and spam folder).`,
-      // Only include preview URL if using Ethereal (so user can view the email in browser)
-      previewUrl: previewUrl || undefined,
-    })
   } catch (e: any) {
-    console.error('[send-verification]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }
 

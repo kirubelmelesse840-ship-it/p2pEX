@@ -60,46 +60,54 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const body = await req.json().catch(() => ({}))
-    const { phone } = body
-    if (!phone) {
-      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
-    }
 
-    // Basic phone validation (E.164 format: + followed by 8-15 digits)
-    const cleanPhone = phone.replace(/[\s\-()]/g, '')
-    if (!/^\+\d{8,15}$/.test(cleanPhone)) {
-      return NextResponse.json({
-        error: 'Invalid phone format. Use international format: +251912345678',
-      }, { status: 400 })
-    }
+    try {
+      const body = await req.json().catch(() => ({}))
+      const { phone } = body
+      if (!phone) {
+        return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
+      }
 
-    // Rate limit: 1 code per 60 seconds
-    const existing = smsCodes.get(cleanPhone)
-    if (existing && existing.expiresAt - Date.now() > 4 * 60 * 1000) {
+      // Basic phone validation (E.164 format: + followed by 8-15 digits)
+      const cleanPhone = phone.replace(/[\s\-()]/g, '')
+      if (!/^\+\d{8,15}$/.test(cleanPhone)) {
+        return NextResponse.json({
+          error: 'Invalid phone format. Use international format: +251912345678',
+        }, { status: 400 })
+      }
+
+      // Rate limit: 1 code per 60 seconds
+      const existing = smsCodes.get(cleanPhone)
+      if (existing && existing.expiresAt - Date.now() > 4 * 60 * 1000) {
+        return NextResponse.json({
+          ok: true,
+          message: 'A code was already sent. Please wait before requesting another.',
+        })
+      }
+
+      const code = crypto.randomInt(100000, 999999).toString()
+      smsCodes.set(cleanPhone, {
+        code,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
+      })
+
+      await sendSmsCode(cleanPhone, code)
+
       return NextResponse.json({
         ok: true,
-        message: 'A code was already sent. Please wait before requesting another.',
+        message: `A 6-digit code has been sent to ${cleanPhone}`,
       })
+    } catch (e: any) {
+      console.error('[send-sms]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    const code = crypto.randomInt(100000, 999999).toString()
-    smsCodes.set(cleanPhone, {
-      code,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-      attempts: 0,
-    })
-
-    await sendSmsCode(cleanPhone, code)
-
-    return NextResponse.json({
-      ok: true,
-      message: `A 6-digit code has been sent to ${cleanPhone}`,
-    })
   } catch (e: any) {
-    console.error('[send-sms]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }
 

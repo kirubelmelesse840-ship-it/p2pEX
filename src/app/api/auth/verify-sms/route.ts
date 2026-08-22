@@ -8,21 +8,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifySmsCode } from '../send-sms/route'
 
 export async function POST(req: NextRequest) {
+// AUTO-TRY-CATCH
   try {
-    const body = await req.json().catch(() => ({}))
-    const { phone, code } = body
-    if (!phone || !code) {
-      return NextResponse.json({ error: 'Phone and code are required' }, { status: 400 })
+
+    try {
+      const body = await req.json().catch(() => ({}))
+      const { phone, code } = body
+      if (!phone || !code) {
+        return NextResponse.json({ error: 'Phone and code are required' }, { status: 400 })
+      }
+
+      const isValid = verifySmsCode(phone, code.toString().trim())
+
+      return NextResponse.json({
+        valid: isValid,
+        message: isValid ? 'Phone verified successfully' : 'Invalid or expired code',
+      })
+    } catch (e: any) {
+      console.error('[verify-sms]', e)
+      return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
     }
 
-    const isValid = verifySmsCode(phone, code.toString().trim())
-
-    return NextResponse.json({
-      valid: isValid,
-      message: isValid ? 'Phone verified successfully' : 'Invalid or expired code',
-    })
   } catch (e: any) {
-    console.error('[verify-sms]', e)
-    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
+    console.error('[user route error]', e)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
   }
 }
