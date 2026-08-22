@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { name, fiatCurrency } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { name, fiatCurrency } = body
 
     const updateData: any = {}
     if (name && name.trim()) updateData.name = name.trim()

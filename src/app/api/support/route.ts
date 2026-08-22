@@ -9,26 +9,31 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser(req as unknown as Request)
-  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-  const url = new URL(req.url)
-  const targetUserId = url.searchParams.get('userId')
-  const markRead = url.searchParams.get('markRead') === 'true'
-  if (user.isAdmin && targetUserId) {
-    const messages = await db.supportMessage.findMany({ where: { userId: targetUserId }, orderBy: { createdAt: 'asc' }, take: 500 })
-    await db.supportMessage.updateMany({ where: { userId: targetUserId, sender: 'user', isRead: false }, data: { isRead: true } })
-    return NextResponse.json({ messages })
+  try {
+    const user = await getCurrentUser(req as unknown as Request)
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const url = new URL(req.url)
+    const targetUserId = url.searchParams.get('userId')
+    const markRead = url.searchParams.get('markRead') === 'true'
+    if (user.isAdmin && targetUserId) {
+      const messages = await db.supportMessage.findMany({ where: { userId: targetUserId }, orderBy: { createdAt: 'asc' }, take: 500 })
+      await db.supportMessage.updateMany({ where: { userId: targetUserId, sender: 'user', isRead: false }, data: { isRead: true } })
+      return NextResponse.json({ messages })
+    }
+    if (user.isAdmin) {
+      const all = await db.supportMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 1000, include: { user: { select: { id: true, name: true, email: true, userId: true } } } })
+      const map = new Map<string, any>()
+      for (const m of all) { if (!map.has(m.userId)) map.set(m.userId, { userId: m.userId, userName: m.user.name, userEmail: m.user.email, userDisplayId: m.user.userId, lastMessage: m.type === 'text' ? m.message : `[${m.type}]`, lastTime: m.createdAt, unreadCount: 0 }); if (m.sender === 'user' && !m.isRead) map.get(m.userId).unreadCount++ }
+      return NextResponse.json({ conversations: Array.from(map.values()).sort((a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()) })
+    }
+    const messages = await db.supportMessage.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' }, take: 500 })
+    if (markRead) await db.supportMessage.updateMany({ where: { userId: user.id, sender: 'admin', isRead: false }, data: { isRead: true } })
+    const unreadCount = messages.filter(m => m.sender === 'admin' && !m.isRead).length
+    return NextResponse.json({ messages, unreadCount })
+  } catch (e: any) {
+    console.error('[support GET]', e)
+    return NextResponse.json({ error: e.message || 'Internal error', messages: [], conversations: [], unreadCount: 0 }, { status: 500 })
   }
-  if (user.isAdmin) {
-    const all = await db.supportMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 1000, include: { user: { select: { id: true, name: true, email: true, userId: true } } } })
-    const map = new Map<string, any>()
-    for (const m of all) { if (!map.has(m.userId)) map.set(m.userId, { userId: m.userId, userName: m.user.name, userEmail: m.user.email, userDisplayId: m.user.userId, lastMessage: m.type === 'text' ? m.message : `[${m.type}]`, lastTime: m.createdAt, unreadCount: 0 }); if (m.sender === 'user' && !m.isRead) map.get(m.userId).unreadCount++ }
-    return NextResponse.json({ conversations: Array.from(map.values()).sort((a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()) })
-  }
-  const messages = await db.supportMessage.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' }, take: 500 })
-  if (markRead) await db.supportMessage.updateMany({ where: { userId: user.id, sender: 'admin', isRead: false }, data: { isRead: true } })
-  const unreadCount = messages.filter(m => m.sender === 'admin' && !m.isRead).length
-  return NextResponse.json({ messages, unreadCount })
 }
 export async function POST(req: NextRequest) {
   try {

@@ -135,12 +135,14 @@ export function P2PView() {
         fetch(`/api/p2p/listings?asset=${filters.asset}&fiat=${filters.fiat}`),
         user ? fetch('/api/p2p/orders?role=all') : Promise.resolve(null),
       ])
-      const listData = await listRes.json()
+      const listText = await listRes.text()
+      const listData = listText ? JSON.parse(listText) : {}
       setListings(listData.listings || [])
       // Cache the listings for instant load next time
       sessionStorage.setItem(cacheKey, JSON.stringify({ listings: listData.listings || [] }))
       if (ordersRes) {
-        const ordersData = await ordersRes.json()
+        const ordersText = await ordersRes.text()
+        const ordersData = ordersText ? JSON.parse(ordersText) : {}
         const newOrders = ordersData.orders || []
         // Detect status changes and notify the user
         for (const o of newOrders) {
@@ -190,8 +192,8 @@ export function P2PView() {
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!user) return
-    // Poll every 5 seconds for faster status updates
-    const t = setInterval(load, 10000)
+    // Auto-refresh every 12 seconds for live status updates
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [user, load])
 
@@ -635,7 +637,9 @@ function TradeDialog({ listing, onClose, onSuccess }: {
           ),
         }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: '⏳ Order submitted — Under Review',
@@ -925,7 +929,9 @@ function OrderCard({ order, onClick }: { order: P2POrder; onClick: () => void })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: order.id, action: 'payment_received' }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: '✅ Payment Confirmed',
@@ -1003,7 +1009,9 @@ function OrderDialog({ order, onClose, onSuccess }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: order.id, action: a }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Action completed',
@@ -1453,7 +1461,9 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
           terms,
         }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({ title: 'Listing posted!', description: `Your ${side} ad for ${amount} ${asset} is now live.` })
       onSuccess()

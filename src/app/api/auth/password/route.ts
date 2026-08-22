@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { currentPassword, newPassword } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { currentPassword, newPassword } = body
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: 'Both passwords required' }, { status: 400 })
     }

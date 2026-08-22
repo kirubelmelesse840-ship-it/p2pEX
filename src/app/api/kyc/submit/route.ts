@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const { fullName, nationality, idType, documentFront, documentBack } = body
 
     // Validate required fields (Date of Birth removed)

@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { orderId } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { orderId } = body
     if (!orderId) return NextResponse.json({ error: 'orderId required' }, { status: 400 })
 
     const result = await cancelOrder(orderId, user.id)

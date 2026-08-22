@@ -9,7 +9,7 @@ import { hashPassword, createSession, getUserFromToken, getSessionTokenFromReque
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const { email, password, name } = body
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     })
     response.cookies.set('session_token', session.token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',

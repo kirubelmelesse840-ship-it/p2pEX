@@ -72,7 +72,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, fiatCurrency }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       if (user) {
         setUser({ ...user, name, fiatCurrency })
@@ -96,7 +98,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: twofaPhone }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setTwofaStep('verify')
       toast({ title: 'SMS sent', description: `A 6-digit code has been sent to ${twofaPhone}` })
@@ -117,7 +121,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: twofaPhone, code: smsCode }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       if (d.valid) {
         setTwofaEnabled(true)
@@ -163,7 +169,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Password changed', description: 'Your password has been updated successfully.' })
       setCurrentPassword('')

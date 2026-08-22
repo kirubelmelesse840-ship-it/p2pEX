@@ -9,7 +9,8 @@ import { verifySmsCode } from '../send-sms/route'
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, code } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { phone, code } = body
     if (!phone || !code) {
       return NextResponse.json({ error: 'Phone and code are required' }, { status: 400 })
     }

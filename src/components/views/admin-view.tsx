@@ -70,7 +70,9 @@ export function AdminView() {
         dw: dwData?.transactions?.length || 0,
       })
     }
-    loadCounts() // Load once on mount — no auto-refresh
+    loadCounts() // Initial load
+    const t = setInterval(loadCounts, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [])
 
   if (!user?.isAdmin) {
@@ -297,7 +299,9 @@ function DashboardTab() {
   }, [data])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh (admin taps Refresh button manually)
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   if (!data) {
@@ -575,7 +579,9 @@ function UsersTab() {
   }, [search, statusFilter, kycFilter, toast, users.length])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -1212,7 +1218,9 @@ function PairsTab() {
   }, [toast])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const toggleActive = async (pair: any) => {
@@ -1426,7 +1434,9 @@ function P2PTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -1975,7 +1985,9 @@ function PaymentReviewTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -2282,7 +2294,9 @@ function OrdersTab() {
   }, [statusFilter, symbolFilter])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   return (
@@ -2390,7 +2404,9 @@ function TransactionsTab() {
   }, [typeFilter, statusFilter])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   return (
@@ -2498,7 +2514,9 @@ function SettingsTab() {
   }, [toast])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const save = async () => {
@@ -2707,7 +2725,9 @@ function AdminNotifications() {
   }, [])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const deleteNotification = async (id: string, e: React.MouseEvent) => {
@@ -3053,7 +3073,9 @@ function UserDetailsTab() {
   }, [toast])
 
   useEffect(() => {
-    loadUsers() // Load once on mount — no auto-refresh
+    loadUsers() // Initial load
+    const t = setInterval(loadUsers, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [loadUsers])
 
   // Filter by name, email, ID, username
@@ -3462,17 +3484,22 @@ function SupportTab() {
     } catch {}
   }, [selectedUserId])
 
-  // Load once on mount — no auto-refresh (admin uses Refresh button)
+  // Initial load + auto-refresh every 12 seconds
   useEffect(() => {
     loadConversations()
+    const t = setInterval(loadConversations, 12000)
+    return () => clearInterval(t)
   }, [loadConversations])
 
+  // Auto-refresh messages when a conversation is open
   useEffect(() => {
-    if (selectedUserId) {
-      loadMessages()
-    } else {
+    if (!selectedUserId) {
       setMessages([])
+      return
     }
+    loadMessages()
+    const t = setInterval(loadMessages, 12000)
+    return () => clearInterval(t)
   }, [selectedUserId, loadMessages])
 
   // Auto-scroll
@@ -3827,7 +3854,9 @@ function DepositWithdrawApprovalsTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Load once on mount — no auto-refresh
+    load() // Initial load
+    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
+    return () => clearInterval(t)
   }, [load])
 
   const act = async (tx: any, action: 'approve' | 'reject') => {

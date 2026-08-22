@@ -22,12 +22,13 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { asset, amount, recipient, note } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { asset, amount, recipient, note } = body
     if (!asset || !amount || !recipient) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
-    if (amount <= 0) {
-      return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 })
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 })
     }
 
     // Normalize the recipient identifier — accept numerical userId or @username

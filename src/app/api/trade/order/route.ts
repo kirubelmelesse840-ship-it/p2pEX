@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const { symbol, side, type, price, quantity } = body
     if (!symbol || !side || !type) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -25,6 +25,12 @@ export async function POST(req: NextRequest) {
     }
     if (typeof price !== 'number' || typeof quantity !== 'number') {
       return NextResponse.json({ error: 'Price and quantity must be numbers' }, { status: 400 })
+    }
+    if (quantity <= 0) {
+      return NextResponse.json({ error: 'Quantity must be greater than 0' }, { status: 400 })
+    }
+    if (type === 'LIMIT' && price <= 0) {
+      return NextResponse.json({ error: 'Price must be greater than 0 for LIMIT orders' }, { status: 400 })
     }
 
     const result = await placeOrder({ userId: user.id, symbol, side, type, price, quantity })

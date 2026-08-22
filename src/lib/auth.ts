@@ -17,7 +17,9 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
+  if (!stored || !stored.includes(':')) return false
   const [salt, hash] = stored.split(':')
+  if (!salt || !hash) return false
   const verify = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
   return hash === verify
 }

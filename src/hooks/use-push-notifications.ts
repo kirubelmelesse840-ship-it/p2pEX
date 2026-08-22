@@ -12,13 +12,13 @@ export function usePushNotifications() {
     try {
       const perm = await Notification.requestPermission(); setState(s => ({ ...s, permission: perm }))
       if (perm !== 'granted') { setState(s => ({ ...s, loading: false, subscribed: false, error: 'Denied' })); return false }
-      const keyRes = await fetch('/api/push/subscribe'); const keyData = await keyRes.json()
+      const keyRes = await fetch('/api/push/subscribe'); const keyText = await keyRes.text(); if (!keyText) throw new Error('Server returned empty response'); const keyData = JSON.parse(keyText)
       if (!keyData.publicKey) throw new Error('Not configured')
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(keyData.publicKey) })
       const s = sub.toJSON()
       const res = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: s.endpoint, keys: s.keys }) })
-      const d = await res.json(); if (d.error) throw new Error(d.error)
+      const rt = await res.text(); if (!rt) throw new Error('Server returned empty response'); const d = JSON.parse(rt); if (d.error) throw new Error(d.error)
       setState(s => ({ ...s, loading: false, subscribed: true })); return true
     } catch (e: any) { setState(s => ({ ...s, loading: false, error: e?.message || 'Failed' })); return false }
   }, [state.supported])

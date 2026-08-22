@@ -47,7 +47,9 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
   const loadKyc = async () => {
     try {
       const res = await fetch('/api/kyc/submit')
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const d = JSON.parse(text)
       if (d.error) return
       setKycData(d)
       // Pre-fill form if data exists
@@ -135,7 +137,9 @@ export function KycDialog({ open, onClose, onSuccess }: KycDialogProps) {
           documentBack: documentBack?.data,
         }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({
         title: 'KYC Submitted',

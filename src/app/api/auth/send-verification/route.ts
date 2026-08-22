@@ -75,7 +75,8 @@ async function getTransporter() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { email } = body
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }

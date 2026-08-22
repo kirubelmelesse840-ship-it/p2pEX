@@ -165,7 +165,9 @@ function TradePanel({ symbol }: { symbol: string }) {
     if (!user) return
     try {
       const res = await fetch('/api/wallet')
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       if (data.wallets) {
         const baseWallet = data.wallets.find((w: any) => w.asset === base)
         const quoteWallet = data.wallets.find((w: any) => w.asset === quote)
@@ -179,7 +181,7 @@ function TradePanel({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     loadBalances()
-    const t = setInterval(loadBalances, 10000)
+    const t = setInterval(loadBalances, 12000)
     return () => clearInterval(t)
   }, [loadBalances])
 
@@ -244,7 +246,9 @@ function TradePanel({ symbol }: { symbol: string }) {
           quantity: parseFloat(qty),
         }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
 
       toast({
@@ -405,7 +409,9 @@ function OpenOrders({ user }: { user: any }) {
     if (!user) { setOrders([]); setLoading(false); return }
     try {
       const res = await fetch('/api/trade/order?status=OPEN')
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       setOrders(data.orders || [])
     } catch {
       setOrders([])
@@ -416,17 +422,26 @@ function OpenOrders({ user }: { user: any }) {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 10000)
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [load])
 
   const cancel = async (orderId: string) => {
     try {
-      await fetch('/api/trade/cancel', {
+      const res = await fetch('/api/trade/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId }),
       })
+      const text = await res.text()
+      if (text) {
+        try {
+          const d = JSON.parse(text)
+          if (d.error) throw new Error(d.error)
+        } catch (parseErr) {
+          // Ignore parse errors — the cancel endpoint returns { ok: true }
+        }
+      }
       toast({ title: 'Order canceled' })
       load()
     } catch (e: any) {
@@ -500,7 +515,9 @@ function TradeHistory({ user }: { user: any }) {
     if (!user) { setTrades([]); setLoading(false); return }
     try {
       const res = await fetch('/api/trade/trades?limit=20')
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       setTrades(data.trades || [])
     } catch {
       setTrades([])
@@ -511,6 +528,8 @@ function TradeHistory({ user }: { user: any }) {
 
   useEffect(() => {
     load()
+    const t = setInterval(load, 12000)
+    return () => clearInterval(t)
   }, [load])
 
   if (!user) return null
@@ -801,7 +820,9 @@ function UserProfilePanel({ symbol, user }: { symbol: string; user: any }) {
     if (!user) return
     try {
       const res = await fetch('/api/wallet')
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       setWallets(data.wallets || [])
       setTotalUsd(data.totalUsd || 0)
     } catch {}
@@ -809,7 +830,7 @@ function UserProfilePanel({ symbol, user }: { symbol: string; user: any }) {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 10000)
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [load])
 
@@ -937,7 +958,9 @@ function ProfitLossPanel({ symbol, user }: { symbol: string; user: any }) {
     if (!user) { setTrades([]); setLoading(false); return }
     try {
       const res = await fetch(`/api/trade/trades?symbol=${symbol}&limit=50`)
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       setTrades(data.trades || [])
     } catch {
       setTrades([])
@@ -948,7 +971,7 @@ function ProfitLossPanel({ symbol, user }: { symbol: string; user: any }) {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 10000)
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [load])
 

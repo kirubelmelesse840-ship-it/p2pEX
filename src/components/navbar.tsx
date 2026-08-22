@@ -71,14 +71,16 @@ export function Navbar() {
     const poll = async () => {
       try {
         const res = await fetch('/api/support')
-        const data = await res.json()
+        const text = await res.text()
+        if (!text) return
+        const data = JSON.parse(text)
         if (active && !data.error && typeof data.unreadCount === 'number') {
           setSupportUnread(data.unreadCount)
         }
       } catch {}
     }
     poll()
-    const t = setInterval(poll, 10000)
+    const t = setInterval(poll, 12000)
     return () => { active = false; clearInterval(t) }
   }, [user, isAdmin])
 
@@ -232,7 +234,7 @@ export function Navbar() {
                         className="h-5 w-5"
                         onClick={(e) => {
                           e.stopPropagation()
-                          navigator.clipboard.writeText(user.userId)
+                          navigator.clipboard.writeText(user.userId || '')
                           toast({ title: 'Copied', description: 'User ID copied to clipboard' })
                         }}
                       >
@@ -250,7 +252,7 @@ export function Navbar() {
                         className="h-5 w-5"
                         onClick={(e) => {
                           e.stopPropagation()
-                          navigator.clipboard.writeText(user.username)
+                          navigator.clipboard.writeText(user.username || '')
                           toast({ title: 'Copied', description: 'Username copied to clipboard' })
                         }}
                       >
@@ -426,7 +428,12 @@ function AuthButtons() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: googleEmail, name: googleName }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      let data: any
+      try { data = JSON.parse(text) } catch {
+        throw new Error(res.status === 404 ? 'API endpoint not found. Please wait 2-3 minutes for deploy to finish.' : `Server error (${res.status}).`)
+      }
       if (data.error) throw new Error(data.error)
       setUser(data.user)
       toast({
@@ -435,7 +442,7 @@ function AuthButtons() {
       })
       setShowAuth(null)
       setShowGoogle(false)
-      setEmail(''); setPassword(''); setName('')
+      setEmail(''); setPassword('')
     } catch (e: any) {
       toast({ title: 'Google sign-in failed', description: e.message, variant: 'destructive' })
     } finally {
@@ -834,7 +841,9 @@ function UserNotificationBell() {
     try {
       if (user) {
         const res = await fetch('/api/notifications')
-        const d = await res.json()
+        const text = await res.text()
+        if (!text) return
+        const d = JSON.parse(text)
         if (d.error) return
         setNotifications(d.notifications || [])
         setUnreadCount(d.unreadCount || 0)
@@ -843,7 +852,9 @@ function UserNotificationBell() {
         if (latestUnread) setLatestType(latestUnread.type || 'info')
       } else {
         const res = await fetch('/api/notifications/public')
-        const d = await res.json()
+        const text = await res.text()
+        if (!text) return
+        const d = JSON.parse(text)
         const notifs = d.notifications || []
         setNotifications(notifs)
         // For non-logged-in users, count recent (last 24h) as "unread"
@@ -858,7 +869,7 @@ function UserNotificationBell() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [load])
 

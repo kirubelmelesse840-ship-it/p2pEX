@@ -17,8 +17,8 @@ export function AnnouncementBanner() {
 
   useEffect(() => {
     fetch('/api/admin/announcement')
-      .then(r => r.json())
-      .then(setData)
+      .then(r => r.text())
+      .then(text => { if (text) setData(JSON.parse(text)) })
       .catch(() => {})
   }, [])
 

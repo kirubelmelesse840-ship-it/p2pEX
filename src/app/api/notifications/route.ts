@@ -9,50 +9,64 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser(req as unknown as Request)
-  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  try {
+    const user = await getCurrentUser(req as unknown as Request)
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  // Get notifications: broadcast (userId=null) OR targeted to this user
-  const notifications = await db.adminNotification.findMany({
-    where: {
-      OR: [
-        { userId: null },          // broadcast to all
-        { userId: user.id },        // targeted to this user
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 30,
-  })
+    // Get notifications: broadcast (userId=null) OR targeted to this user
+    const notifications = await db.adminNotification.findMany({
+      where: {
+        OR: [
+          { userId: null },          // broadcast to all
+          { userId: user.id },        // targeted to this user
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    })
 
-  const unreadCount = notifications.filter(n => !n.isRead && (n.userId === null || n.userId === user.id)).length
+    const unreadCount = notifications.filter(n => !n.isRead && (n.userId === null || n.userId === user.id)).length
 
-  return NextResponse.json({
-    notifications,
-    unreadCount,
-  })
+    return NextResponse.json({
+      notifications,
+      unreadCount,
+    })
+  } catch (e: any) {
+    console.error('[notifications GET]', e)
+    return NextResponse.json({ error: e.message || 'Internal error', notifications: [], unreadCount: 0 }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser(req as unknown as Request)
-  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  try {
+    const user = await getCurrentUser(req as unknown as Request)
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  const { notificationId } = await req.json()
-  if (!notificationId) {
-    return NextResponse.json({ error: 'notificationId required' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const { notificationId } = body
+    if (!notificationId) {
+      return NextResponse.json({ error: 'notificationId required' }, { status: 400 })
+    }
+
+    // Mark as read (only if it belongs to this user or is a broadcast)
+    const notif = await db.adminNotification.findUnique({ where: { id: notificationId } })
+    if (!notif) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (notif.userId !== null && notif.userId !== user.id) {
+      return NextResponse.json({ error: 'Not your notification' }, { status: 403 })
+    }
+
+    await db.adminNotification.update({
+      where: { id: notificationId },
+      data: { isRead: true },
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    console.error('[notifications POST]', e)
+    return NextResponse.json({ error: e.message || 'Internal error' }, { status: 500 })
   }
-
-  // Mark as read (only if it belongs to this user or is a broadcast)
-  const notif = await db.adminNotification.findUnique({ where: { id: notificationId } })
-  if (!notif) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (notif.userId !== null && notif.userId !== user.id) {
-    return NextResponse.json({ error: 'Not your notification' }, { status: 403 })
-  }
-
-  await db.adminNotification.update({
-    where: { id: notificationId },
-    data: { isRead: true },
-  })
-
-  return NextResponse.json({ ok: true })
 }

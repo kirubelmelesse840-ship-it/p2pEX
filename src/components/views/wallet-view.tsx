@@ -95,8 +95,10 @@ export function WalletView() {
         fetch('/api/wallet'),
         fetch('/api/wallet/transactions?limit=50'),
       ])
-      const walletData = await walletRes.json()
-      const txData = await txRes.json()
+      const walletText = await walletRes.text()
+      const txText = await txRes.text()
+      const walletData = walletText ? JSON.parse(walletText) : {}
+      const txData = txText ? JSON.parse(txText) : {}
       setWallets(walletData.wallets || [])
       setTotalUsd(walletData.totalUsd || 0)
       setTransactions(txData.transactions || [])
@@ -116,7 +118,7 @@ export function WalletView() {
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!user) return
-    const t = setInterval(load, 15000)
+    const t = setInterval(load, 12000)
     return () => clearInterval(t)
   }, [user, load])
 
@@ -692,7 +694,9 @@ function SendDialog({ wallet, wallets, onClose, onSuccess }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ asset, network, address, amount: amountNum }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Withdrawal request submitted',
@@ -843,7 +847,9 @@ function DepositDialog({ wallet, onClose, onSuccess }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ asset, network: selectedNetwork, amount: amountNum }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Deposit request submitted',
@@ -985,7 +991,9 @@ function TransferDialog({ wallet, wallets, onClose, onSuccess }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ asset, amount: amountNum, recipient: recipient.trim(), note }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response. Please try again.')
+      const data = JSON.parse(text)
       if (data.error) throw new Error(data.error)
       toast({
         title: 'Transfer submitted',

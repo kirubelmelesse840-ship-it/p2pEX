@@ -20,7 +20,8 @@ import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, name } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { email, name } = body
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
@@ -39,10 +40,18 @@ export async function POST(req: NextRequest) {
       const randomPassword = crypto.randomBytes(32).toString('hex')
       const derivedName = name || normalizedEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
+      // Auto-generate userId and username (Prisma schema requires these)
+      const userCount = await db.user.count()
+      const newUserId = String(userCount + 1).padStart(6, '0')
+      const baseUsername = derivedName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user'
+      const newUsername = baseUsername + Math.floor(Math.random() * 9000 + 1000)
+
       user = await db.user.create({
         data: {
           email: normalizedEmail,
           name: derivedName,
+          userId: newUserId,
+          username: newUsername,
           passwordHash: hashPassword(randomPassword),
           // New Google users start as explicitly UNVERIFIED until they submit KYC
           // and an admin approves it.
@@ -109,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set('session_token', session.token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',

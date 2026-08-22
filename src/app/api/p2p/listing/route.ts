@@ -44,7 +44,8 @@ export async function PATCH(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { id, status } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { id, status } = body
     if (!id || !status) return NextResponse.json({ error: 'id and status required' }, { status: 400 })
 
     const listing = await db.p2PListing.findUnique({ where: { id } })

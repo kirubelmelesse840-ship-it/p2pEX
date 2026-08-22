@@ -61,7 +61,8 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { phone } = body
     if (!phone) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
     }

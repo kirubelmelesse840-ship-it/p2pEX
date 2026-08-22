@@ -60,10 +60,17 @@ export async function GET(req: NextRequest) {
 
     if (!user) {
       const randomPassword = crypto.randomBytes(32).toString('hex')
+      // Auto-generate userId and username (Prisma schema requires these)
+      const userCount = await db.user.count()
+      const newUserId = String(userCount + 1).padStart(6, '0')
+      const baseUsername = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '') || 'user'
+      const newUsername = baseUsername + Math.floor(Math.random() * 9000 + 1000)
       user = await db.user.create({
         data: {
           email,
           name,
+          userId: newUserId,
+          username: newUsername,
           passwordHash: hashPassword(randomPassword),
           kycVerified: false,
           kycLevel: 0,

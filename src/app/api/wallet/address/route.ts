@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { asset } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { asset } = body
     if (!asset) return NextResponse.json({ error: 'asset required' }, { status: 400 })
 
     const wallet = await db.wallet.findUnique({ where: { userId_asset: { userId: user.id, asset } } })

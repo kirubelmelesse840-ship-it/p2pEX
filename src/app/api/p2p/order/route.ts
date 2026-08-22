@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { orderId, action } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { orderId, action } = body
     if (!orderId || !action) return NextResponse.json({ error: 'orderId and action required' }, { status: 400 })
 
     const order = await db.p2POrder.findUnique({
@@ -47,45 +48,6 @@ export async function POST(req: NextRequest) {
         data: { status: 'PAID' },
       })
       return NextResponse.json({ ok: true, status: 'PAID' })
-    }
-        if (action === 'payment_received') {
-      // Seller confirms they received the fiat payment → notifies admin
-      if (!isSeller) return NextResponse.json({ error: 'Only seller can confirm payment received' }, { status: 403 })
-      if (order.status !== 'PENDING_REVIEW') {
-        return NextResponse.json({ error: 'Order must be in PENDING_REVIEW state' }, { status: 400 })
-      }
-      await db.p2POrder.update({
-        where: { id: orderId },
-        data: { status: 'PAYMENT_RECEIVED' },
-      })
-
-      // Notify admin
-      try {
-        await db.adminNotification.create({
-          data: {
-            userId: order.buyerId,
-            title: '✅ Payment Received — Seller Confirmed',
-            message: `The seller confirmed receiving payment for order #${orderId.slice(-8)}. ${order.amount} ${order.asset} is ready to be released. Please review and approve.`,
-            type: 'info',
-            isRead: false,
-          },
-        })
-      } catch {}
-
-      // Notify buyer
-      try {
-        await db.adminNotification.create({
-          data: {
-            userId: order.buyerId,
-            title: '✅ Seller Confirmed Payment',
-            message: `The seller confirmed receiving your payment for ${order.amount} ${order.asset}. Our team is now reviewing and will release your crypto shortly.`,
-            type: 'success',
-            isRead: false,
-          },
-        })
-      } catch {}
-
-      return NextResponse.json({ ok: true, status: 'PAYMENT_RECEIVED' })
     }
 
     if (action === 'payment_received') {

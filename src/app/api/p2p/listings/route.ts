@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser(req as unknown as Request)
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const { asset, fiatCurrency, side, price, amount, minOrder, maxOrder, paymentMethods, terms } = body
 
     if (!asset || !fiatCurrency || !side || !price || !amount) {
@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
     }
     if (side !== 'BUY' && side !== 'SELL') {
       return NextResponse.json({ error: 'Invalid side' }, { status: 400 })
+    }
+    if (typeof price !== 'number' || typeof amount !== 'number' || price <= 0 || amount <= 0) {
+      return NextResponse.json({ error: 'Price and amount must be positive numbers' }, { status: 400 })
     }
     if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) {
       return NextResponse.json({ error: 'At least one payment method required' }, { status: 400 })

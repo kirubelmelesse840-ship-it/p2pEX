@@ -12,7 +12,8 @@ import { verifyCode } from '../send-verification/route'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, code } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { email, code } = body
     if (!email || !code) {
       return NextResponse.json({ error: 'Email and code are required' }, { status: 400 })
     }
