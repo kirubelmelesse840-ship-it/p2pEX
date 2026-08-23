@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
           where: userId ? { userId } : {},
         })
 
+        // Send push notifications in parallel batches (max 10 at a time to avoid overwhelming)
+        const BATCH_SIZE = 10
         const payload = JSON.stringify({
           title,
           body: message,
@@ -59,25 +61,27 @@ export async function POST(req: NextRequest) {
           timestamp: Date.now(),
         })
 
-        const results = await Promise.allSettled(
-          subs.map(sub =>
-            webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              payload
+        const expired: string[] = []
+        for (let i = 0; i < subs.length; i += BATCH_SIZE) {
+          const batch = subs.slice(i, i + BATCH_SIZE)
+          const results = await Promise.allSettled(
+            batch.map(sub =>
+              webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                payload
+              ).catch(e => {
+                if (e?.statusCode === 410) expired.push(sub.endpoint)
+                throw e
+              })
             )
           )
-        )
-
-        for (const r of results) {
-          if (r.status === 'fulfilled') pushSent++
-          else pushFailed++
+          for (const r of results) {
+            if (r.status === 'fulfilled') pushSent++
+            else pushFailed++
+          }
         }
 
         // Clean up expired subscriptions (410 Gone)
-        const expired = results
-          .map((r, i) => r.status === 'rejected' && r.reason?.statusCode === 410 ? subs[i].endpoint : null)
-          .filter(Boolean) as string[]
-
         if (expired.length > 0) {
           await db.pushSubscription.deleteMany({ where: { endpoint: { in: expired } } }).catch(() => {})
         }

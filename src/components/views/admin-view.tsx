@@ -70,9 +70,7 @@ export function AdminView() {
         dw: dwData?.transactions?.length || 0,
       })
     }
-    loadCounts() // Initial load
-    const t = setInterval(loadCounts, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    loadCounts() // Load once on mount — manual refresh only
   }, [])
 
   if (!user?.isAdmin) {
@@ -299,9 +297,7 @@ function DashboardTab() {
   }, [data])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   if (!data) {
@@ -579,9 +575,7 @@ function UsersTab() {
   }, [search, statusFilter, kycFilter, toast, users.length])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -594,7 +588,9 @@ function UsersTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, ...payload }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Action completed', description: d.message })
       load()
@@ -803,7 +799,9 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 1 }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1). ${d.message?.includes('bonus') ? '10 USDT welcome bonus credited!' : ''}` })
       onClose()
@@ -827,7 +825,9 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'rejectKyc', reason: rejectReason.trim() }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'KYC Rejected', description: `${user.name} has been notified` })
       onClose()
@@ -847,7 +847,9 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'unapproveKyc' }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Verification Revoked', description: `${user.name} is now unverified` })
       onClose()
@@ -1078,7 +1080,9 @@ function WalletAdjustDialog({ user, onClose, onSuccess }: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, asset, action, amount: parseFloat(amount) }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Wallet adjusted', description: d.message })
       onSuccess()
@@ -1218,9 +1222,7 @@ function PairsTab() {
   }, [toast])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const toggleActive = async (pair: any) => {
@@ -1230,7 +1232,9 @@ function PairsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pairId: pair.id, action: 'update', isActive: !pair.isActive }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Pair updated', description: d.message })
       load()
@@ -1247,7 +1251,9 @@ function PairsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pairId: pair.id, action: 'delete' }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Pair deleted', description: d.message })
       load()
@@ -1357,7 +1363,9 @@ function AddPairDialog({ onClose, onSuccess }: any) {
           quoteAssetName: ASSET_NAMES[quoteAsset] || quoteAsset,
         }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Pair created', description: d.message })
       onSuccess()
@@ -1434,9 +1442,7 @@ function P2PTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -1449,7 +1455,9 @@ function P2PTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, action }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Action completed', description: d.message })
       load()
@@ -1663,7 +1671,9 @@ function EditListingDialog({ listing, onClose, onSuccess }: { listing: any; onCl
           terms: terms.trim(),
         }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Listing updated', description: d.message })
       onSuccess()
@@ -1812,7 +1822,9 @@ function CreateListingDialog({ onClose, onSuccess }: { onClose: () => void; onSu
           rating: 4.9,
         }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Ad created', description: `${side} ad for ${amount} ${asset} posted successfully` })
       onSuccess()
@@ -1985,9 +1997,7 @@ function PaymentReviewTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const [acting, setActing] = useState(false)
@@ -2000,7 +2010,9 @@ function PaymentReviewTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, action }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Action completed', description: d.message })
       setReviewDialog(null)
@@ -2294,9 +2306,7 @@ function OrdersTab() {
   }, [statusFilter, symbolFilter])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   return (
@@ -2404,9 +2414,7 @@ function TransactionsTab() {
   }, [typeFilter, statusFilter])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   return (
@@ -2514,9 +2522,7 @@ function SettingsTab() {
   }, [toast])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const save = async () => {
@@ -2527,7 +2533,9 @@ function SettingsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Settings saved', description: d.message })
     } catch (e: any) {
@@ -2725,9 +2733,7 @@ function AdminNotifications() {
   }, [])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const deleteNotification = async (id: string, e: React.MouseEvent) => {
@@ -2738,7 +2744,9 @@ function AdminNotifications() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationId: id }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: '✅ Notification deleted' })
       load()
@@ -2884,7 +2892,9 @@ function NotificationsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationId: id }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: '✅ Notification deleted' })
       loadSent()
@@ -2915,7 +2925,9 @@ function NotificationsTab() {
           type,
         }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: 'Notification sent!', description: d.message })
       setTitle(''); setMessage(''); setSelectedUser('')
@@ -3073,9 +3085,7 @@ function UserDetailsTab() {
   }, [toast])
 
   useEffect(() => {
-    loadUsers() // Initial load
-    const t = setInterval(loadUsers, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    loadUsers() // Load once on mount — manual refresh only
   }, [loadUsers])
 
   // Filter by name, email, ID, username
@@ -3097,7 +3107,9 @@ function UserDetailsTab() {
     setDetails(null)
     try {
       const res = await fetch(`/api/admin/users/details?userId=${userId}`)
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setDetails(d)
     } catch (e: any) {
@@ -3486,20 +3498,16 @@ function SupportTab() {
 
   // Initial load + auto-refresh every 12 seconds
   useEffect(() => {
-    loadConversations()
-    const t = setInterval(loadConversations, 12000)
-    return () => clearInterval(t)
+    loadConversations() // Load once on mount — manual refresh only
   }, [loadConversations])
 
-  // Auto-refresh messages when a conversation is open
+  // Load messages when a conversation is selected (manual refresh only — tap Refresh to update)
   useEffect(() => {
     if (!selectedUserId) {
       setMessages([])
       return
     }
     loadMessages()
-    const t = setInterval(loadMessages, 12000)
-    return () => clearInterval(t)
   }, [selectedUserId, loadMessages])
 
   // Auto-scroll
@@ -3854,9 +3862,7 @@ function DepositWithdrawApprovalsTab() {
   }, [statusFilter, toast])
 
   useEffect(() => {
-    load() // Initial load
-    const t = setInterval(load, 12000) // Auto-refresh every 12 seconds
-    return () => clearInterval(t)
+    load() // Load once on mount — manual refresh only (tap Refresh button)
   }, [load])
 
   const act = async (tx: any, action: 'approve' | 'reject') => {
@@ -3868,7 +3874,9 @@ function DepositWithdrawApprovalsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transactionId: tx.id, action }),
       })
-      const d = await res.json()
+      const text = await res.text()
+      if (!text) throw new Error('Server returned empty response')
+      const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       toast({ title: action === 'approve' ? 'Transaction approved' : 'Transaction rejected', description: d.message })
       setConfirmDialog(null)
