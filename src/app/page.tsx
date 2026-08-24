@@ -11,8 +11,7 @@ import { P2PView } from '@/components/views/p2p-view'
 import { WalletView } from '@/components/views/wallet-view'
 import { AdminView } from '@/components/views/admin-view'
 import { AnnouncementBanner } from '@/components/announcement-banner'
-import { PushNotificationProvider } from '@/components/push-notification-provider'
-import { AutoPushRegister } from '@/components/auto-push-register'
+import { PushNotificationPrompt } from '@/components/push-notification-prompt'
 
 export default function Home() {
   const { view, user, setUser, theme, setView } = useAppStore()
@@ -78,8 +77,7 @@ export default function Home() {
         </div>
       </main>
       <Footer />
-      {!isAdmin && <PushNotificationProvider />}
-      <AutoPushRegister />
+      <PushNotificationPrompt />
     </div>
   )
 }
