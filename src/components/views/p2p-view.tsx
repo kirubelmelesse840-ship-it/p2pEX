@@ -374,7 +374,7 @@ export function P2PView() {
         <TradeDialog
           listing={tradeDialog}
           onClose={() => setTradeDialog(null)}
-          onSuccess={() => { load(); setTab('orders') }}
+          onSuccess={() => { load(); setTab('orders'); setTradeDialog(null) }}
         />
       )}
 

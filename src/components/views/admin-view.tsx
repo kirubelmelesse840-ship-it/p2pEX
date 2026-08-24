@@ -573,11 +573,15 @@ function UsersTab() {
     if (acting) return // Prevent duplicate actions
     setActing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s timeout
       const res = await fetch('/api/admin/users/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, ...payload }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
@@ -585,7 +589,7 @@ function UsersTab() {
       toast({ title: 'Action completed', description: d.message })
       load()
     } catch (e: any) {
-      toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Action failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setActing(false)
     }
@@ -2093,11 +2097,15 @@ function PaymentReviewTab() {
     if (acting) return // Prevent duplicate actions
     setActing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
       const res = await fetch('/api/admin/p2p-review/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, action }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
@@ -2106,7 +2114,7 @@ function PaymentReviewTab() {
       setReviewDialog(null)
       load()
     } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setActing(false)
     }
@@ -3960,11 +3968,15 @@ function DepositWithdrawApprovalsTab() {
     if (acting) return // Prevent duplicate actions
     setActing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
       const res = await fetch('/api/admin/transactions/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transactionId: tx.id, action }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
@@ -3973,7 +3985,7 @@ function DepositWithdrawApprovalsTab() {
       setConfirmDialog(null)
       load()
     } catch (e: any) {
-      toast({ title: 'Action failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Action failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setActing(false)
     }
