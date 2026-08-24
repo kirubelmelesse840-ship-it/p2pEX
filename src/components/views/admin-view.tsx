@@ -781,25 +781,43 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
   const [processing, setProcessing] = useState(false)
   const [fullUser, setFullUser] = useState<any>(null)
   const [loadingDetails, setLoadingDetails] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  // Fetch full user details (including KYC document images) when dialog opens
-  // The list query doesn't include images (too large), so we fetch them on demand
+  // Fetch ONLY KYC documents (lightweight route — doesn't fetch wallets/transactions/orders)
   useEffect(() => {
+    let cancelled = false
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`/api/admin/users/details?userId=${user.id}`)
+        setLoadingDetails(true)
+        setLoadError(null)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s timeout
+        const res = await fetch(`/api/admin/users/kyc-documents?userId=${user.id}`, {
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        if (cancelled) return
         const text = await res.text()
-        if (text) {
-          const d = JSON.parse(text)
-          if (!d.error) setFullUser(d.user)
+        if (!text) {
+          setLoadError('Server returned empty response')
+          return
         }
-      } catch (e) {
-        console.error('[doc dialog] failed to fetch user details:', e)
+        const d = JSON.parse(text)
+        if (d.error) {
+          setLoadError(d.error)
+          return
+        }
+        if (d.user) setFullUser(d.user)
+      } catch (e: any) {
+        if (cancelled) return
+        console.error('[doc dialog] fetch failed:', e)
+        setLoadError(e?.name === 'AbortError' ? 'Loading timed out. Tap Refresh to try again.' : (e.message || 'Failed to load documents'))
       } finally {
-        setLoadingDetails(false)
+        if (!cancelled) setLoadingDetails(false)
       }
     }
     fetchDetails()
+    return () => { cancelled = true }
   }, [user.id])
 
   // Use fullUser (with documents) if available, otherwise fall back to the list user
@@ -809,19 +827,23 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
     if (processing) return // Prevent duplicate approvals
     setProcessing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s timeout
       const res = await fetch('/api/admin/users/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'verifyKyc', level: 1 }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
-      toast({ title: 'KYC Approved', description: `${user.name} is now verified (Level 1). ${d.message?.includes('bonus') ? '10 USDT welcome bonus credited!' : ''}` })
+      toast({ title: 'KYC Approved', description: `${u.name} is now verified (Level 1). ${d.message?.includes('bonus') ? '10 USDT welcome bonus credited!' : ''}` })
       onClose()
     } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
@@ -835,41 +857,49 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
     }
     setProcessing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
       const res = await fetch('/api/admin/users/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'rejectKyc', reason: rejectReason.trim() }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
-      toast({ title: 'KYC Rejected', description: `${user.name} has been notified` })
+      toast({ title: 'KYC Rejected', description: `${u.name} has been notified` })
       onClose()
     } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
   }
 
   const handleUnapprove = async () => {
-    if (!confirm(`Revoke verification for ${user.name}? They will become unverified.`)) return
+    if (!confirm(`Revoke verification for ${u.name}? They will become unverified.`)) return
     setProcessing(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 25000)
       const res = await fetch('/api/admin/users/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, action: 'unapproveKyc' }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const text = await res.text()
       if (!text) throw new Error('Server returned empty response')
       const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
-      toast({ title: 'Verification Revoked', description: `${user.name} is now unverified` })
+      toast({ title: 'Verification Revoked', description: `${u.name} is now unverified` })
       onClose()
     } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed', description: e?.name === 'AbortError' ? 'Request timed out. Please try again.' : (e.message || 'Network error'), variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
@@ -915,6 +945,42 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
               <div className="text-center py-12 text-muted-foreground">
                 <RefreshCw className="h-6 w-6 mx-auto animate-spin mb-2" />
                 Loading documents...
+              </div>
+            ) : loadError ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">{loadError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFullUser(null)
+                    setLoadingDetails(true)
+                    // Re-trigger the effect by changing a state that the effect depends on
+                    // Since we can't change user.id, we use a workaround:
+                    setTimeout(() => {
+                      const event = new Event('retry-fetch')
+                      window.dispatchEvent(event)
+                    }, 100)
+                    // Force re-render by toggling loadingDetails
+                    setLoadingDetails(false)
+                    setTimeout(() => setLoadingDetails(true), 50)
+                    // Actually re-fetch:
+                    fetch(`/api/admin/users/kyc-documents?userId=${user.id}`)
+                      .then(r => r.text())
+                      .then(text => {
+                        if (text) {
+                          const d = JSON.parse(text)
+                          if (!d.error && d.user) setFullUser(d.user)
+                          setLoadError(null)
+                        }
+                      })
+                      .catch(() => {})
+                      .finally(() => setLoadingDetails(false))
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Retry
+                </Button>
               </div>
             ) : (
             <div className="grid grid-cols-2 gap-3">
