@@ -85,7 +85,19 @@ export async function POST(req: NextRequest) {
         await db.transaction.update({ where: { id: transactionId }, data: { status: 'COMPLETED', note: 'Transfer approved', confirmations: 1 } })
       }
 
-      try { await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Approved`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset} has been approved.`, type: 'success', isRead: false } }) } catch {}
+      try {
+        await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Approved`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset} has been approved.`, type: 'success', isRead: false } })
+        // Send push notification to user's phone (like Telegram/WhatsApp)
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(tx.userId, {
+            title: `✅ ${typeLabel} Approved`,
+            body: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset} has been approved.`,
+            url: '/wallet',
+            tag: `tx-${transactionId}`,
+          })
+        } catch (e) { console.error('[push] failed:', e) }
+      } catch {}
       return NextResponse.json({ ok: true, message: `${tx.type} approved` })
     }
 
@@ -109,7 +121,19 @@ export async function POST(req: NextRequest) {
       }
 
       const feeNote = tx.type === 'WITHDRAW' && tx.fee > 0 ? ` (including fee of ${tx.fee} ${tx.asset})` : ''
-      try { await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Rejected`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset}${feeNote} was rejected.`, type: 'warning', isRead: false } }) } catch {}
+      try {
+        await db.adminNotification.create({ data: { userId: tx.userId, title: `${typeLabel} Rejected`, message: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset}${feeNote} was rejected.`, type: 'warning', isRead: false } })
+        // Send push notification to user's phone
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(tx.userId, {
+            title: `❌ ${typeLabel} Rejected`,
+            body: `Your ${tx.type.toLowerCase()} of ${tx.amount} ${tx.asset}${feeNote} was rejected.`,
+            url: '/wallet',
+            tag: `tx-${transactionId}`,
+          })
+        } catch (e) { console.error('[push] failed:', e) }
+      } catch {}
       return NextResponse.json({ ok: true, message: `${tx.type} rejected` })
     }
 

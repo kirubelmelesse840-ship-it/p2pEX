@@ -7,22 +7,22 @@ import { Bell, X, CheckCircle2, BellRing } from 'lucide-react'
 
 const DISMISS_KEY = 'p2pex_push_dismissed'
 const GRANTED_KEY = 'p2pex_push_granted'
+const USER_GRANTED_KEY = 'p2pex_push_user_granted_'
 
 /**
  * PushNotificationPrompt
  *
- * Shows a banner asking ALL visitors (logged in or not) to enable
+ * Shows a banner asking ALL visitors (logged in OR not) to enable
  * push notifications. Works like Telegram/WhatsApp:
  *   - User taps "Enable"
  *   - Browser shows permission prompt
  *   - If granted → registers service worker + subscribes to push
  *   - Push notifications appear on phone even when browser is closed
  *
- * The banner only shows:
- *   - On browsers that support push
- *   - When permission hasn't been granted or denied
- *   - When the user hasn't dismissed it before
- *   - After a 3-second delay (don't be annoying)
+ * The banner shows for:
+ *   - Non-logged-in users (first visit)
+ *   - Logged-in users (first login on this device)
+ *   - Anyone who hasn't granted permission yet
  */
 export function PushNotificationPrompt() {
   const { user } = useAppStore()
@@ -43,20 +43,24 @@ export function PushNotificationPrompt() {
     const perm = Notification.permission
     setStatus(perm as any)
 
-    // Don't show banner if already granted, denied, or dismissed
+    // Don't show banner if already granted or denied
     if (perm === 'granted') {
-      // Already granted — make sure we're subscribed
+      // Already granted — make sure we're subscribed (and linked to user if logged in)
       registerAndSubscribe()
       return
     }
     if (perm === 'denied') return
-    if (localStorage.getItem(DISMISS_KEY) === 'true') return
-    if (localStorage.getItem(GRANTED_KEY) === 'true') return
 
-    // Show banner after 3-second delay (feels natural, not aggressive)
-    const t = setTimeout(() => setShowBanner(true), 3000)
+    // Check if this specific user (or non-logged-in visitor) has dismissed
+    // We use a per-user dismiss key so logging in with a different account re-asks
+    const dismissKey = user ? `${USER_GRANTED_KEY}${user.id}` : DISMISS_KEY
+    if (localStorage.getItem(dismissKey) === 'true') return
+    if (localStorage.getItem(GRANTED_KEY) === 'true' && !user) return
+
+    // Show banner after 2-second delay (feels natural, not aggressive)
+    const t = setTimeout(() => setShowBanner(true), 2000)
     return () => clearTimeout(t)
-  }, [])
+  }, [user?.id]) // Re-check when user changes (login/logout)
 
   const handleEnable = async () => {
     setLoading(true)
@@ -90,7 +94,9 @@ export function PushNotificationPrompt() {
 
   const handleDismiss = () => {
     try {
-      localStorage.setItem(DISMISS_KEY, 'true')
+      // Use per-user dismiss key so the banner re-appears if they log in with a different account
+      const dismissKey = user ? `${USER_GRANTED_KEY}${user.id}` : DISMISS_KEY
+      localStorage.setItem(dismissKey, 'true')
     } catch {}
     setShowBanner(false)
   }

@@ -150,6 +150,28 @@ export async function POST(req: NextRequest) {
     }
 
     await db.user.update({ where: { id: userId }, data: updateData })
+
+    // Send push notification to user's phone for KYC actions
+    if (action === 'verifyKyc') {
+      try {
+        await db.adminNotification.create({ data: { userId, title: '✅ KYC Approved', message: `Your identity verification has been approved (Level ${payload.level || 1}). Welcome bonus credited!`, type: 'success', isRead: false } })
+        const { sendPushToUser } = await import('@/lib/push')
+        await sendPushToUser(userId, { title: '✅ KYC Approved!', body: `Your identity verification has been approved (Level ${payload.level || 1}). Welcome bonus credited!`, url: '/', tag: `kyc-${userId}` })
+      } catch (e) { console.error('[push] KYC approved failed:', e) }
+    } else if (action === 'rejectKyc') {
+      try {
+        await db.adminNotification.create({ data: { userId, title: '❌ KYC Rejected', message: `Your KYC verification was rejected. Reason: ${payload.reason || 'Failed verification requirements'}. Please resubmit with correct documents.`, type: 'warning', isRead: false } })
+        const { sendPushToUser } = await import('@/lib/push')
+        await sendPushToUser(userId, { title: '❌ KYC Rejected', body: `Your KYC was rejected. Reason: ${payload.reason || 'Failed verification requirements'}. Please resubmit.`, url: '/', tag: `kyc-${userId}` })
+      } catch (e) { console.error('[push] KYC rejected failed:', e) }
+    } else if (action === 'unapproveKyc') {
+      try {
+        await db.adminNotification.create({ data: { userId, title: '⚠️ Verification Revoked', message: `Your KYC verification has been revoked. Please resubmit your documents.`, type: 'warning', isRead: false } })
+        const { sendPushToUser } = await import('@/lib/push')
+        await sendPushToUser(userId, { title: '⚠️ Verification Revoked', body: `Your KYC verification has been revoked. Please resubmit.`, url: '/', tag: `kyc-${userId}` })
+      } catch (e) { console.error('[push] KYC revoked failed:', e) }
+    }
+
     return NextResponse.json({ ok: true, message })
 
   } catch (e: any) {

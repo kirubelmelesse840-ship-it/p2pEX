@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // Notify both parties
+      // Notify both parties — in-app + push notification to phone
       try {
         await db.adminNotification.create({
           data: {
@@ -145,6 +145,16 @@ export async function POST(req: NextRequest) {
             isRead: false,
           },
         })
+        // Push notification to buyer's phone
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(order.buyerId, {
+            title: '✅ P2P Order Completed',
+            body: `Your buy order for ${order.amount} ${order.asset} has been approved. Crypto credited to your wallet.`,
+            url: '/',
+            tag: `p2p-${order.id}`,
+          })
+        } catch (e) { console.error('[push] buyer failed:', e) }
       } catch {}
       try {
         await db.adminNotification.create({
@@ -156,6 +166,16 @@ export async function POST(req: NextRequest) {
             isRead: false,
           },
         })
+        // Push notification to seller's phone
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(order.sellerId, {
+            title: '✅ P2P Order Completed',
+            body: `Your sell order for ${order.amount} ${order.asset} has been approved. Crypto sent to buyer.`,
+            url: '/',
+            tag: `p2p-${order.id}`,
+          })
+        } catch (e) { console.error('[push] seller failed:', e) }
       } catch {}
 
       return NextResponse.json({ ok: true, message: 'Order completed. USDT transferred from seller to buyer.' })
@@ -194,7 +214,7 @@ export async function POST(req: NextRequest) {
         data: { status: 'CANCELED' },
       })
 
-      // Notify both parties
+      // Notify both parties — in-app + push notification to phone
       try {
         await db.adminNotification.create({
           data: {
@@ -205,6 +225,15 @@ export async function POST(req: NextRequest) {
             isRead: false,
           },
         })
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(order.buyerId, {
+            title: '❌ P2P Order Rejected',
+            body: `Your buy order for ${order.amount} ${order.asset} was rejected.`,
+            url: '/',
+            tag: `p2p-${order.id}`,
+          })
+        } catch (e) { console.error('[push] buyer reject failed:', e) }
       } catch {}
       try {
         await db.adminNotification.create({
@@ -216,6 +245,15 @@ export async function POST(req: NextRequest) {
             isRead: false,
           },
         })
+        try {
+          const { sendPushToUser } = await import('@/lib/push')
+          await sendPushToUser(order.sellerId, {
+            title: '❌ P2P Order Rejected',
+            body: `Your sell order for ${order.amount} ${order.asset} was rejected. Crypto returned to your wallet.`,
+            url: '/',
+            tag: `p2p-${order.id}`,
+          })
+        } catch (e) { console.error('[push] seller reject failed:', e) }
       } catch {}
 
       return NextResponse.json({ ok: true, message: 'Order rejected. Seller USDT refunded.' })
