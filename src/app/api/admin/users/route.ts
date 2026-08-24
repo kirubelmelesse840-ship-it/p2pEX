@@ -64,8 +64,9 @@ export async function GET(req: NextRequest) {
           kycLevel: true,
           kycStatus: true,
           kycFullName: true,
-          kycDocumentFront: true,
-          kycDocumentBack: true,
+          // Don't fetch kycDocumentFront/Back here — they're large base64 images
+          // that slow down the list view. They're fetched on demand when
+          // viewing a specific user's details.
           kycSubmittedAt: true,
           kycReviewedAt: true,
           kycRejectionReason: true,

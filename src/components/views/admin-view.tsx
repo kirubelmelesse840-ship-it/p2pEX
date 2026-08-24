@@ -537,22 +537,17 @@ function UsersTab() {
 
   const load = useCallback(async () => {
     // Only show loading spinner on the FIRST load (not on every refresh tap)
-    if (users.length === 0) setLoading(true)
+    setLoading(true)
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (kycFilter !== 'all') params.set('kyc', kycFilter)
-      // Long timeout — Netlify serverless cold starts can take 20-30 seconds
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-      const res = await fetch(`/api/admin/users?${params}`, { signal: controller.signal })
-      clearTimeout(timeoutId)
-      // Handle empty response body (happens when function cold-starts or times out)
+      const res = await fetch(`/api/admin/users?${params}`)
+      // Handle empty response body
       const text = await res.text()
       if (!text) {
-        // Empty response — keep existing data, don't show error on subsequent refreshes
-        if (users.length === 0) toast({ title: 'Failed to load users', description: 'Server returned empty response. Tap Refresh to try again.', variant: 'destructive' })
+        toast({ title: 'Failed to load users', description: 'Server returned empty response. Tap Refresh to try again.', variant: 'destructive' })
         return
       }
       const d = JSON.parse(text)
@@ -560,19 +555,14 @@ function UsersTab() {
       setUsers(d.users || [])
       setTotal(d.total || 0)
     } catch (e: any) {
-      // Provide a friendly error message for abort errors
       const errorMsg = e?.name === 'AbortError'
-        ? 'Request timed out (server took too long). Tap Refresh to try again.'
+        ? 'Request timed out. Tap Refresh to try again.'
         : (e.message || 'Network error')
-      // Only show error toast on first load (when we have no data to show)
-      // On subsequent refreshes, silently keep the existing data — avoids spamming the user with errors
-      if (users.length === 0) {
-        toast({ title: 'Failed to load users', description: errorMsg, variant: 'destructive' })
-      }
+      toast({ title: 'Failed to load users', description: errorMsg, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, kycFilter, toast, users.length])
+  }, [search, statusFilter, kycFilter, toast])
 
   useEffect(() => {
     load() // Load once on mount — manual refresh only (tap Refresh button)
@@ -3073,12 +3063,15 @@ function UserDetailsTab() {
     try {
       const res = await fetch('/api/admin/users?limit=100')
       const text = await res.text()
-      if (!text) return
+      if (!text) {
+        toast({ title: 'Failed to load', description: 'Server returned empty response. Tap Refresh to try again.', variant: 'destructive' })
+        return
+      }
       const d = JSON.parse(text)
       if (d.error) throw new Error(d.error)
       setUsers((d.users || []).filter((u: any) => !u.isAdmin))
     } catch (e: any) {
-      toast({ title: 'Failed to load users', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed to load users', description: e.message || 'Network error', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
