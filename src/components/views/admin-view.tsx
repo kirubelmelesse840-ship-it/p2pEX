@@ -722,7 +722,7 @@ function UsersTab() {
                             <ShieldCheck className="h-3 w-3" /> Approve
                           </Button>
                         )}
-                        {(u.kycStatus === 'PENDING' || u.kycStatus === 'APPROVED' || u.kycStatus === 'REJECTED') && u.kycDocumentFront && (
+                        {(u.kycStatus === 'PENDING' || u.kycStatus === 'APPROVED' || u.kycStatus === 'REJECTED') && (
                           <Button variant="ghost" size="sm" className="h-7 text-xs" title="View KYC documents"
                             onClick={() => setDocDialog(u)}>
                             <FileText className="h-3 w-3" /> Docs
@@ -779,6 +779,31 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [fullUser, setFullUser] = useState<any>(null)
+  const [loadingDetails, setLoadingDetails] = useState(true)
+
+  // Fetch full user details (including KYC document images) when dialog opens
+  // The list query doesn't include images (too large), so we fetch them on demand
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        const res = await fetch(`/api/admin/users/details?userId=${user.id}`)
+        const text = await res.text()
+        if (text) {
+          const d = JSON.parse(text)
+          if (!d.error) setFullUser(d.user)
+        }
+      } catch (e) {
+        console.error('[doc dialog] failed to fetch user details:', e)
+      } finally {
+        setLoadingDetails(false)
+      }
+    }
+    fetchDetails()
+  }, [user.id])
+
+  // Use fullUser (with documents) if available, otherwise fall back to the list user
+  const u = fullUser || user
 
   const handleApprove = async () => {
     if (processing) return // Prevent duplicate approvals
@@ -850,9 +875,9 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
     }
   }
 
-  const isPending = user.kycStatus === 'PENDING'
-  const isApproved = user.kycStatus === 'APPROVED'
-  const isRejected = user.kycStatus === 'REJECTED'
+  const isPending = u.kycStatus === 'PENDING'
+  const isApproved = u.kycStatus === 'APPROVED'
+  const isRejected = u.kycStatus === 'REJECTED'
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -860,10 +885,10 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            KYC Review — {user.name}
+            KYC Review — {u.name}
           </DialogTitle>
           <DialogDescription>
-            {user.email} · Submitted {user.kycSubmittedAt ? formatDateTime(user.kycSubmittedAt) : 'N/A'}
+            {u.email} · Submitted {u.kycSubmittedAt ? formatDateTime(u.kycSubmittedAt) : 'N/A'}
           </DialogDescription>
         </DialogHeader>
 
@@ -871,30 +896,36 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
           {/* Status badge */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Status:</span>
-            {isApproved && <Badge className="bg-green-500/15 text-green-600 dark:text-green-400"><CheckCircle2 className="h-3 w-3 mr-1" />Approved (L{user.kycLevel})</Badge>}
+            {isApproved && <Badge className="bg-green-500/15 text-green-600 dark:text-green-400"><CheckCircle2 className="h-3 w-3 mr-1" />Approved (L{u.kycLevel})</Badge>}
             {isPending && <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"><Clock className="h-3 w-3 mr-1" />Pending Review</Badge>}
             {isRejected && <Badge className="bg-red-500/15 text-red-600 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>}
-            {user.kycStatus === 'NONE' && <Badge variant="secondary">Not Submitted</Badge>}
+            {u.kycStatus === 'NONE' && <Badge variant="secondary">Not Submitted</Badge>}
           </div>
 
           {/* KYC info */}
           <div className="bg-muted/30 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
-            <div><span className="text-muted-foreground">Full Name:</span> <span className="font-medium">{user.kycFullName || 'N/A'}</span></div>
-            <div><span className="text-muted-foreground">ID Type:</span> <span className="font-medium">{user.kycIdType || 'N/A'}</span></div>
+            <div><span className="text-muted-foreground">Full Name:</span> <span className="font-medium">{u.kycFullName || 'N/A'}</span></div>
+            <div><span className="text-muted-foreground">ID Type:</span> <span className="font-medium">{u.kycIdType || 'N/A'}</span></div>
           </div>
 
           {/* Document images — front and back side by side */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Uploaded Documents</p>
+            {loadingDetails ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <RefreshCw className="h-6 w-6 mx-auto animate-spin mb-2" />
+                Loading documents...
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs font-semibold mb-1 flex items-center gap-1">
                   <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">1</span>
                   Front
                 </p>
-                {user.kycDocumentFront ? (
+                {u.kycDocumentFront ? (
                   <img
-                    src={user.kycDocumentFront}
+                    src={u.kycDocumentFront}
                     alt="Document front"
                     className="w-full rounded-lg border-2 border-border"
                   />
@@ -909,9 +940,9 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
                   <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px]">2</span>
                   Back
                 </p>
-                {user.kycDocumentBack ? (
+                {u.kycDocumentBack ? (
                   <img
-                    src={user.kycDocumentBack}
+                    src={u.kycDocumentBack}
                     alt="Document back"
                     className="w-full rounded-lg border-2 border-border"
                   />
@@ -922,13 +953,14 @@ function DocumentViewerDialog({ user, onClose, onAction }: { user: any; onClose:
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Rejection reason (if rejected previously) */}
-          {isRejected && user.kycRejectionReason && (
+          {isRejected && u.kycRejectionReason && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
               <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Rejection Reason:</p>
-              <p className="text-sm text-muted-foreground">{user.kycRejectionReason}</p>
+              <p className="text-sm text-muted-foreground">{u.kycRejectionReason}</p>
             </div>
           )}
 
